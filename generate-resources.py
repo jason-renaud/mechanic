@@ -107,6 +107,7 @@ def parse_spec(data):
             return
 
         tag_name = method_tags_with_extension[0]
+        tag_name_without_extension = tag_name.replace(EXTENSION_NAMESPACE + "=", "")
 
         responses = list(map(lambda response: response[1]["responses"], supported_methods_with_tags))
         responses_2xx = list(
@@ -120,7 +121,7 @@ def parse_spec(data):
         spec_definition = get_definition_from_ref(data["definitions"], ref)
 
         if spec_definition is not None:
-            new_namespace = get_existing_namespace(formatted_data, method_tags[0])
+            new_namespace = get_existing_namespace(formatted_data, tag_name_without_extension)
 
             if new_namespace is None:
                 new_namespace = {}
@@ -128,13 +129,14 @@ def parse_spec(data):
                 new_namespace["controllers"] = []
                 new_namespace["unique_models_for_controller"] = []
 
-            new_namespace["name"] = tag_name.replace(EXTENSION_NAMESPACE + "=", "")
+            new_namespace["name"] = tag_name_without_extension
 
             # Model will probably be referenced several times in each path, only add it once
             if not is_dict_in_list(new_namespace["models"], "model_name", spec_definition.get("title")):
                 create_model_from_definition(spec_definition, new_namespace["models"], new_namespace["name"], foreign_keys)
-            new_namespace["controllers"].append(create_controller_from_path(path_uri, supported_methods_with_tags,
-                                                                      new_namespace))
+
+            new_namespace["controllers"].append(
+                create_controller_from_path(path_uri, supported_methods_with_tags, new_namespace))
 
             if get_existing_namespace(formatted_data, new_namespace["name"]) is None:
                 formatted_data["namespaces"].append(new_namespace)
