@@ -40,7 +40,7 @@ api = None
 settings = None
 
 
-def init_tugboat(conf_file_path, app_type="DEV"):
+def init_app(conf_file_path, app_type="DEV"):
     parser = configparser.ConfigParser()
     parser.read(conf_file_path)
 

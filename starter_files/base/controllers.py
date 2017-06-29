@@ -9,7 +9,7 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from app import db
-from base.exceptions import TugboatException, TugboatNotFoundException, TugboatResourceAlreadyExistsException
+from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException
 
 logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
 PRIMARY_KEY_NAME = "identifier"
@@ -31,7 +31,7 @@ class BaseCollectionController(Resource):
 
                 if model_instance is not None:
                     logger.error("Resource with id %s already exists.", request_body.get(PRIMARY_KEY_NAME))
-                    raise TugboatResourceAlreadyExistsException(
+                    raise MechanicResourceAlreadyExistsException(
                         msg="Resource with " + PRIMARY_KEY_NAME + ": " + request_body.get(PRIMARY_KEY_NAME) +
                             " already exists.",
                         res="Remove the '" + PRIMARY_KEY_NAME + "' attribute from the request body and try again.")
@@ -65,7 +65,7 @@ class BaseCollectionController(Resource):
                 "resolution": "Retry the operation with a valid object."
             }
             return error_response, 400
-        except TugboatException as e:
+        except MechanicException as e:
             error_response = {
                 "message": e.message,
                 "resolution": e.resolution
@@ -117,7 +117,7 @@ class BaseController(Resource):
             model_instance = self.model.query.get(resource_id)
 
             if model_instance is None:
-                raise TugboatNotFoundException()
+                raise MechanicNotFoundException()
 
             schema = self.schema()
 
@@ -152,7 +152,7 @@ class BaseController(Resource):
             }
             logger.error(error_response)
             return error_response, 400
-        except TugboatException as e:
+        except MechanicException as e:
             error_response = {
                 "message": e.message,
                 "resolution": e.resolution
@@ -166,11 +166,11 @@ class BaseController(Resource):
             model_instance = self.model.query.get(resource_id)
 
             if model_instance is None:
-                raise TugboatNotFoundException()
+                raise MechanicNotFoundException()
 
             db.session.delete(model_instance)
             db.session.commit()
-        except TugboatException as e:
+        except MechanicException as e:
             error_response = {
                 "message": e.message,
                 "resolution": e.resolution
