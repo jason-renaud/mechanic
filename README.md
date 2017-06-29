@@ -89,6 +89,22 @@ python run.py /etc/your-project-name/app.conf
 ```
 - Test the API using the REST client of your choice (I like Postman: https://www.getpostman.com/)
 
+#### generate-starter-files.py ####
+```bash
+python generate-starter-files.py [OPTIONS] path/to/project/dir
+```
+Options:
+- --base-only   Deletes base/ directory and regenerates all code in it as if a new project was created. Useful if upgrades have been made to base classes in mechanic, and you want to pick up the latest code.
+- --app-only    Deletes app/ directory and regenerates all code in it as if a new project was created. 
+- --tests-only  Deletes tests/ directory and regenerates all code in it as if a new project was created.
+
+#### generate-resources.py ####
+```bash
+python generate-resources.py [OPTIONS] path/to/openapi/spec.json path/to/project/dir
+```
+Options:
+- --debug       Instead of generating files, creates a file with the formatted data used by the templates to generate new files.
+
 #### Future improvements/known issues
 - Implement support for OAPI 3.0.
 - Add support for links between resources instead of just foreign key ids.
