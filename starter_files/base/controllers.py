@@ -16,10 +16,23 @@ PRIMARY_KEY_NAME = "identifier"
 
 
 class BaseCollectionController(Resource):
-    model = None
     schema = None
     required_roles = []
     service_class = None
+    responses = {
+        "get": {
+            "code": 200,
+            "model": None,
+            "schema": None,
+            "query_params": []
+        },
+        "post": {
+            "code": 201,
+            "model": None,
+            "schema": None,
+            "query_params": []
+        }
+    }
 
     def post(self):
         try:
@@ -27,7 +40,7 @@ class BaseCollectionController(Resource):
 
             # If user passes in 'identifier' field, but the resource already exists, raise exception
             if request_body.get(PRIMARY_KEY_NAME):
-                model_instance = self.model.query.get(request_body.get(PRIMARY_KEY_NAME))
+                model_instance = self.responses["post"]["model"].query.get(request_body.get(PRIMARY_KEY_NAME))
 
                 if model_instance is not None:
                     logger.error("Resource with id %s already exists.", request_body.get(PRIMARY_KEY_NAME))
@@ -40,7 +53,8 @@ class BaseCollectionController(Resource):
             service = self.service_class()
             modified_data = service.post_before_validation(request_body)
 
-            schema = self.schema()
+            # validate the schema
+            schema = self.responses["post"]["schema"]()
             model_instance, errors = schema.load(modified_data)
             schema.validate(modified_data)
 
@@ -72,37 +86,63 @@ class BaseCollectionController(Resource):
             }
             logger.error(error_response)
             return error_response, e.status_code
-        return make_response(schema.jsonify(model_instance), 201)
+
+        updated_response = service.handle_query_parameters(request, schema.jsonify(model_instance), self.responses["post"]["query_params"])
+        return make_response(updated_response, self.responses["post"]["code"])
 
     def get(self):
-        models = self.model.query.all()
-        schema = self.schema(many=True)
+        models = self.responses["get"]["model"].query.all()
+        schema = self.responses["get"]["schema"](many=True)
 
         # If no items are found, return 204 'NO CONTENT'
         if len(models) is 0:
             resp_code = 204
         else:
-            resp_code = 200
-        return make_response(schema.jsonify(models), resp_code)
+            resp_code = self.responses["get"]["code"]
+
+        service = self.service_class()
+        updated_response = service.handle_query_parameters(request, schema.jsonify(models), self.responses["get"]["query_params"])
+        return make_response(updated_response, resp_code)
 
 
 class BaseController(Resource):
-    model = None
     schema = None
     required_roles = []
     service_class = None
+    responses = {
+        "get": {
+            "code": 200,
+            "model": None,
+            "schema": None,
+            "query_params": []
+        },
+        "put": {
+            "code": 200,
+            "model": None,
+            "schema": None,
+            "query_params": []
+        },
+        "delete": {
+            "code": 204,
+            "model": None,
+            "schema": None,
+            "query_params": []
+        }
+    }
 
     def get(self, resource_id):
-        model_instance = self.model.query.get(resource_id)
-        model_schema = self.schema()
+        model_instance = self.responses["get"]["model"].query.get(resource_id)
+        model_schema = self.responses["get"]["schema"]()
 
         # If no item found, return 204 'NO CONTENT'
         if model_instance is None:
             resp_code = 204
         else:
-            resp_code = 200
+            resp_code = self.responses["get"]["code"]
 
-        return make_response(model_schema.jsonify(model_instance), resp_code)
+        service = self.service_class()
+        updated_response = service.handle_query_parameters(request, model_schema.jsonify(model_instance), self.responses["get"]["query_params"])
+        return make_response(updated_response, resp_code)
 
     def put(self, resource_id):
         try:
@@ -114,12 +154,12 @@ class BaseController(Resource):
             service = self.service_class()
             modified_request_body = service.put_before_validation(request_body)
 
-            model_instance = self.model.query.get(resource_id)
+            model_instance = self.responses["get"]["model"].query.get(resource_id)
 
             if model_instance is None:
                 raise MechanicNotFoundException()
 
-            schema = self.schema()
+            schema = self.responses["put"]["schema"]()
 
             # serialize existing model into dictionary
             obj_to_save = schema.dump(model_instance).data
@@ -133,6 +173,7 @@ class BaseController(Resource):
 
             # do any work needed after initial schema validation
             service.put_after_validation(updated_model_instance.data)
+            updated_response = service.handle_query_parameters(request, schema.jsonify(updated_model_instance.data), self.responses["put"]["query_params"])
 
             # save to DB
             db.session.commit()
@@ -159,14 +200,18 @@ class BaseController(Resource):
             }
             logger.error(error_response)
             return error_response, e.status_code
-        return make_response(schema.jsonify(updated_model_instance.data), 200)
+        return make_response(updated_response, self.responses["put"]["code"])
 
     def delete(self, resource_id):
         try:
-            model_instance = self.model.query.get(resource_id)
+            model_class = self.responses["delete"]["model"] or self.responses["get"]["model"]
+            model_instance = model_class.query.get(resource_id)
 
             if model_instance is None:
                 raise MechanicNotFoundException()
+
+            service = self.service_class()
+            updated_response = service.handle_query_parameters(request, '', self.responses["delete"]["query_params"])
 
             db.session.delete(model_instance)
             db.session.commit()
@@ -178,4 +223,4 @@ class BaseController(Resource):
             logger.error(error_response)
             return error_response, e.status_code
 
-        return '', 204
+        return updated_response, self.responses["delete"]["code"]

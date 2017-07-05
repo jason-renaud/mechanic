@@ -78,7 +78,7 @@ def find_tag(data, tag_name):
                 return tag_obj
 
 
-def parse_spec(data):
+def parse_spec_v2(data):
     # This is the formatted data that the templates can read
     formatted_data = {
         # tags are what groups APIs together. The models/controllers/schemas are separated into different packages
@@ -342,7 +342,7 @@ if __name__ == "__main__":
     with open(args["spec"]) as data_file:
         data = json.load(data_file)
 
-    parsed_data = parse_spec(data)
+    parsed_data = parse_spec_v2(data)
 
     if args.get("debug"):
         logger.debug("Debug enabled, not generating code files but instead creating parsed_data_test.json file with "

@@ -6,11 +6,11 @@ def init_api(api):
     # 'api' object
     from app import config
     {% for tag in data -%}
-    from controllers.{{ tag.name }}.controllers import {% for controller in tag.controllers %}{{ controller.controller_name }}{{ "," if not loop.last }} {% endfor %}
+    from controllers.{{ tag.name }}.controllers import {% for controller in tag.controllers %}{{ controller.controller_name }}Controller{{ "," if not loop.last }} {% endfor %}
     {% endfor %}
     {% for tag in data -%}
     # controllers for {{ tag.name }}
     {% for controller in tag.controllers -%}
-    api.add_resource({{ controller.controller_name }}, config["BASE_API_PATH"] + "{{ controller.uri }}")
+    api.add_resource({{ controller.controller_name }}Controller, config["BASE_API_PATH"] + "{{ controller.uri }}")
     {% endfor -%}
     {%- endfor %}
