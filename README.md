@@ -24,10 +24,12 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 - mechanic only supports GET, PUT, POST, DELETE at the moment. There are plans to support PATCH.
 - generate-resources.py will NOT overwrite your services files. This is where your business logic lives. You can run this script as many times as you want as your API spec changes.
 - The "title" attribute of each model defined in the "definitions" section of the api spec is what is used as the resource name.
+- mechanic has default implementations for "limit", "sort", and filtering by attribute query parameters - only for GET on collections.
 
 #### mechanic does NOT support ####
-- Query parameters (work in progress)
+- Query parameters are not supported except for GET on collection resources.
 - Security definitions
+- Non-2xx responses, only generates for 2xx success codes
 - consumes/produces, assumes only json
 - "host" in spec file. mechanic simply runs the flask dev server on port 5000, by default
 - < Python 3.6, generated code is Python 3.6

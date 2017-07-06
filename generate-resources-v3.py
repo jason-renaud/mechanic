@@ -205,7 +205,7 @@ def _parse_data_from_path(json_data, path_uri, path_obj):
     valid_tags = list(map(lambda method: method[1].get("tags"), supported_methods))
 
     if not all(tag == valid_tags[0] for tag in valid_tags):
-        logger.error("Some HTTP methods in path %s have mismatched %s attributes.", path_uri, EXTENSION_NAMESPACE)
+        print("ERROR: Some HTTP methods in path %s have mismatched %s attributes.", path_uri, EXTENSION_NAMESPACE)
         return False
 
     namespace_name = valid_tags[0][0].replace(EXTENSION_NAMESPACE + "=", "")
@@ -232,12 +232,17 @@ def _parse_data_from_path(json_data, path_uri, path_obj):
 
 
 def _parse_spec(json_data):
+    # verify openapi version 3.0
+    if not json_data.get("openapi").startswith("3"):
+        print("ERROR: Invalid openapi version. If using Swagger 2.0, use generate-resources.py instead.")
+        return False
+
     # loop through each path item
     for path_key, path_object in data["paths"].items():
         success = _parse_data_from_path(json_data, path_key, path_object)
 
         if not success:
-            return
+            return False
 
     # add all foreign keys after models have been built
     for f_key in foreign_keys:
@@ -250,6 +255,7 @@ def _parse_spec(json_data):
                     "type": f_key["type"],
                     "foreign_key": f_key["foreign_key"]
                 })
+    return True
 
 
 def _generate_models(namespace_obj, filepath):
@@ -332,12 +338,16 @@ if __name__ == "__main__":
     with open(args["openapi3.0-spec-file"]) as data_file:
         data = json.load(data_file)
 
-    _parse_spec(data)
+    success = _parse_spec(data)
+
+    if not success:
+        print("ERROR: Failed to parse spec file.")
+        exit()
 
     if args.get("debug"):
-        logger.debug("Debug enabled, not generating code files but instead creating parsed_data_test.json file with "
-                     "parsed data.")
-        file = open("parsed_data_test.json", "w")
+        print("DEBUG: Debug enabled, not generating code files but instead creating debug.json file with "
+              "parsed data that mechanic would have used to generate the code files.")
+        file = open("debug.json", "w")
         file.write(str(formatted_data))
         file.close()
         exit()
@@ -346,6 +356,7 @@ if __name__ == "__main__":
         _create_package(args["project-directory"], namespace["name"])
         _generate_models(namespace, args["project-directory"] + "/models/" + namespace["name"] + "/models.py")
         _generate_schemas(namespace, args["project-directory"] + "/schemas/" + namespace["name"] + "/schemas.py")
-        _generate_controllers(namespace, args["project-directory"] + "/controllers/" + namespace["name"] + "/controllers.py")
+        _generate_controllers(namespace, args["project-directory"] + "/controllers/" + namespace["name"] +
+                              "/controllers.py")
 
     _generate_api(args["project-directory"] + "/app/api.py")

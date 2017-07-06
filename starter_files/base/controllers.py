@@ -1,6 +1,7 @@
 import logging
 import app
 import uuid
+import functools
 
 from flask import request, make_response
 from flask_restful import Resource
@@ -13,6 +14,49 @@ from base.exceptions import MechanicException, MechanicNotFoundException, Mechan
 
 logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
 PRIMARY_KEY_NAME = "identifier"
+DEFAULT_COLLECTION_LIMIT = 100
+
+
+def convert_to_uri(request_obj, model_obj):
+    uri = request_obj.path + "/" + model_obj.identifier
+    return uri
+
+
+def parse_query_params(request_obj, valid_filters, supported_queries):
+    params = dict()
+    limit_val = DEFAULT_COLLECTION_LIMIT
+    sort_key = None
+    embed_list = []
+    filter_list = []
+    custom_list = []
+
+    for param, param_val in request_obj.args.items():
+        if param == "limit" and param in supported_queries:
+            try:
+                if int(param_val) < 0 or int(param_val) > DEFAULT_COLLECTION_LIMIT:
+                    logger.warning(
+                        "Query param 'limit' with value [%s] is invalid, ignoring. Must be between 0 and 100.",
+                        param_val)
+                else:
+                    limit_val = int(param_val)
+            except ValueError as e:
+                logger.warning("Query param 'limit' with value [%s] is invalid, ignoring.", param_val)
+
+        elif param == "sort" and param in supported_queries:
+            sort_key = param_val
+        elif param == "embed" and param in supported_queries:
+            embed_list.append(param_val)
+        elif param in valid_filters:
+            filter_list.append((param, param_val))
+        elif param in supported_queries:
+            custom_list.append((param, param_val))
+
+    params["limit"] = limit_val
+    params["filters"] = filter_list
+    params["sort"] = sort_key
+    params["embed"] = embed_list
+    params["custom"] = custom_list
+    return params
 
 
 class BaseCollectionController(Resource):
@@ -87,12 +131,49 @@ class BaseCollectionController(Resource):
             logger.error(error_response)
             return error_response, e.status_code
 
-        updated_response = service.handle_query_parameters(request, schema.jsonify(model_instance), self.responses["post"]["query_params"])
-        return make_response(updated_response, self.responses["post"]["code"])
+        return make_response(schema.jsonify(model_instance), self.responses["post"]["code"])
 
     def get(self):
-        models = self.responses["get"]["model"].query.all()
-        schema = self.responses["get"]["schema"](many=True)
+        """
+        Order of operations of query parameters:
+            1) filter
+            2) sort
+            3) apply limit
+            4) apply embed
+        """
+        # Use attributes from model as valid filters, unless it starts with a "_", implying it's a hidden attribute.
+        valid_filters = [item for item in dir(self.responses["get"]["model"]()) if not item.startswith("_")]
+
+        # parse all query params
+        params = parse_query_params(request, valid_filters, self.responses["get"]["query_params"])
+
+        model_obj = self.responses["get"]["model"]
+        filtered_models = []
+
+        # apply filters
+        if params.get("filters"):
+            for filter_key, filter_val in params.get("filters"):
+                filtered_models.append(model_obj.query.filter_by(**{filter_key: filter_val}).all())
+
+            models = functools.reduce(lambda x, y: x and y, filtered_models)
+        else:
+            models = model_obj.query.all()
+
+        # apply sorting
+        if params.get("sort"):
+            reverse_order = params.get("sort").startswith("-")
+            sort_key = params.get("sort")[1:] if params.get("sort").startswith("-") else params.get("sort")
+            models.sort(key=lambda x: getattr(x, sort_key), reverse=reverse_order)
+
+        # apply limit
+        if params.get("limit"):
+            models = models[:int(params.get("limit"))]
+
+        # TODO - apply 'embed'
+
+        # Handle custom query parameters defined in openapi spec
+        service = self.service_class()
+        models = service.handle_custom_query_params(params, models)
 
         # If no items are found, return 204 'NO CONTENT'
         if len(models) is 0:
@@ -100,9 +181,8 @@ class BaseCollectionController(Resource):
         else:
             resp_code = self.responses["get"]["code"]
 
-        service = self.service_class()
-        updated_response = service.handle_query_parameters(request, schema.jsonify(models), self.responses["get"]["query_params"])
-        return make_response(updated_response, resp_code)
+        schema = self.responses["get"]["schema"](many=True)
+        return make_response(schema.jsonify(models), resp_code)
 
 
 class BaseController(Resource):
@@ -141,8 +221,8 @@ class BaseController(Resource):
             resp_code = self.responses["get"]["code"]
 
         service = self.service_class()
-        updated_response = service.handle_query_parameters(request, model_schema.jsonify(model_instance), self.responses["get"]["query_params"])
-        return make_response(updated_response, resp_code)
+
+        return make_response(model_schema.jsonify(model_instance), resp_code)
 
     def put(self, resource_id):
         try:
@@ -173,7 +253,6 @@ class BaseController(Resource):
 
             # do any work needed after initial schema validation
             service.put_after_validation(updated_model_instance.data)
-            updated_response = service.handle_query_parameters(request, schema.jsonify(updated_model_instance.data), self.responses["put"]["query_params"])
 
             # save to DB
             db.session.commit()
@@ -200,7 +279,7 @@ class BaseController(Resource):
             }
             logger.error(error_response)
             return error_response, e.status_code
-        return make_response(updated_response, self.responses["put"]["code"])
+        return make_response(schema.jsonify(updated_model_instance.data), self.responses["put"]["code"])
 
     def delete(self, resource_id):
         try:

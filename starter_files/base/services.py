@@ -1,6 +1,8 @@
 import logging
 import app
 
+DEFAULT_COLLECTION_LIMIT = 100
+
 
 class BaseService:
     logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
@@ -19,20 +21,10 @@ class BaseService:
     def post_after_validation(self, model):
         self.logger.info("POST after validation for %s service", self.__class__.__name__)
 
-    # handles the query parameters and returns a modified response
-    def handle_query_parameters(self, request, current_response, supported_queries):
-        self.logger.info("Handling query parameters...")
-        query_key_vals = []
+    """
+    params - a dictionary of custom query parameters
+    models - list of models after sort, filter, and limit queries have been executed
+    """
+    def handle_custom_query_params(self, params, models):
+        pass
 
-        for param in supported_queries:
-            param_val = request.args.get(param)
-
-            if param_val is not None:
-                query_key_vals.append((param, param_val))
-
-        # TODO - handle 'limit'
-        # TODO - handle 'filter'
-        # TODO - handle 'sort'
-        # TODO - handle 'embed'
-
-        return current_response
