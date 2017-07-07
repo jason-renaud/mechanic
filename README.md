@@ -22,12 +22,20 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 - If you want camel caps for a model name, property name, etc., you need to define things with a dash. E.g., storage-device will be StorageDevice, but storagedevice will just be Storagedevice
 - mechanic automatically appends Model, Schema, Controller, and Service to the name of your models that are defined in #/definitions. When naming your models, don't add "Model" to the end of the name otherwise it will display as StorageDeviceModelModel instead of just StorageDeviceModel.
 - mechanic only supports GET, PUT, POST, DELETE at the moment. There are plans to support PATCH.
-- generate-resources.py will NOT overwrite your services files. This is where your business logic lives. You can run this script as many times as you want as your API spec changes.
+- generate-resources-v3.py will NOT overwrite your services files. This is where your business logic lives. You can run this script as many times as you want as your API spec changes.
 - The "title" attribute of each model defined in the "definitions" section of the api spec is what is used as the resource name.
 - mechanic has default implementations for "limit", "sort", and filtering by attribute query parameters - only for GET on collections.
+- For specifications that are split among multiple files, mechanic only supports referencing schemas at the moment. Once OpenAPI 3.0 is officially released and the tooling catches up, it will fully support external file references. The directory structure for splitting up files should look like the following, and reference schemas using subdirectories of the resources directory.
+
+```
+your-project-dir/
+    resources/
+        your-openapi-spec.json
+```
 
 #### mechanic does NOT support ####
-- Query parameters are not supported except for GET on collection resources.
+- Query parameters are not supported except for GET on collection resources. You add custom query parameters besides the default supported ones.
+- OpenAPI 3.0 YAML specs
 - Security definitions
 - Non-2xx responses, only generates for 2xx success codes
 - consumes/produces, assumes only json

@@ -1,0 +1,664 @@
+{
+  "openapi": "3.0.0-rc2",
+  "servers": [
+    {
+      "url": "http://localhost:5000/api"
+    }
+  ],
+  "info": {
+    "version": "",
+    "title": "Operation Tugboat",
+    "description": ""
+  },
+  "paths": {
+    "/storage/storage-device": {
+      "get": {
+        "operationId": "GET_storage-storage-device",
+        "tags": [
+          "X-mechanic-namespace=storage"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/storagedevice"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network/switches": {
+      "post": {
+        "operationId": "POST_network-switches",
+        "summary": "switches",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "parameters": [
+          {
+            "name": "embed",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/switch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/switch"
+        }
+      },
+      "get": {
+        "operationId": "GET_network-switches",
+        "summary": "switches",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "parameters": [
+          {
+            "name": "embed",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "myquery",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/switch"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network/switches/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "GET_network-switches-id",
+        "summary": "switches/{id}",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "parameters": [
+          {
+            "name": "embed",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/switch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "PUT_network-switches-id",
+        "summary": "switches/{id}",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "parameters": [
+          {
+            "name": "embed",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/switch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "$ref": "#/components/requestBodies/switch"
+        }
+      },
+      "delete": {
+        "operationId": "DELETE_network-switches-id",
+        "summary": "switches/{id}",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errormessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network/ports": {
+      "get": {
+        "operationId": "GET_network-ports",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/port"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "POST_network-ports",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/port"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/network/ports/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "GET_network-ports-id",
+        "tags": [
+          "X-mechanic-namespace=network"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/port"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "errormessage": {
+        "title": "ErrorMessage",
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "switch": {
+        "title": "Switch",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "firmware": {
+            "type": "string"
+          },
+          "portList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/port"
+            }
+          },
+          "interfaceList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/interface"
+            }
+          },
+          "fabric-id": {
+            "type": "string"
+          },
+          "rbridge-id": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "partner": {
+            "type": "string"
+          },
+          "lag": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/lag"
+            }
+          },
+          "route": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/route"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "position",
+          "model",
+          "firmware",
+          "fabric-id",
+          "rbridge-id",
+          "ip",
+          "partner",
+          "lag",
+          "route"
+        ]
+      },
+      "port": {
+        "title": "Port",
+        "type": "object",
+        "properties": {
+          "speed": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "speed",
+          "type"
+        ]
+      },
+      "interface": {
+        "title": "Interface",
+        "type": "object",
+        "properties": {
+          "subnet": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subnet"
+        ]
+      },
+      "lag": {
+        "title": "Lag",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "route": {
+        "title": "Route",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "vrf": {
+        "title": "Vrf",
+        "type": "object",
+        "properties": {
+          "routeList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/route"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "hardwareList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/switch"
+            }
+          },
+          "vlanList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/vlan"
+            }
+          },
+          "route-distinguisher": {
+            "type": "string"
+          }
+        }
+      },
+      "vlan": {
+        "title": "Vlan",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "storagedevice": {
+        "title": "StorageDevice",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {},
+    "parameters": {},
+    "examples": {},
+    "requestBodies": {
+      "switch": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/switch"
+            }
+          }
+        }
+      },
+      "port": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/port"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {},
+    "headers": {}
+  }
+}

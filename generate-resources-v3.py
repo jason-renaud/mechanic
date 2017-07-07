@@ -24,6 +24,7 @@ OAPI_PATH_FIXED_FIELDS = ["summary", "description", "servers", "parameters"]
 OAPI_PATH_SUPPORTED_HTTP_METHODS = ["get", "post", "put", "delete", "options", "head", "patch", "trace"]
 MECHANIC_SUPPORTED_HTTP_METHODS = ["get", "post", "put", "delete"]
 CONTENT_TYPE = "application/json"
+PROJECT_DIR = None
 
 # This is the formatted data that the templates can read
 formatted_data = {
@@ -59,12 +60,35 @@ def _replace_obj_by_name(item_list, obj):
     item_list.append(obj)
 
 
-def _get_schema_from_ref(schemas, ref):
+def _get_schema_from_ref(json_data, ref, curr_dir=None):
+    if curr_dir is None:
+        curr_dir = PROJECT_DIR + "/resources/"
     schema_ref = ref.get("$ref") or ref.get("items").get("$ref")
 
-    p = re.compile('#\/components/schemas\/(.*)')
-    schema_name = re.sub(p, r'\1', str(schema_ref))
-    return schemas[schema_name]
+    p = re.compile('(.*)#\/components/schemas\/(.*)')
+    filepath = re.sub(p, r'\1', str(schema_ref))
+    schema_name = re.sub(p, r'\2', str(schema_ref))
+
+    #base_dir = PROJECT_DIR + "/resources/" + curr_dir + "/"
+    base_dir = curr_dir
+    if filepath is not "":
+        path_segments = filepath.split("/")
+        if path_segments[0] is '':
+            print("ERROR: mechanic does not support absolute path references. Use a relative path instead.")
+        else:
+            for index, item in enumerate(path_segments):
+                if index != len(path_segments)-1:
+                    if not curr_dir.endswith("/"):
+                        curr_dir = curr_dir + "/" + item + "/"
+                    else:
+                        curr_dir = curr_dir + item + "/"
+
+        resource_file = os.path.abspath(base_dir + filepath)
+        with open(resource_file, "r") as file:
+            data = json.load(file)
+    else:
+        data = json_data["components"]["schemas"].copy()
+    return data[schema_name], curr_dir
 
 
 def _get_resource_name_from_path(json_data, responses):
@@ -73,9 +97,8 @@ def _get_resource_name_from_path(json_data, responses):
             if response[1].get("responses") is not None:
                 # There must be a 200 response defined for a GET in order for the pathing to work.
                 resource_schema = response[1].get("responses").get("200").get("content").get(CONTENT_TYPE).get("schema")
-                schema = _get_schema_from_ref(json_data["components"]["schemas"], resource_schema)
+                schema, curr_dir = _get_schema_from_ref(json_data, resource_schema)
                 return schema["title"]
-    pass
 
 
 def _build_controller_for_path(json_data, path_uri, namespace_name, supported_methods):
@@ -109,15 +132,14 @@ def _build_controller_for_path(json_data, path_uri, namespace_name, supported_me
 
                 # 204 returns nothing, can't get ref of nothing
                 if item[0] != "204":
-                    ref = _get_schema_from_ref(json_data["components"]["schemas"],
-                                               item[1].get("content").get(CONTENT_TYPE).get("schema"))
+                    ref, curr_dir = _get_schema_from_ref(json_data, item[1].get("content").get(CONTENT_TYPE).get("schema"))
                     new_method["response_model"] = ref.get("title")
 
         _replace_obj_by_name(new_controller["methods"], new_method)
     return new_controller
 
 
-def _build_model_from_ref(json_data, schema, namespace_name, models):
+def _build_model_from_ref(json_data, schema, namespace_name, models, curr_dir=None):
     new_model = dict()
     new_model["properties"] = []
     new_model["package"] = namespace_name
@@ -142,13 +164,13 @@ def _build_model_from_ref(json_data, schema, namespace_name, models):
             # First, see if there is a direct reference
             ref = property_object.get("$ref")
             if ref is not None:
-                schema_ref = _get_schema_from_ref(json_data["components"]["schemas"], property_object)
+                schema_ref, curr_dir = _get_schema_from_ref(json_data, property_object, curr_dir=curr_dir)
                 new_prop["ref"] = schema_ref.get("title")
 
             # Next, see if there is an array of references
             ref = property_object.get("items", {}).get("$ref")
             if ref is not None:
-                schema_ref = _get_schema_from_ref(json_data["components"]["schemas"], property_object)
+                schema_ref, curr_dir = _get_schema_from_ref(json_data, property_object, curr_dir=curr_dir)
                 new_prop["ref"] = schema_ref.get("title")
 
                 # create foreign key object, to be added to the models later
@@ -166,7 +188,7 @@ def _build_model_from_ref(json_data, schema, namespace_name, models):
 
                     # create model from nested references
                 if schema_ref is not None:
-                    _build_model_from_ref(json_data, schema_ref, namespace_name, models)
+                    _build_model_from_ref(json_data, schema_ref, namespace_name, models, curr_dir=curr_dir)
 
     if _find_model_in_list(models, new_model["model_name"]) is None:
         models.append(new_model)
@@ -177,10 +199,8 @@ def _build_models_for_path(json_data, path_uri, namespace_name, supported_method
         for item in method[1].get("responses").items():
             if item[0].startswith("2"):
                 if item[0] != "204":
-                    ref = _get_schema_from_ref(json_data["components"]["schemas"],
-                                               item[1].get("content").get(CONTENT_TYPE).get("schema"))
-
-                    _build_model_from_ref(json_data, ref, namespace_name, models)
+                    ref, curr_dir = _get_schema_from_ref(json_data, item[1].get("content").get(CONTENT_TYPE).get("schema"))
+                    _build_model_from_ref(json_data, ref, namespace_name, models, curr_dir=curr_dir)
     return models
 
 
@@ -334,6 +354,8 @@ if __name__ == "__main__":
     parser.add_argument("project-directory")
     parser.add_argument("--debug", action="store_true")
     args = vars(parser.parse_args())
+
+    PROJECT_DIR = os.path.expanduser(args["project-directory"])
 
     with open(args["openapi3.0-spec-file"]) as data_file:
         data = json.load(data_file)

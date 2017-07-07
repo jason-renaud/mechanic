@@ -1,0 +1,84 @@
+{
+	"foreign_keys": [{
+		"model_name": "Port",
+		"name": "switch_id",
+		"type": "Integer",
+		"key": "network.switches.identifier"
+	}],
+	"namespaces": [
+		{
+			"name": "network",
+			"models": [
+				{
+					"model_name": "Switch",
+					"table_name": "switches",
+					"properties": [{
+						"name": "abc",
+						"type": "String",
+						"maxLength": 200,
+						"required": true
+					}],
+					"package": "network",
+				},
+				{
+					"model_name": "Task",
+					"table_name": "tasks",
+					"properties": [{
+						"name": "abc",
+						"type": "String",
+						"maxLength": 200,
+						"required": true
+					}],
+					"package": "common",
+				}
+			],
+			"unique_models_for_controller": ["Switch"],
+			"controllers": [
+				{
+					"uri": "/network/switches/{id}",
+					"controller_name": "Switch",
+					"package": "network",
+					"methods": [
+						{
+							"name": "get",
+							"async": false,
+							"query_params":[
+								{
+									"name": "embed",
+								}
+							],
+							"response_model": "Switch",
+							"success_response_code": 200,
+							"supported": true
+						},
+						{
+							"name": "put",
+							"async": false,
+							"response_model": "Switch",
+							"success_response_code": 200,
+							"supported": true
+						},
+						{
+							"name": "delete",
+							"async": false,
+							"response_model": null,
+							"success_response_code": 204,
+							"supported": true
+						},
+						{
+							"name": "post",
+							"supported": false
+						},
+						{
+							"name": "patch",
+							"async": true,
+							"response_model": "Task",
+							"success_response_code": 202,
+							"supported": true
+						}
+					]
+				}
+			]
+		}
+	]
+}

@@ -141,13 +141,13 @@ class BaseCollectionController(Resource):
             3) apply limit
             4) apply embed
         """
+        model_obj = self.responses["get"]["model"]
+
         # Use attributes from model as valid filters, unless it starts with a "_", implying it's a hidden attribute.
-        valid_filters = [item for item in dir(self.responses["get"]["model"]()) if not item.startswith("_")]
+        valid_filters = [item for item in dir(model_obj()) if not item.startswith("_")]
 
         # parse all query params
         params = parse_query_params(request, valid_filters, self.responses["get"]["query_params"])
-
-        model_obj = self.responses["get"]["model"]
         filtered_models = []
 
         # apply filters
@@ -155,7 +155,7 @@ class BaseCollectionController(Resource):
             for filter_key, filter_val in params.get("filters"):
                 filtered_models.append(model_obj.query.filter_by(**{filter_key: filter_val}).all())
 
-            models = functools.reduce(lambda x, y: x and y, filtered_models)
+            models = functools.reduce(lambda x, y: list(set(x) & set(y)), filtered_models)
         else:
             models = model_obj.query.all()
 
@@ -176,7 +176,7 @@ class BaseCollectionController(Resource):
         models = service.handle_custom_query_params(params, models)
 
         # If no items are found, return 204 'NO CONTENT'
-        if len(models) is 0:
+        if models is None or len(models) is 0:
             resp_code = 204
         else:
             resp_code = self.responses["get"]["code"]
@@ -289,9 +289,6 @@ class BaseController(Resource):
             if model_instance is None:
                 raise MechanicNotFoundException()
 
-            service = self.service_class()
-            updated_response = service.handle_query_parameters(request, '', self.responses["delete"]["query_params"])
-
             db.session.delete(model_instance)
             db.session.commit()
         except MechanicException as e:
@@ -302,4 +299,4 @@ class BaseController(Resource):
             logger.error(error_response)
             return error_response, e.status_code
 
-        return updated_response, self.responses["delete"]["code"]
+        return '', self.responses["delete"]["code"]

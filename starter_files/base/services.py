@@ -26,5 +26,5 @@ class BaseService:
     models - list of models after sort, filter, and limit queries have been executed
     """
     def handle_custom_query_params(self, params, models):
-        pass
+        return models
 
