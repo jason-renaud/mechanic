@@ -1,6 +1,6 @@
 import uuid
 
-from marshmallow import pre_load
+from marshmallow import pre_load, post_load
 
 from app import ma
 

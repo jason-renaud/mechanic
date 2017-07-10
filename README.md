@@ -15,21 +15,29 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 2) If you are specific in how things are implemented, you may not enjoy this tool.
 
 #### Things to note
-- Only support Swagger 2.0 (json only) at the moment, with work underway to support OpenAPI 3.0.
+- OpenAPI 3.0 is tentatively supported, as final spec has not been released yet.
 - Assumes 'tags' field in OAPI "paths" are used as folder dividers. Exactly one tag MUST be defined with the format "x-faction-namespace=your-package-name". For example "x-faction-namespace=storage". The python package name will be "storage". This also becomes the database schema name.
 - Requires 2xx responses to be defined for each endpoint/path
 - Only generates models referenced from endpoints, not necessarily all models defined in OpenAPI definitions section. If, for example, you have a defined an ABC model in "definitions" in the spec file, but that model is not referenced directly/indirectly from any endpoint, it will not generate code for that model. 
 - If you want camel caps for a model name, property name, etc., you need to define things with a dash. E.g., storage-device will be StorageDevice, but storagedevice will just be Storagedevice
 - mechanic automatically appends Model, Schema, Controller, and Service to the name of your models that are defined in #/definitions. When naming your models, don't add "Model" to the end of the name otherwise it will display as StorageDeviceModelModel instead of just StorageDeviceModel.
 - mechanic only supports GET, PUT, POST, DELETE at the moment. There are plans to support PATCH.
-- generate-starter-files.py will only work one time, only run this when starting your project
-- generate-resources.py will NOT overwrite your services files. This is where your business logic lives. You can run this script as many times as you want as your API spec changes.
+- generate-resources-v3.py will NOT overwrite your services files. This is where your business logic lives. You can run this script as many times as you want as your API spec changes.
 - The "title" attribute of each model defined in the "definitions" section of the api spec is what is used as the resource name.
+- mechanic has default implementations for "limit", "sort", and filtering by attribute query parameters - only for GET on collections.
+- For specifications that are split among multiple files, mechanic only supports referencing schemas at the moment. Once OpenAPI 3.0 is officially released and the tooling catches up, it will fully support external file references. The directory structure for splitting up files should look like the following, and reference schemas using subdirectories of the resources directory.
+
+```
+your-project-dir/
+    resources/
+        your-openapi-spec.json
+```
 
 #### mechanic does NOT support ####
-- OpenAPI 3.0, yet
-- Query parameters
+- Query parameters are not supported except for GET on collection resources. You add custom query parameters besides the default supported ones.
+- OpenAPI 3.0 YAML specs
 - Security definitions
+- Non-2xx responses, only generates for 2xx success codes
 - consumes/produces, assumes only json
 - "host" in spec file. mechanic simply runs the flask dev server on port 5000, by default
 - < Python 3.6, generated code is Python 3.6
@@ -56,31 +64,16 @@ pip3 install -r requirements.txt
 cd ~/mechanic
 
 # generate-resources.py can be run any time as your API spec changes
-python generate-resources.py path/to/openapi.json path/to/project/dir
+python generate-resources-v3.py path/to/openapi.json path/to/project/dir
 ```
 - Create services with correct names. Create a file services/your-package-name/services.py You can use this as an example to get something working (obviously, change "StorageDevice" to whatever  name of your resource is. It needs to match the resource name defined in models/controllers/schemas):
 
 ```python
-import logging
-import app
-
-logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
+from base.services import BaseService
 
 
-class StorageDeviceService():
-    def put_before_validation(self, request_body):
-        logger.info("PUT before validation for switch service")
-        return request_body
-
-    def put_after_validation(self, model):
-        logger.info("PUT after validation for switch service")
-
-    def post_before_validation(self, request_body):
-        logger.info("POST before validation for switch service")
-        return request_body
-
-    def post_after_validation(self, model):
-        logger.info("POST after validation for switch service")
+class StorageDeviceService(BaseService):
+    pass
 ```
 - Create a database schema for each namespace tag name you have defined. E.g., if you have a path with a tag "x-faction-namespace=storage", create the database schema "storage" in your DB.
 ```bash
@@ -94,13 +87,14 @@ python run.py /etc/your-project-name/app.conf
 python generate-starter-files.py [OPTIONS] path/to/project/dir
 ```
 Options:
+- --force       Deletes directories and regenerates all code as if a new project was created.
 - --base-only   Deletes base/ directory and regenerates all code in it as if a new project was created. Useful if upgrades have been made to base classes in mechanic, and you want to pick up the latest code.
 - --app-only    Deletes app/ directory and regenerates all code in it as if a new project was created. 
 - --tests-only  Deletes tests/ directory and regenerates all code in it as if a new project was created.
 
-#### generate-resources.py ####
+#### generate-resources-v3.py ####
 ```bash
-python generate-resources.py [OPTIONS] path/to/openapi/spec.json path/to/project/dir
+python generate-resources-v3.py [OPTIONS] path/to/openapi/spec.json path/to/project/dir
 ```
 Options:
 - --debug       Instead of generating files, creates a file with the formatted data used by the templates to generate new files.
