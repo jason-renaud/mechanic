@@ -241,20 +241,18 @@ class BaseController(Resource):
 
             schema = self.responses["put"]["schema"]()
 
-            # serialize existing model into dictionary
-            obj_to_save = schema.dump(model_instance).data
-
             # update with new attributes
-            for attribute in modified_request_body:
-                obj_to_save[attribute] = modified_request_body[attribute]
+            obj_to_save = modified_request_body
 
             # deserialize into model object
-            updated_model_instance = schema.load(obj_to_save)
+            updated_model_instance, errors = schema.load(obj_to_save)
+            updated_model_instance.identifier = resource_id
 
             # do any work needed after initial schema validation
-            service.put_after_validation(updated_model_instance.data)
+            service.put_after_validation(updated_model_instance)
 
             # save to DB
+            db.session.merge(updated_model_instance)
             db.session.commit()
         except ValidationError as e:
             error_response = {
@@ -279,7 +277,7 @@ class BaseController(Resource):
             }
             logger.error(error_response)
             return error_response, e.status_code
-        return make_response(schema.jsonify(updated_model_instance.data), self.responses["put"]["code"])
+        return make_response(schema.jsonify(updated_model_instance), self.responses["put"]["code"])
 
     def delete(self, resource_id):
         try:
