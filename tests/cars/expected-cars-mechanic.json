@@ -1,0 +1,150 @@
+{
+  "models/cars/models.py": {
+    "models": [
+      {
+        "class_name": "CarsTaskModel",
+        "resource_name": "CarsTask",
+        "db_table_name": "carstasks",
+        "db_schema_name": "cars",
+        "namespace": "cars",
+        "properties": [
+          {
+            "name": "status",
+            "type": "String",
+            "required": false,
+            "maxLength": null
+          },
+          {
+            "name": "message",
+            "type": "String",
+            "required": false,
+            "maxLength": null
+          },
+          {
+            "name": "resourceUri",
+            "type": "String",
+            "required": false,
+            "maxLength": null
+          },
+          {
+            "name": "executionStage",
+            "type": "String",
+            "required": false,
+            "maxLength": null
+          }
+        ]
+      }
+    ]
+  },
+  "schemas/cars/schemas.py": {
+    "schemas": [
+      {
+        "class_name": "CarsTaskSchema",
+        "model": "CarsTaskModel",
+        "namespace": "cars",
+        "additional_fields": []
+      },
+      {
+        "class_name": "WheelRotate",
+        "model": null,
+        "namespace": "cars",
+        "additional_fields": [
+          {
+            "name": "size",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "direction",
+            "type": "string",
+            "required": true
+          }
+        ]
+      }
+    ]
+  },
+  "app/api.py": {
+    "config_module": "app",
+    "config_name": "config",
+    "controllers.cars.controllers": [
+      "WheelRotateCommandController"
+    ]
+  },
+  "controllers/cars/controllers.py": {
+    "base_controllers_to_import": {
+      "base.controllers": {
+        "modules": [
+          "BaseCommandController"
+        ]
+      }
+    },
+    "models_to_import": {
+      "models.cars.models": {
+        "modules": [
+          "CarsTaskModel"
+        ]
+      }
+    },
+    "schemas_to_import": {
+      "schemas.cars.schemas": {
+        "modules": [
+          "CarsTaskSchema",
+          "WheelRotate"
+        ]
+      }
+    },
+    "services_to_import": {
+      "services.cars.services": {
+        "modules": [
+          "WheelRotateService"
+        ]
+      }
+    },
+    "controllers": [
+      {
+        "class_name": "WheelRotateCommandController",
+        "service_class": "WheelRotateService",
+        "controller_type": "COMMAND",
+        "base_controller": "BaseCommandController",
+        "methods": [
+          {
+            "name": "get",
+            "supported": false
+          },
+          {
+            "name": "put",
+            "supported": false
+          },
+          {
+            "name": "post",
+            "async": false,
+            "query_params": [],
+            "response": {
+              "schema": "CarsTaskSchema",
+              "model": "CarsTaskModel",
+              "success_code": 202
+            },
+            "request": {
+              "schema": "WheelRotate",
+              "model": ""
+            },
+            "supported": true
+          },
+          {
+            "name": "delete",
+            "supported": false
+          }
+        ],
+        "namespace": "cars",
+        "uri": "/cars/wheels/{id}/rotate",
+        "referenced_models": [
+          "CarsTaskModel"
+        ],
+        "referenced_schemas": [
+          "CarsTaskSchema",
+          "WheelRotate"
+        ]
+      }
+    ]
+  }
+}

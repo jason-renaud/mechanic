@@ -30,9 +30,21 @@
 						"required": true
 					}],
 					"package": "common",
+				},
+				{
+					"model_name": "CreateVolumeCommand",
+					"table_name": null,
+					"properties": [{
+						"name": "abc",
+						"type": "String",
+						"maxLength": 200,
+						"required": true
+					}],
+					"package": "common",
 				}
 			],
 			"unique_models_for_controller": ["Switch"],
+			"unique_services_for_controller": ["Switch"],
 			"controllers": [
 				{
 					"uri": "/network/switches/{id}",
@@ -73,6 +85,23 @@
 							"name": "patch",
 							"async": true,
 							"response_model": "Task",
+							"success_response_code": 202,
+							"supported": true
+						}
+					]
+				},
+				{
+					"uri": "/aggregates/{id}/volume/create",
+					"controller_name": "",
+					"service_name": "",
+					"resource_name"
+					"package": "storage",
+					"methods": [
+						{
+							"name": "post",
+							"async": false,
+							"response_model": "SATask",
+							"request_model": "CreateVolumeCommand",
 							"success_response_code": 202,
 							"supported": true
 						}

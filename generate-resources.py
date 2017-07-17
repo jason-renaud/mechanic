@@ -12,7 +12,7 @@ import shutil
 from mapping.maps import data_type_map
 
 """
-This file reads an OpenAPI 2.0 specification and generates code from the spec. See README.md for more details and the
+This file reads an OpenAPI 2.0 specification and generates code from the spec. See README-old.md for more details and the
 assumptions being made.
 """
 

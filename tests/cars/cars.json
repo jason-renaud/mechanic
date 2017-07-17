@@ -1,0 +1,48 @@
+{
+  "openapi": "3.0.0-rc2",
+  "servers": [
+    {
+      "url": "http://localhost:5000/api"
+    }
+  ],
+  "info": {},
+  "paths": {
+    "/cars/wheels/{id}/rotate": {
+      "x-mechanic-namespace": "cars",
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "schemas/carstask.json#/components/schemas/carstask"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "requestBodies/wheelrotate.json#/components/requestBodies/wheelrotate"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

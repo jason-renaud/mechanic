@@ -1,0 +1,18 @@
+{
+  "wheelrotate": {
+    "title": "WheelRotate",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string"
+      },
+      "direction": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "size",
+      "direction"
+    ]
+  }
+}

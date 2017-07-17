@@ -1,0 +1,28 @@
+{
+ "carstask": {
+   "title": "CarsTask",
+   "type": "object",
+   "properties": {
+     "status": {
+       "type": "string",
+       "enum": [
+         "Completed",
+         "Running",
+         "Pending",
+         "Error",
+         "Canceled"
+       ]
+     },
+     "message": {
+       "type": "string"
+     },
+     "resourceUri": {
+       "type": "string",
+       "pattern": "/(.*)/(\\d*)-(\\d*)-(\\d*)-(\\d*)"
+     },
+     "executionStage": {
+       "type": "string"
+     }
+   }
+ }
+}

@@ -1,7 +1,7 @@
 import logging
 import app
-import uuid
 import functools
+import requests
 
 from flask import request, make_response
 from flask_restful import Resource
@@ -10,7 +10,7 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from app import db
-from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException
+from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, MechanicBadRequestException
 
 logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
 PRIMARY_KEY_NAME = "identifier"
@@ -298,3 +298,70 @@ class BaseController(Resource):
             return error_response, e.status_code
 
         return '', self.responses["delete"]["code"]
+
+
+class BaseCommandController(Resource):
+    """
+    This type of controller is used for endpoints that aren't actual resources, but instead are commands. For example,
+    if you had an endpoint /api/dogs/{id}/sit - "sit" is not a resource, it's a command you are executing on a 'dog'
+    resource.
+
+    Because this endpoint maps to a command instead of an actual resource, it has much different behavior. It assumes
+    the model for this type of endpoint is a task object. You can still define your task object in the OpenAPI spec
+    files, but will need to update this task object in your service class methods.
+
+    It also assumes a command only uses a POST. mechanic currently does not support command endpoints with anything
+    other than a POST method.
+    """
+
+    service_class = None
+    operand_host = None
+    operand_resource_uri = None
+    responses = {}
+
+    def post(self, resource_id):
+        try:
+            request_body = request.get_json(force=True)
+
+            host_url = self.operand_host.append("/") if not self.operand_host.endswith("/") \
+                else self.operand_host
+            resource_url = host_url + self.operand_resource_uri
+
+            service = self.service_class()
+
+            # responsible for doing basic validation of the command and creating a task object and saving to DB
+            task = service.validate_command(request_body)
+            schema = self.responses["post"]["schema"]()
+            task_model, errors = schema.load(task)
+
+            # retrieve the resource being operated on
+            r = requests.get(resource_url)
+
+            if r.status_code == 404:
+                raise MechanicNotFoundException()
+            elif r.status_code == 400:
+                raise MechanicBadRequestException()
+
+            # Other error codes still raise HTTP exception
+            r.raise_for_status()
+
+            # TODO - verify the retrieved object is consistent with expectations, throw error otherwise
+            service.validate_retrieved_resource(r)
+
+            # responsible for marking task as "Running" and executing the command.
+            service.initiate_command(async=self.responses["post"]["async"])
+
+            # responsible for marking task as "Completed" or "Error" and other command-specific completion items.
+            # also responsible for calling correct url and updating the appropriate resource
+            service.finish_command()
+
+            db.session.add(task_model)
+            db.session.commit()
+        except MechanicException as e:
+            error_response = {
+                "message": e.message,
+                "resolution": e.resolution
+            }
+            logger.error(error_response)
+            return error_response, e.status_code
+        return make_response(schema.jsonify(task_model), self.responses["post"]["code"])

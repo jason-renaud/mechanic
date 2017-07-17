@@ -29,3 +29,13 @@ class MechanicResourceAlreadyExistsException(MechanicException):
         super(MechanicResourceAlreadyExistsException, self).__init__(self.message)
         self.message = msg
         self.resolution = res
+
+
+class MechanicBadRequestException(MechanicException):
+    message = "The given request is invalid."
+    resolution = "Retry the operation with valid request."
+
+    def __init__(self, msg=message, res=resolution):
+        super(MechanicBadRequestException, self).__init__(self.message)
+        self.message = msg
+        self.resolution = res

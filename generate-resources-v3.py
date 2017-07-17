@@ -18,8 +18,13 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 engine = inflect.engine()
 
-EXTENSION_NAMESPACE = "X-mechanic-namespace"
-EXTENSION_ASYNC = "X-mechanic-async"
+EXTENSION = "x-mechanic-"
+EXTENSION_NAMESPACE = EXTENSION + "namespace"
+EXTENSION_ASYNC = EXTENSION + "async"
+EXTENSION_COMMAND_API = EXTENSION + "command-api"
+EXTENSION_OPERAND_HOST = EXTENSION + "operand-host"
+EXTENSION_OPERAND_RESOURCE_URI = EXTENSION + "operand-resource-uri"
+EXTENSION_NO_DB = EXTENSION + "no-db"
 OAPI_PATH_FIXED_FIELDS = ["summary", "description", "servers", "parameters"]
 OAPI_PATH_SUPPORTED_HTTP_METHODS = ["get", "post", "put", "delete", "options", "head", "patch", "trace"]
 MECHANIC_SUPPORTED_HTTP_METHODS = ["get", "post", "put", "delete"]
@@ -91,7 +96,7 @@ def _get_schema_from_ref(json_data, ref, curr_dir=None):
     return data[schema_name], curr_dir
 
 
-def _get_resource_name_from_path(json_data, responses):
+def _get_resource_name_from_path(json_data, responses, is_command_api=False):
     for response in responses:
         if response[0] == "get":
             if response[1].get("responses") is not None:
@@ -99,16 +104,81 @@ def _get_resource_name_from_path(json_data, responses):
                 resource_schema = response[1].get("responses").get("200").get("content").get(CONTENT_TYPE).get("schema")
                 schema, curr_dir = _get_schema_from_ref(json_data, resource_schema)
                 return schema["title"]
+        elif response[0] == "post" and is_command_api:
+            # for command APIs
+            if response[1].get("responses") is not None:
+                method_responses = response[1].get("responses")
+                first_2xx_response = method_responses.get("200") or method_responses.get("201") or method_responses.get(
+                    "202")
+
+                if first_2xx_response is None:
+                    print(
+                        "ERROR: there is not a proper 2xx response defined for an API. Make sure you either have a "
+                        "'get' method with a 200 response, or a command API with a 'post' method with a 200/201/202 "
+                        "response defined.")
+                    exit()
+                resource_schema = first_2xx_response.get("content").get(CONTENT_TYPE).get("schema")
+                schema, curr_dir = _get_schema_from_ref(json_data, resource_schema)
+                return schema["title"]
+    print("ERROR: there is not a proper 2xx response defined for an API. Make sure you either have a 'get' method with "
+          "a 200 response, or a command API with a 'post' method with a 200/201/202 response defined.")
+    exit()
+
+
+def _is_command_controller(json_data, path_uri):
+    is_command = json_data["paths"][path_uri].get(EXTENSION_COMMAND_API)
+    if not is_command:
+        return False
+    elif is_command and json_data["paths"][path_uri].get("post") is None:
+        print("ERROR: path [" + path_uri + "] is marked as a command api, but has no 'post' HTTP method defined.")
+        exit()
+    else:
+        return True
+
+
+def _get_operand_host_and_uri(json_data, path_uri):
+    return json_data["paths"][path_uri].get(EXTENSION_OPERAND_HOST), \
+           json_data["paths"][path_uri].get(EXTENSION_OPERAND_RESOURCE_URI)
 
 
 def _build_controller_for_path(json_data, path_uri, namespace_name, supported_methods):
     new_controller = dict()
     new_controller["uri"] = path_uri.replace("{id}", "<string:resource_id>")
-    new_controller["controller_name"] = _get_resource_name_from_path(json_data, supported_methods)
-    new_controller["resource_name"] = _get_resource_name_from_path(json_data, supported_methods)
+    new_controller["is_command_api"] = False
+    new_controller["operand_host"] = None
+    new_controller["operand_resource_uri"] = None
+    request_body_schema = None
 
-    if not path_uri.endswith("{id}"):
-        new_controller["controller_name"] = new_controller["controller_name"] + "Collection"
+    if _is_command_controller(json_data, path_uri):
+        # build command controller
+        name = path_uri.replace("{id}", "").title()
+        new_controller["controller_name"] = name.replace("/", "") + "Command"
+        new_controller["resource_name"] = _get_resource_name_from_path(json_data, supported_methods, is_command_api=True)
+        new_controller["is_command_api"] = True
+
+        operand_host, operand_resource_uri = _get_operand_host_and_uri(json_data, path_uri)
+        if operand_host is None or operand_resource_uri is None:
+            print("ERROR: Command APIs require both " + EXTENSION_OPERAND_HOST + " and " +
+                  EXTENSION_OPERAND_RESOURCE_URI + " to be defined.")
+            exit()
+        else:
+            new_controller["operand_host"] = operand_host
+            new_controller["operand_resource_uri"] = operand_resource_uri
+
+        # since it's a command API, we need to look at the requestBody schema for 'post'
+        for method in supported_methods:
+            if method[0] != "post":
+                print("ERROR: mechanic only supports command APIs with only 'post' HTTP methods.")
+                exit()
+            else:
+                request_body_ref = method[1].get("requestBody").get("content").get(CONTENT_TYPE).get("schema")
+                request_body_schema, curr_dir = _get_schema_from_ref(json_data, request_body_ref)
+    elif not path_uri.endswith("{id}"):
+        new_controller["controller_name"] = _get_resource_name_from_path(json_data, supported_methods) + "Collection"
+        new_controller["resource_name"] = _get_resource_name_from_path(json_data, supported_methods)
+    else:
+        new_controller["controller_name"] = _get_resource_name_from_path(json_data, supported_methods)
+        new_controller["resource_name"] = _get_resource_name_from_path(json_data, supported_methods)
 
     new_controller["package"] = namespace_name
     new_controller["methods"] = [{"name": method, "supported": False} for method in MECHANIC_SUPPORTED_HTTP_METHODS ]
@@ -118,6 +188,7 @@ def _build_controller_for_path(json_data, path_uri, namespace_name, supported_me
         new_method["async"] = False
         new_method["name"] = method[0]
         new_method["supported"] = True
+        new_method["request_model"] = request_body_schema.get("title") if request_body_schema is not None else None
         new_method["query_params"] = []
 
         if method[1].get("parameters"):
@@ -144,7 +215,10 @@ def _build_model_from_ref(json_data, schema, namespace_name, models, curr_dir=No
     new_model["properties"] = []
     new_model["package"] = namespace_name
     new_model["model_name"] = schema.get("title")
-    new_model["table_name"] = engine.plural_noun(new_model["model_name"]).lower()
+
+    no_db = schema.get(EXTENSION_NO_DB)
+    # if it's marked as no-db, then no SQLAlchemy model needs to be generated, so put None for table_nae
+    new_model["table_name"] = None if no_db else engine.plural_noun(new_model["model_name"]).lower()
 
     for prop in schema["properties"].items():
         new_prop = dict()
@@ -201,6 +275,10 @@ def _build_models_for_path(json_data, path_uri, namespace_name, supported_method
                 if item[0] != "204":
                     ref, curr_dir = _get_schema_from_ref(json_data, item[1].get("content").get(CONTENT_TYPE).get("schema"))
                     _build_model_from_ref(json_data, ref, namespace_name, models, curr_dir=curr_dir)
+        request_body = method[1].get("requestBody")
+        if request_body is not None:
+            ref, curr_dir = _get_schema_from_ref(json_data, request_body.get("content").get(CONTENT_TYPE).get("schema"))
+            _build_model_from_ref(json_data, ref, namespace_name, models, curr_dir=curr_dir)
     return models
 
 
@@ -222,13 +300,10 @@ def _is_foreign_key_in_list(foreign_key_obj):
 def _parse_data_from_path(json_data, path_uri, path_obj):
     # just ignores HTTP methods not supported
     supported_methods = list(filter(lambda method: method[0] in MECHANIC_SUPPORTED_HTTP_METHODS, path_obj.items()))
-    valid_tags = list(map(lambda method: method[1].get("tags"), supported_methods))
+    namespace_name = json_data["paths"][path_uri].get(EXTENSION_NAMESPACE)
 
-    if not all(tag == valid_tags[0] for tag in valid_tags):
-        print("ERROR: Some HTTP methods in path %s have mismatched %s attributes.", path_uri, EXTENSION_NAMESPACE)
-        return False
-
-    namespace_name = valid_tags[0][0].replace(EXTENSION_NAMESPACE + "=", "")
+    if namespace_name is None:
+        print("ERROR: No " + EXTENSION_NAMESPACE + " attribute defined for path: ", path_uri)
     namespace = _find_existing_namespace(namespace_name)
 
     if namespace is None:
@@ -236,18 +311,31 @@ def _parse_data_from_path(json_data, path_uri, path_obj):
         namespace["models"] = []
         namespace["controllers"] = []
         namespace["unique_models_for_controller"] = []
+        namespace["unique_schemas_for_controller"] = []
+        namespace["unique_services_for_controller"] = []
 
     namespace["name"] = namespace_name
     controller = _build_controller_for_path(json_data, path_uri, namespace_name, supported_methods)
 
-    if controller["resource_name"] not in namespace["unique_models_for_controller"]:
-        namespace["unique_models_for_controller"].append(controller["resource_name"])
+    for method in controller["methods"]:
+        if method.get("response_model") is not None and method.get("response_model") \
+                not in namespace["unique_models_for_controller"]:
+            namespace["unique_models_for_controller"].append(method["response_model"])
+        if method.get("request_model") is not None and method.get("request_model") \
+                not in namespace["unique_models_for_controller"]:
+            namespace["unique_models_for_controller"].append(method["request_model"])
+
+        #if controller["resource_name"] not in namespace["unique_models_for_controller"]:
+        #    namespace["unique_models_for_controller"].append(controller["resource_name"])
+
+    # primarily for command APIs - the service name will not be the same as the resource name (usually the task object)
+    if controller["controller_name"].replace("Collection", "") not in namespace["unique_services_for_controller"]:
+        namespace["unique_services_for_controller"].append(controller["controller_name"].replace("Collection", ""))
+        controller["service_name"] = controller["controller_name"].replace("Collection", "")
 
     namespace["controllers"].append(controller)
     _build_models_for_path(json_data, path_uri, namespace_name, supported_methods, namespace["models"])
-
     _replace_obj_by_name(formatted_data["namespaces"], namespace)
-    #_find_schema_from_method_responses(list(map(lambda method: method[1]["responses"], supported_methods)))
     return True
 
 
@@ -296,6 +384,7 @@ def _generate_controllers(namespace_obj, filepath):
                                 {
                                     "data": namespace_obj["controllers"],
                                     "models": namespace_obj["unique_models_for_controller"],
+                                    "services": namespace_obj["unique_services_for_controller"],
                                     "models_path": "models." + namespace_obj["name"] + ".models",
                                     "schemas_path": "schemas." + namespace_obj["name"] + ".schemas",
                                     "services_path": "services." + namespace_obj["name"] + ".services",
@@ -311,6 +400,7 @@ def _generate_schemas(namespace_obj, filepath):
     schemas_result = render("templates/schemas.tpl",
                             {
                                 "data": namespace_obj["models"],
+                                "models": namespace_obj["unique_models_for_controller"],
                                 "models_path": "models." + namespace_obj["name"] + ".models",
                                 "timestamp": datetime.datetime.utcnow()
                             })
@@ -352,6 +442,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("openapi3.0-spec-file")
     parser.add_argument("project-directory")
+    parser.add_argument("--models-and-schemas-only", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = vars(parser.parse_args())
 
@@ -376,9 +467,15 @@ if __name__ == "__main__":
 
     for namespace in formatted_data["namespaces"]:
         _create_package(args["project-directory"], namespace["name"])
-        _generate_models(namespace, args["project-directory"] + "/models/" + namespace["name"] + "/models.py")
-        _generate_schemas(namespace, args["project-directory"] + "/schemas/" + namespace["name"] + "/schemas.py")
-        _generate_controllers(namespace, args["project-directory"] + "/controllers/" + namespace["name"] +
-                              "/controllers.py")
+
+        if args["models_and_schemas_only"]:
+            _generate_models(namespace, args["project-directory"] + "/models/" + namespace["name"] + "/models.py")
+            _generate_schemas(namespace, args["project-directory"] + "/schemas/" + namespace["name"] + "/schemas.py")
+        else:
+            _generate_models(namespace, args["project-directory"] + "/models/" + namespace["name"] + "/models.py")
+            _generate_schemas(namespace, args["project-directory"] + "/schemas/" + namespace["name"] + "/schemas.py")
+            _generate_controllers(namespace, args["project-directory"] + "/controllers/" + namespace["name"] +
+                                  "/controllers.py")
 
     _generate_api(args["project-directory"] + "/app/api.py")
+    print("SUCCESS")

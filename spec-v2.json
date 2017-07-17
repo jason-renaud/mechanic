@@ -1,0 +1,194 @@
+{
+  "files": {
+  	"app/api.py": {
+  		"config_module": "app",
+  		"config_name": "config",
+  		"controllers.storage.controllers": [
+  			"AggregateCollectionController",
+  			"AggregateController",
+  			"StorageDeviceCollectionController",
+  			"StorageDeviceController"
+  		],
+  		"controllers.network.controllers": [
+  			"SwitchCollectionController",
+  			"SwitchController",
+  			"PortCollectionController",
+  			"PortController"
+  		]
+  	},
+    "controllers/storage/controllers.py": {
+      "base_controllers_to_import": {
+      	"base.controllers": {
+      		"modules": [
+      			"BaseCollectionController",
+        		"BaseController"
+        	]
+      	}
+      },
+      "models_to_import": {
+        "models.storage.models": {
+          "modules": [
+            "AggregateModel",
+            "StorageDeviceModel"
+          ]
+        }
+      },
+      "schemas_to_import": {
+        "schemas.storage.schemas": {
+          "modules": [
+            "AggregateSchema",
+            "StorageDeviceSchema"
+          ]
+        }
+      },
+      "services_to_import": {
+        "services.storage.services": {
+          "modules": [
+            "AggregateService",
+            "StorageDeviceService"
+          ]
+        }
+      },
+      "controllers": [
+        {
+          "class_name": "AggregateCollectionController",
+          "controller_type": "collection",
+          "service_class": "AggregateService",
+          "namespace": "storage",
+          "referenced_models": [
+          	"StorageAutomatorTaskModel"
+          ]
+        },
+        {
+          "class_name": "AggregateCreatevolumeCommandController",
+          "controller_type": "command",
+          "service_class": "AggregateService",
+          "namespace": "storage",
+          "methods": [
+            {
+              "name": "post",
+              "async": true,
+              "query_params": [
+                ""
+              ],
+              "response": {
+                "schema": "StorageAutomatorTaskSchema",
+                "model": "StorageAutomatorTaskModel",
+                "success_code": 202
+              },
+              "request": {
+                "schema": "AggregateCreatevolumeParameters",
+                "model": ""
+              },
+              "supported": true
+            }
+          ]
+        },
+        {
+          "class_name": "AggregateController",
+          "controller_type": "item",
+          "service_class": "AggregateService"
+        }
+      ]
+    },
+    "models/storage/models.py": {
+      "models": [
+        {
+          "class_name": "AggregateModel",
+          "resource_name": "Aggregate",
+          "db_table_name": "aggregates",
+          "db_schema_name": "storage",
+          "properties": [
+            {
+              "name": "name",
+              "type": "String",
+              "maxLength": 200,
+              "required": true
+            },
+            {
+              "name": "storageNode",
+              "type": "String",
+              "required": true
+            },
+            {
+              "name": "volumes",
+              "type": "array",
+              "model_ref": "VolumeModel"
+            }
+          ]
+        },
+        {
+          "class_name": "VolumeModel",
+          "db_table_name": "volumes",
+          "db_schema_name": "storage",
+          "properties": [
+            {
+              "name": "name",
+              "type": "String",
+              "maxLength": 200,
+              "required": true
+            },
+            {
+              "name": "snapshotReservation",
+              "type": "String",
+              "required": true
+            },
+            {
+              "name": "aggregate_id",
+              "type": "String",
+              "maxLength": 36,
+              "fkey": "storage.aggregates.identifier"
+            }
+          ]
+        }
+      ]
+    },
+    "schemas/storage/": {
+      "base_schemas_to_import": [
+        "BaseSchema"
+      ],
+      "models_to_import": [
+        "AggregateModel",
+        "VolumeModel"
+      ],
+      "schemas": [
+        {
+          "class_name": "CreateVolumeParameters",
+          "model": null,
+          "schema-only": true,
+          "namespace": "storage",
+          "additionalFields": [
+            {
+              "name": "volumeSize",
+              "type": "String",
+              "required": true
+            },
+            {
+              "name": "volumeName",
+              "type": "String",
+              "required": true
+            }
+          ]
+        },
+        {
+          "class_name": "AggregateSchema",
+          "model": "AggregateModel",
+          "schema-only": false,
+          "namespace": "storage",
+          "additionalFields": [
+            {
+              "name": "volumes",
+              "type": "array",
+              "schema_ref": "VolumeSchema"
+            }
+          ]
+        },
+        {
+          "class_name": "VolumeSchema",
+          "model": "VolumeModel",
+          "additionalFields": []
+        }
+      ]
+    }
+  }
+}
