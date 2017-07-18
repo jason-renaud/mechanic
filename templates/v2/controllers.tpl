@@ -19,6 +19,12 @@ from {{ package }} import {% for item in data.services_to_import[package]["modul
 {%- for controller in data.controllers %}
 class {{ controller.class_name }}({{ controller.base_controller }}):
     service_class = {{ controller.service_class }}
+    {%- if controller.controller_type == "COMMAND" %}
+    # the url of the server to retrieve the resource from
+    resource_host_url = "{{ controller.resource_host_url }}"
+    # the uri of the base resource
+    resource_uri = "{{ controller.resource_uri }}"
+    {%- endif %}
     responses = {
         {%- for method in controller.methods %}
         {%- if method.supported %}
@@ -30,7 +36,7 @@ class {{ controller.class_name }}({{ controller.base_controller }}):
         }{{ "," if not loop.last }}
         {%- endif %}
         {%- endfor %}
-    },
+    }
     requests = {
         {%- for method in controller.methods %}
         {%- if method.supported %}

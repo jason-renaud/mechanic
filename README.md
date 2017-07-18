@@ -1,81 +1,78 @@
-```json
-{
-  "files": {
-    "controllers/storage/controllers": {
-      "base_controllers_to_import": ["BaseCollectionController", "BaseController"],
-      "models_to_import": [
-          {
-            "package": "models.storage.aggregate",
-            "modules": ["AggregateModel"]
-          },
-          {
-            "package": "models.storage.storagedevice",
-            "modules": ["StorageDeviceModel"]
-          }
-      ],
-      "schemas_to_import": ["AggregateSchema", "StorageDeviceSchema"],
-      "services_to_import": ["AggregateService", "StorageDeviceService"],
-      "controllers": [{
-        "class_name": "AggregateController",
-        "controller_type": "collection|command|normal",
-        "service_class": "AggregateService",
-          "command_api": null
-        }]
-    },
-    "models/storage/aggregate": {
-      "class_name": "AggregateModel",
-      "db_table_name": "aggregates",
-      "db_schema_name": "storage",
-      "properties": [
-        {
-          "name": "name",
-          "type": "String",
-          "maxLength": 200,
-          "required": true
-        },
-        {
-          "name": "storageNode",
-          "type": "String",
-          "required": true
-        }
-      ]
-    },
-    "models/storage/volume": {
-      "class_name": "VolumeModel",
-      "db_table_name": "volumes",
-      "db_schema_name": "storage",
-      "properties": [
-        {
-          "name": "name",
-          "type": "String",
-          "maxLength": 200,
-          "required": true
-        },
-        {
-          "name": "snapshotReservation",
-          "type": "String",
-          "required": true
-        },
-        {
-          "name": "aggregate_id",
-          "type": "String",
-          "maxLength": 36,
-          "fkey": "storage.aggregates.identifier"
-        }
-      ]
-    },
-    "schemas/storage/": {}
-  }
-}
-```
+#### Summary
+mechanic is a tool that can be used to generate code, from controller to database, with only an OpenAPI 3.0 specification file. Specifically, it generates code in Python 3.6, with these frameworks/tools:
+- Flask-SQLAlchemy for the models generated (for the DB integration layer)
+- Flask-Marshmallow for the schemas generated (for validation of input)
+- Flask-RESTful for the controllers generated 
 
-#### mechanic spec file attributes
-| attribute | description | value description |
-| --------- | ----------- | ----------------- |
-| files | A collection of file paths relative to the project directory, and not including the *.py suffix | A json object
-|  | A collection of file paths relative to the project directory, and not including the *.py suffix | A json object
+mechanic does 2 major things:
+1) Convert OpenAPI 3.0 spec file into a format readable by mechanic templates
+2) Generate code from the formatted file
+
+#### Why not Swagger Codegen? ####
+Swagger codegen appears to only generate starter code. It creates an API and validates input, but it stops after that. If the API changed, one would need to regenerate code, which would potentially overwrite code you had been developing over some time. From my understanding, swagger codegen is helpful for getting up and running in a new project, but it is not useful if your API is constantly changing and/or you need business logic to stay the same. There is also no integration with databases.
+
+#### Who may find mechanic useful ####
+1) Teams starting a brand new project with only a json specification file.
+2) Developers who don't like copy and pasting code every time they have to create a new API.
+3) You want to get up and running with working API code, but don't want to spend the time/effort of writing boilerplate code and selecting frameworks things up.
+
+#### Who may not find mechanic useful ####
+1) mechanic makes a lot of assumptions on frameworks and structuring things, so, for example, if you don't want to use sqlalchemy and marshmallow, this tool may not be for you.
+2) If you are specific in how things are implemented, this tool may not be for you.
+3) mechanic enforces some REST API 'best practices' in order to generate meaningful code. If you have an API that doesn't follow the enforced best practices outline below, this tool may not be for you.
+
+#### Quickstart
+- Clone the mechanic repo first, then execute these commands:
+```bash
+virtualenv -p python3.6 path/to/virtualenv
+source path/to/virtualenv/bin/activate
+cd ~/mechanic/
+
+python mechanic.py generate examples/petstore-mechanic.json ~/petstore
+
+mkdir /etc/petstore
+cp ~/petstore/app/conf/app.conf /etc/petstore/
+```
+- Now edit /etc/petstore/app.conf and update DB urls and port fields
+- Next install pip requirements
+```bash
+cd ~/petstore
+pip3 install -r requirements.txt
+python run.py /etc/petstore/app.conf
+```
+- You should see an exception with this in it: 
+```bash
+ModuleNotFoundError: No module named 'services'
+```
+- This means we still need to create the business logic pieces, aka 'services'. For now, they can be stubs.
+- Create the file (create directories too) services/store/services.py: 
+```python
+from base.services import BaseService
+
+
+class PetService(BaseService):
+    pass
+```
+- Before running again, verify the 'dev' DB specified in /etc/petstore/app.conf exists.
+```bash
+python run.py /etc/petstore/app.conf
+```
+- Now you will see an error similar this:
+```bash
+sqlalchemy.exc.ProgrammingError: (psycopg2.ProgrammingError) schema "store" does not exist
+LINE 2: CREATE TABLE store.pets (
+```
+- We need to create the schemas in the database for each 'namespace', in this case 'store'. 
+- Once you have created the schema 'store' in your database, try running again
+```bash
+python run.py /etc/petstore/app.conf
+```
+- This time it should succeed, and you should have a fully functioning API. Try doing some REST calls to test it out.
 
 ### REST API best practices enforced by mechanic
+#### mechanic types of APIs
+mechanic supports 3 types of APIs - Collection, Command, and Item.
+
 #### Endpoint definitions 
 An API that represents a resource should have 2 endpoints, 1) an endpoint to the collection of these resources and 2) an endpoint to access/update a single item of this resource.  Examples: let's say you have an endpoint to represent dogs, you might have these 2 endpoints: 
 - /cars/wheels/ - this represents a collection of all of the resource wheels 
@@ -85,32 +82,52 @@ An API that represents a command to execute on a resource should be of the forma
 - /cars/wheels/4/replace - in this case, "replace" is the command, and the wheel with id 4 is the resource being operated on. 
 - /cars/engine/1/start - "start" is the command, and the engine with id 1 is the resource being operated on.
 
-You can also have an API that represents a command to execute on a collection of resources, which must be of the format [path/to/resource]/**all**/\<command>
-- /cars/wheels/all/rotate - in this case, "rotate" is the command, and every wheel in the collection is doing a rotate command.
-
 Assumptions:
 The last part of the path segment before '{id}' or 'all' is always the resource name.
 - /cars/wheels/{id}/rotate - 'wheels' is the resource. The controller will therefore be named "WheelRotateCommandController", and the service class "WheelRotateService"
-- /cars/wheels/all/rotate - The controller will be named "WheelRotateAllCommandController", and the service class "WheelRotateService". Notice it's the same service name as /cars/wheels/{id}/rotate.
 - /cars/wheels/{id}/remove-tire - The controller will be named "WheelRemovetireCommandController", and the service class "WheelRemovetireService"
 - /cars/wheels/{id} - The controller will be named "WheelController"
 - /cars/wheels - The controller will be named "WheelCollectionController"
 
-In a command API, it is assumed the parameters being passed in are from a schema, and the response being returned is another schema that is saved in the DB. Therefore, the schema defined in the 'responses' object in the OAPI spec file will have both a marshmallow schema defined AND a SQLAlchemy model defined. However, the schema defined in 'requestBody' will ONLY have a schema defined, and the request body is NOT saved in the DB and therefore has no SQLAlchemy model defined.
+In a command API, it is assumed the parameters being passed in are from a schema (to be validated), and the response being returned is another schema that is saved in the DB. Therefore, the schema defined in the 'responses' object in the OAPI spec file will have both a marshmallow schema defined AND a SQLAlchemy model defined. However, the schema defined in 'requestBody' will ONLY have a schema defined, and the request body is NOT saved in the DB and therefore has no SQLAlchemy model defined.
 
 #### Model definitions
-mechanic automatically uses the field "identifier" as the primary key of the resource, which is also the id to use in the url when retrieving an object. There is no need to define an "id" or "identifier" field in your specification file.
-
-### mechanic types of APIs
-#### Summary
-mechanic supports 3 types of APIs - Collection, Command, and Item. In order to generate code properly, mechanic enforces some REST API "best practices". If you need to define an API that doesn't follow these best practices, mechanic will not be very useful to you.
+- mechanic automatically uses the field "identifier" as the primary key of the resource, which is also the id to use in the url when retrieving an object. DO NOT define an "id" or "identifier" field in your schema properties in the specification file.
+- mechanic automatically defines foreign key relationships whenever a schema of type "array" with a reference to another schema is used.
+- mechanic needs an "x-mechanic-namespace" extension to be defined for each path object in the OAPI spec file. See examples/petstore-oapi3.json for an example. This value is used as the "schema" attribute in the SQLAlchemy model.
 
 ### mechanic OpenAPI 3.0 extensions and additional syntax requirements
 | extension                 | description |
 | ---------                 | ----------- |
 | x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. |
 | *x-mechanic-async         | Specify if you want this method to return asynchronously
-
-- MUST have "title" defined for each schema
-
 *not supported yet but in progress
+
+- MUST have "title" defined for each schema object
+- MUST have x-mechanic-namespace defined for each path object
+- 'openapi' version MUST be '3' or greater
+- Each path method MUST have a '200', '201', '202', or '204' response object defined.
+- Schema objects MUST have properties defined at the top level. I.e., allOf, anyOf, etc. are not supported at this time.
+- The path uri MUST be of one of these formats: /uri/to/resource/, /uri/to/resource/{id}, or /uri/to/resource/{id}/<command>
+- mechanic currently only supports the following HTTP methods:
+    - get
+    - put
+    - post
+    - delete
+
+#### mechanic does NOT support
+- allOf, anyOf, etc. For a schema - the properties object MUST be defined
+- mechanic does not run from the servers url(s), however it does use them as the base resource url for command APIs.
+- < Python 3.6, generated code is Python 3.6
+- security definitions
+- YAML, mechanic only supports json
+- Query parameters are not supported except for GET on collection resources. You add custom query parameters besides the default supported ones.
+- consumes/produces, assumes only json
+
+#### Future improvement ideas
+- Add support for 'embed' query parameter to display the full resource or show it's uri reference instead.
+- Add support for overriding generated code.
+    - Add meta tag in schema itself? Add param in cli? Annotation at file level?
+- x-mechanic-async extension - define if a REST method returns asynchronously.
+- Many-to-many relationships between models/schemas
+- enum properties

@@ -49,7 +49,8 @@ def init_app(conf_file_path, app_type="DEV"):
         "DEV_DB": parser.get("database", "dev"),
         "STAGING_DB": parser.get("database", "staging"),
         "TEST_DB": parser.get("database", "test"),
-        "PRO_DB": parser.get("database", "pro")
+        "PRO_DB": parser.get("database", "pro"),
+        "PORT": parser.get("server", "port")
     }
 
     logger.info("Init app...")

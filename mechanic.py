@@ -3,7 +3,7 @@
 Usage:
     mechanic.py convert <INPUT_FILE> [<OUTPUT_FILE>]
     mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--exclude <TYPE>]...
-    mechanic.py update-base [--controllers --exceptions --schemas --services --tests]
+    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests]
 
 Arguments:
     INPUT_FILE              OpenAPI 3.0 specification file
@@ -28,6 +28,7 @@ import shutil
 import errno
 import jinja2
 import datetime
+import random
 
 from enum import Enum
 from docopt import docopt
@@ -38,6 +39,7 @@ CONTENT_TYPE = "application/json"
 HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"]
 MECHANIC_SUPPORTED_HTTP_METHODS = ["get", "put", "post", "delete"]
 EXTENSION_NAMESPACE = "x-mechanic-namespace"
+EXTENSION_EXTERNAL_RESOURCE = "x-mechanic-external-resource"
 
 data_map = {
     "integer": "Integer",
@@ -189,6 +191,10 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
     model["namespace"] = namespace
     model["properties"] = []
 
+    if schema.get("properties") is None:
+        raise SyntaxError(
+            "mechanic only supports schema 'properties' being defined at the top level of the object. "
+            "I.e., properties objects embedded within allOf, anyOf, etc. is not supported.")
     for prop in schema["properties"].items():
         new_prop = dict()
         new_prop["name"] = prop[0].replace("-", "_")
@@ -315,6 +321,22 @@ def build_controller_models_schemas_from_path(current_file_json, path_uri, path_
     controller["namespace"] = namespace
     controller["uri"] = path_uri
 
+
+    if is_command:
+        # randomly gets a url from the base servers list as default
+        resource_host = random.choice(current_file_json.get("servers")).get("url")
+
+        # see if there is a different url specified than the default
+        if path_obj.get("servers"):
+            servers_with_extension = list(filter(lambda x: x.get(EXTENSION_EXTERNAL_RESOURCE), path_obj.get("servers")))
+
+            if len(servers_with_extension) > 0:
+                resource_host = random.choice(servers_with_extension).get("url")
+
+        controller["resource_host_url"] = resource_host
+        # e.g. if uri = /storage/aggregates/{id}/createvolume, resource_uri will be /storage/aggregates
+        controller["resource_uri"] = "".join(path_uri.split("{id}")[0]) if is_command else None
+
     http_methods = [method for method in path_obj.items() if method[0] in HTTP_METHODS]
     for method in HTTP_METHODS:
         # all other methods are by default not supported, so no need to explicitly mark it
@@ -375,8 +397,7 @@ def configure_resource_relationships(models, schemas):
                 fkey["fkey"] = origin_model["db_schema_name"] + "." + origin_model["db_table_name"] + ".identifier"
                 target_model["properties"].append(fkey)
 
-    # there are 2 reasons why additional_fields should be defined in schemas - 1) Nested schemas, 2) the schema has no associated model and needs all properties defined
-    # case 1: nested schemas
+    # nested schemas
     for model in models:
         for prop in model["properties"]:
             if prop.get("model_ref"):
@@ -434,7 +455,7 @@ def convert(input, output):
 
     # write mechanic spec to file
     with open(output, "w") as f:
-        f.write(json.dumps(files))
+        f.write(json.dumps(files, sort_keys=True, indent=4, separators=(",", ": ")))
 
 
 def attach_resources_to_files(controllers, models, schemas):
@@ -453,19 +474,19 @@ def attach_resources_to_files(controllers, models, schemas):
     for schema in schemas:
         namespace = schema["namespace"]
         namespace_schemas_key = "schemas/" + namespace + "/schemas.py"
-        namespace_schemas_package = "schemas." + namespace + ".schemas"
+        namespace_models_package = "models." + namespace + ".models"
 
         if namespace_schemas_key not in files.keys():
             files[namespace_schemas_key] = {}
             files[namespace_schemas_key]["schemas"] = []
             files[namespace_schemas_key]["models_to_import"] = {
-                namespace_schemas_package: []
+                namespace_models_package: []
             }
 
         files[namespace_schemas_key]["schemas"].append(schema)
 
         if schema["model"] != "" and schema["model"] is not None:
-            files[namespace_schemas_key]["models_to_import"][namespace_schemas_package].append(schema["model"])
+            files[namespace_schemas_key]["models_to_import"][namespace_models_package].append(schema["model"])
 
     files["app/api.py"] = {}
     files["app/api.py"]["config_module"] = "app"
@@ -489,11 +510,6 @@ def attach_resources_to_files(controllers, models, schemas):
             "uri": controller["uri"].replace("{id}", "<string:resource_id>")
         }
         _replace_or_append_dict_with_key_value_in_list(files["app/api.py"][namespace_controllers_package], "class_name", controller["class_name"], new_dict)
-        # files["app/api.py"][namespace_controllers_package].append({
-        #     "class_name": controller["class_name"],
-        #     "uri": controller["uri"]
-        # })
-        # files["app/api.py"][namespace_controllers_package] = list(set(files["app/api.py"][namespace_controllers_package]))
 
         # update controllers files
         if namespace_controllers_key not in files.keys():
@@ -566,8 +582,11 @@ def mkdir_p_with_file(path, make_py_packages=False):
             raise
 
 
-def generate(input, output_dir):
+def generate(input, output_dir, exclude=[]):
     """
+    This WILL overwrite existing files you have in output_dir. Only use this if you are starting a new project or want
+    to restart an existing project.
+
     :param input:
     :param output_dir:
     :return:
@@ -597,18 +616,37 @@ def generate(input, output_dir):
         mkdir_p_with_file(output_dir + "/" + file_path, make_py_packages=True)
 
         with open(path, "w") as f:
-            if file_path.startswith("controllers"):
+            if file_path.startswith("controllers") and "controllers" not in exclude:
                 create_file_from_template("templates/v2/controllers.tpl", path, file_obj)
-            elif file_path.startswith("models"):
+            elif file_path.startswith("models") and "models" not in exclude:
                 create_file_from_template("templates/v2/models.tpl", path, file_obj)
-            elif file_path.startswith("schemas"):
+            elif file_path.startswith("schemas") and "schemas" not in exclude:
                 create_file_from_template("templates/v2/schemas.tpl", path, file_obj)
-            elif file_path.startswith("app"):
+            elif file_path.startswith("app") and "apis" not in exclude:
                 create_file_from_template("templates/v2/api.tpl", path, file_obj)
 
 
-def update_base():
-    pass
+def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, services=False, tests=False):
+    filename = os.path.abspath(sys.argv[0])
+    basedir = "/".join(filename.split("/")[:-1])
+
+    if update_all:
+        controllers = True
+        exceptions = True
+        schemas = True
+        services = True
+        tests = True
+
+    if controllers:
+        shutil.copy(basedir + "/starter_files/base/controllers.py", output_dir + "/base/controllers.py")
+    if exceptions:
+        shutil.copy(basedir + "/starter_files/base/exceptions.py", output_dir + "/base/exceptions.py")
+    if schemas:
+        shutil.copy(basedir + "/starter_files/base/schemas.py", output_dir + "/base/schemas.py")
+    if services:
+        shutil.copy(basedir + "/starter_files/base/services.py", output_dir + "/base/services.py")
+    if tests:
+        shutil.copy(basedir + "/starter_files/tests/test_base.py", output_dir + "/tests/test_base.py")
 
 
 def create_file_from_template(template_path, output_path, file_data):
@@ -638,6 +676,8 @@ if __name__ == "__main__":
         input_file = arguments["<INPUT_FILE>"]
         convert(input_file, output_file)
     elif arguments["generate"]:
-        generate(arguments["<INPUT_MECHANIC_FILE>"], arguments["<OUTPUT_DIRECTORY>"])
+        generate(arguments["<INPUT_MECHANIC_FILE>"], arguments["<OUTPUT_DIRECTORY>"], exclude=arguments["--exclude"])
     elif arguments["update-base"]:
-        update_base()
+        update_base(arguments["<OUTPUT_DIRECTORY>"], update_all=arguments["--all"],
+                    controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
+                    schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"])

@@ -8,6 +8,8 @@ from flask_restful import Resource
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm.exc import UnmappedInstanceError
+from requests.exceptions import ConnectionError
+
 
 from app import db
 from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, MechanicBadRequestException
@@ -315,24 +317,25 @@ class BaseCommandController(Resource):
     """
 
     service_class = None
-    operand_host = None
-    operand_resource_uri = None
+    resource_host_url = None
+    resource_uri = None
     responses = {}
+    requests = {}
 
     def post(self, resource_id):
         try:
             request_body = request.get_json(force=True)
 
-            host_url = self.operand_host.append("/") if not self.operand_host.endswith("/") \
-                else self.operand_host
-            resource_url = host_url + self.operand_resource_uri
+            host_url = self.resource_host_url + "/" if not self.resource_host_url.endswith("/") \
+                else self.resource_host_url
+            resource_url = host_url + self.resource_uri
+
+            schema = self.requests["post"]["schema"]()
+            schema.validate(request_body)
 
             service = self.service_class()
-
-            # responsible for doing basic validation of the command and creating a task object and saving to DB
-            task = service.validate_command(request_body)
-            schema = self.responses["post"]["schema"]()
-            task_model, errors = schema.load(task)
+            # responsible for doing additional validation of the command and creating a task object and saving to DB
+            task_model = service.validate_command_and_create_task(request_body, resource_url)
 
             # retrieve the resource being operated on
             r = requests.get(resource_url)
@@ -342,7 +345,7 @@ class BaseCommandController(Resource):
             elif r.status_code == 400:
                 raise MechanicBadRequestException()
 
-            # Other error codes still raise HTTP exception
+            # Other error codes still raise HTTP exception. If it is not an error, this line does nothing
             r.raise_for_status()
 
             # TODO - verify the retrieved object is consistent with expectations, throw error otherwise
@@ -357,6 +360,20 @@ class BaseCommandController(Resource):
 
             db.session.add(task_model)
             db.session.commit()
+        except ValidationError as e:
+            error_response = {
+                "message": e.messages,
+                "resolution": "Retry the operation with a valid object."
+            }
+            logger.error(error_response)
+            return error_response, 400
+        except ConnectionError as e:
+            error_response = {
+                "message": "Unable to connect to required service at address: " + self.resource_host_url,
+                "resolution": "Ensure service is running and retry the operation."
+            }
+            logger.error(error_response)
+            return error_response, 500
         except MechanicException as e:
             error_response = {
                 "message": e.message,

@@ -2,13 +2,14 @@
 
 from marshmallow import fields
 
-from base.schemas import BaseSchema
+from base.schemas import BaseModelSchema, BaseSchema
 {% for package in data.models_to_import.keys() %}
 from {{ package }} import {% for item in data.models_to_import[package] %}{{ item }}{{ ", " if not loop.last }}{% endfor %}
 {%- endfor %}
 
 {% for item in data.schemas %}
-class {{ item.class_name }}(BaseSchema):
+{%- if item.model %}
+class {{ item.class_name }}(BaseModelSchema):
     {%- for prop in item.additional_fields %}
     {%- if prop.schema_ref %}
     {{ prop.name }} = fields.Nested("{{ prop.schema_ref }}"{% if prop.type == "array" %}, many=True{% endif %})
@@ -20,5 +21,13 @@ class {{ item.class_name }}(BaseSchema):
     class Meta:
         model = {{ item.model }}
         strict = True
+{% else %}
+class {{ item.class_name }}(BaseSchema):
+    {%- for prop in item.additional_fields %}
+    {{ prop.name }} = fields.{{ prop.type }}({% if prop.required %}required=True{% endif %})
+    {%- endfor %}
 
+    class Meta:
+        strict = True
+{% endif %}
 {% endfor %}

@@ -30,7 +30,7 @@ class BaseService:
 
 
 class BaseCommandService:
-    def validate_command(self, command_parameters):
+    def validate_command_and_create_task(self, command_parameters, resource_url):
         pass
 
     def validate_retrieved_resource(self, json_data):

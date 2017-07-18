@@ -5,7 +5,7 @@ from app import db
 {% for item in data.models %}
 class {{ item.class_name }}(db.Model):
     __tablename__ = "{{ item.db_table_name }}"
-    __table_args__ = {"schema": "{{ db_schema_name }}"}
+    __table_args__ = {"schema": "{{ item.db_schema_name }}"}
 
     identifier = db.Column(db.String(36), primary_key=True, nullable=False)
     {%- for prop in item.properties %}
