@@ -149,7 +149,7 @@ class BaseCollectionController(Resource):
         valid_filters = [item for item in dir(model_obj()) if not item.startswith("_")]
 
         # parse all query params
-        params = parse_query_params(request, valid_filters, self.responses["get"]["query_params"])
+        params = parse_query_params(request, valid_filters, self.requests["get"]["query_params"])
         filtered_models = []
 
         # apply filters

@@ -2,7 +2,7 @@
 
 Usage:
     mechanic.py convert <INPUT_FILE> [<OUTPUT_FILE>]
-    mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--exclude <TYPE>]...
+    mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--skip-starter-files] [--exclude <TYPE>]...
     mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests]
 
 Arguments:
@@ -157,6 +157,9 @@ def parse_method_from_path_method(current_file_json, method_name, method_obj, cu
     method["name"] = method_name
     method["async"] = False
     method["query_params"] = []
+    if method_obj.get("parameters"):
+        method["query_params"] = [p["name"] for p in method_obj.get("parameters")]
+
     method["response"] = parse_response_from_method_responses(current_file_json, method_obj["responses"], current_dir)
     request, props = parse_request_from_requestBody(current_file_json, method_obj.get("requestBody"), current_dir, command=command)
     method["request"] = request or {
@@ -409,7 +412,7 @@ def configure_resource_relationships(models, schemas):
                     origin_schema[0]["additional_fields"].append({
                         "name": prop["name"],
                         "type": prop["type"],
-                        "schema_ref": prop["model_ref"] + "Schema",
+                        "schema_ref": prop["model_ref"].replace("Model", "Schema"),
                         "required": prop["required"]
                     })
 
@@ -582,11 +585,8 @@ def mkdir_p_with_file(path, make_py_packages=False):
             raise
 
 
-def generate(input, output_dir, exclude=[]):
+def generate(input, output_dir, exclude=[], skip_starter_files=False):
     """
-    This WILL overwrite existing files you have in output_dir. Only use this if you are starting a new project or want
-    to restart an existing project.
-
     :param input:
     :param output_dir:
     :return:
@@ -595,21 +595,27 @@ def generate(input, output_dir, exclude=[]):
         in_data = json.load(f)
 
     mkdir_p_with_file(output_dir)
-    with open(output_dir + "/__init__.py", "w") as f:
-        pass
 
     # generate starter files
     filename = os.path.abspath(sys.argv[0])
     basedir = "/".join(filename.split("/")[:-1])
 
-    shutil.rmtree(output_dir + "/base/", ignore_errors=True)
-    shutil.rmtree(output_dir + "/app/", ignore_errors=True)
-    shutil.rmtree(output_dir + "/tests/", ignore_errors=True)
-    shutil.copytree(basedir + "/starter_files/base/", output_dir + "/base/")
-    shutil.copytree(basedir + "/starter_files/app/", output_dir + "/app/")
-    shutil.copytree(basedir + "/starter_files/tests/", output_dir + "/tests/")
-    shutil.copy(basedir + "/starter_files/requirements.txt", output_dir)
-    shutil.copy(basedir + "/starter_files/run.py", output_dir)
+    if not skip_starter_files:
+        try:
+            shutil.copytree(basedir + "/starter_files/base/", output_dir + "/base/")
+        except FileExistsError as e:
+            print("WARNING: file exists " + e.filename)
+        try:
+            shutil.copytree(basedir + "/starter_files/app/", output_dir + "/app/")
+        except FileExistsError as e:
+            print("WARNING: file exists " + e.filename)
+        try:
+            shutil.copytree(basedir + "/starter_files/tests/", output_dir + "/tests/")
+        except FileExistsError as e:
+            print("WARNING: file exists " + e.filename)
+
+        shutil.copy(basedir + "/starter_files/requirements.txt", output_dir)
+        shutil.copy(basedir + "/starter_files/run.py", output_dir)
 
     for file_path, file_obj in in_data.items():
         path = output_dir + "/" + file_path
@@ -676,7 +682,8 @@ if __name__ == "__main__":
         input_file = arguments["<INPUT_FILE>"]
         convert(input_file, output_file)
     elif arguments["generate"]:
-        generate(arguments["<INPUT_MECHANIC_FILE>"], arguments["<OUTPUT_DIRECTORY>"], exclude=arguments["--exclude"])
+        generate(arguments["<INPUT_MECHANIC_FILE>"], arguments["<OUTPUT_DIRECTORY>"], exclude=arguments["--exclude"],
+                 skip_starter_files=arguments["--skip-starter-files"])
     elif arguments["update-base"]:
         update_base(arguments["<OUTPUT_DIRECTORY>"], update_all=arguments["--all"],
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
