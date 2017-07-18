@@ -1,0 +1,20 @@
+{
+  "wheel": {
+    "title": "Wheel",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "integer"
+      },
+      "color": {
+        "type": "string"
+      },
+      "tires": {
+        "type": "array",
+        "items": {
+          "$ref": "tire.json#/components/schemas/tire"
+        }
+      }
+    }
+  }
+}

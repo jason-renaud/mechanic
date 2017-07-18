@@ -1,0 +1,11 @@
+{
+  "tire": {
+    "title": "Tire",
+    "type": "object",
+    "properties": {
+      "brand": {
+        "type": "string"
+      }
+    }
+  }
+}

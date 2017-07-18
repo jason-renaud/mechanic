@@ -3,6 +3,7 @@
 from app import db
 
 {% for item in data %}
+{%- if item.table_name %}
 class {{ item.model_name }}Model(db.Model):
     __tablename__ = "{{ item.table_name }}"
     __table_args__ = {"schema": "{{ db_schema }}"}
@@ -15,5 +16,5 @@ class {{ item.model_name }}Model(db.Model):
     {{ prop.name }} = db.Column(db.{{ prop.type }}{% if prop.maxLength %}({{ prop.maxLength }}){% endif %}{% if prop.required == True %}, nullable=False{% endif %}{% if prop.foreign_key %}, db.ForeignKey("{{ prop.foreign_key }}"){% endif %})
     {%- endif %}
     {%- endfor %}
-
+{%- endif %}
 {% endfor %}

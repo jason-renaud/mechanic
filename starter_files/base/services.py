@@ -28,3 +28,17 @@ class BaseService:
     def handle_custom_query_params(self, params, models):
         return models
 
+
+class BaseCommandService:
+    def validate_command_and_create_task(self, command_parameters, resource_url):
+        pass
+
+    def validate_retrieved_resource(self, json_data):
+        pass
+
+    def initiate_command(self, async=False):
+        pass
+
+    def finish_command(self):
+        pass
+

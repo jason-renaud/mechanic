@@ -1,16 +1,18 @@
 import logging
 import app
-import uuid
 import functools
+import requests
 
 from flask import request, make_response
 from flask_restful import Resource
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm.exc import UnmappedInstanceError
+from requests.exceptions import ConnectionError
+
 
 from app import db
-from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException
+from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, MechanicBadRequestException
 
 logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
 PRIMARY_KEY_NAME = "identifier"
@@ -147,7 +149,7 @@ class BaseCollectionController(Resource):
         valid_filters = [item for item in dir(model_obj()) if not item.startswith("_")]
 
         # parse all query params
-        params = parse_query_params(request, valid_filters, self.responses["get"]["query_params"])
+        params = parse_query_params(request, valid_filters, self.requests["get"]["query_params"])
         filtered_models = []
 
         # apply filters
@@ -298,3 +300,85 @@ class BaseController(Resource):
             return error_response, e.status_code
 
         return '', self.responses["delete"]["code"]
+
+
+class BaseCommandController(Resource):
+    """
+    This type of controller is used for endpoints that aren't actual resources, but instead are commands. For example,
+    if you had an endpoint /api/dogs/{id}/sit - "sit" is not a resource, it's a command you are executing on a 'dog'
+    resource.
+
+    Because this endpoint maps to a command instead of an actual resource, it has much different behavior. It assumes
+    the model for this type of endpoint is a task object. You can still define your task object in the OpenAPI spec
+    files, but will need to update this task object in your service class methods.
+
+    It also assumes a command only uses a POST. mechanic currently does not support command endpoints with anything
+    other than a POST method.
+    """
+
+    service_class = None
+    resource_host_url = None
+    resource_uri = None
+    responses = {}
+    requests = {}
+
+    def post(self, resource_id):
+        try:
+            request_body = request.get_json(force=True)
+
+            host_url = self.resource_host_url + "/" if not self.resource_host_url.endswith("/") \
+                else self.resource_host_url
+            resource_url = host_url + self.resource_uri
+
+            schema = self.requests["post"]["schema"]()
+            schema.validate(request_body)
+
+            service = self.service_class()
+            # responsible for doing additional validation of the command and creating a task object and saving to DB
+            task_model = service.validate_command_and_create_task(request_body, resource_url)
+
+            # retrieve the resource being operated on
+            r = requests.get(resource_url)
+
+            if r.status_code == 404:
+                raise MechanicNotFoundException()
+            elif r.status_code == 400:
+                raise MechanicBadRequestException()
+
+            # Other error codes still raise HTTP exception. If it is not an error, this line does nothing
+            r.raise_for_status()
+
+            # TODO - verify the retrieved object is consistent with expectations, throw error otherwise
+            service.validate_retrieved_resource(r)
+
+            # responsible for marking task as "Running" and executing the command.
+            service.initiate_command(async=self.responses["post"]["async"])
+
+            # responsible for marking task as "Completed" or "Error" and other command-specific completion items.
+            # also responsible for calling correct url and updating the appropriate resource
+            service.finish_command()
+
+            db.session.add(task_model)
+            db.session.commit()
+        except ValidationError as e:
+            error_response = {
+                "message": e.messages,
+                "resolution": "Retry the operation with a valid object."
+            }
+            logger.error(error_response)
+            return error_response, 400
+        except ConnectionError as e:
+            error_response = {
+                "message": "Unable to connect to required service at address: " + self.resource_host_url,
+                "resolution": "Ensure service is running and retry the operation."
+            }
+            logger.error(error_response)
+            return error_response, 500
+        except MechanicException as e:
+            error_response = {
+                "message": e.message,
+                "resolution": e.resolution
+            }
+            logger.error(error_response)
+            return error_response, e.status_code
+        return make_response(schema.jsonify(task_model), self.responses["post"]["code"])
