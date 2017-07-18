@@ -1,4 +1,4 @@
-#### Summary
+### Summary
 mechanic is a tool that can be used to generate code, from controller to database, with only an OpenAPI 3.0 specification file. Specifically, it generates code in Python 3.6, with these frameworks/tools:
 - Flask-SQLAlchemy for the models generated (for the DB integration layer)
 - Flask-Marshmallow for the schemas generated (for validation of input)
@@ -21,7 +21,7 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 2) If you are specific in how things are implemented, this tool may not be for you.
 3) mechanic enforces some REST API 'best practices' in order to generate meaningful code. If you have an API that doesn't follow the enforced best practices outline below, this tool may not be for you.
 
-#### Quickstart
+### Quickstart
 - Clone the mechanic repo first, then execute these commands:
 ```bash
 virtualenv -p python3.6 path/to/virtualenv
@@ -96,7 +96,7 @@ In a command API, it is assumed the parameters being passed in are from a schema
 - mechanic automatically defines foreign key relationships whenever a schema of type "array" with a reference to another schema is used.
 - mechanic needs an "x-mechanic-namespace" extension to be defined for each path object in the OAPI spec file. See examples/petstore-oapi3.json for an example. This value is used as the "schema" attribute in the SQLAlchemy model.
 
-### mechanic OpenAPI 3.0 extensions and additional syntax requirements
+#### mechanic OpenAPI 3.0 extensions and additional syntax requirements
 | extension                 | description |
 | ---------                 | ----------- |
 | x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. |
@@ -124,7 +124,7 @@ In a command API, it is assumed the parameters being passed in are from a schema
 - Query parameters are not supported except for GET on collection resources. You add custom query parameters besides the default supported ones.
 - consumes/produces, assumes only json
 
-#### Future improvement ideas
+### Future improvement ideas
 - Add support for 'embed' query parameter to display the full resource or show it's uri reference instead.
 - Add support for overriding generated code.
     - Add meta tag in schema itself? Add param in cli? Annotation at file level?
