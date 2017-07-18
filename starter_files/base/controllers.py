@@ -328,7 +328,9 @@ class BaseCommandController(Resource):
 
             host_url = self.resource_host_url + "/" if not self.resource_host_url.endswith("/") \
                 else self.resource_host_url
-            resource_url = host_url + self.resource_uri
+
+            resource_url = host_url + self.resource_uri[1:] if self.resource_uri.endswith("/") else host_url + self.resource_uri
+            resource_url = resource_url + "/" if not resource_url.endswith("/") else resource_url
 
             schema = self.requests["post"]["schema"]()
             schema.validate(request_body)
@@ -338,7 +340,7 @@ class BaseCommandController(Resource):
             task_model = service.validate_command_and_create_task(request_body, resource_url)
 
             # retrieve the resource being operated on
-            r = requests.get(resource_url)
+            r = requests.get(resource_url + resource_id)
 
             if r.status_code == 404:
                 raise MechanicNotFoundException()
