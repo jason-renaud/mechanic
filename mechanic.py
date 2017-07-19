@@ -283,6 +283,7 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
                 req_schema["additional_fields"].append({
                     "name": prop[0],
                     "type": data_map.get(prop[1]["type"]) or prop[1].get("type"),
+                    "maxLength": prop[1].get("maxLength"),
                     "required": prop[0] in req_props["required"]
                 })
 
@@ -412,6 +413,7 @@ def configure_resource_relationships(models, schemas):
                     origin_schema[0]["additional_fields"].append({
                         "name": prop["name"],
                         "type": prop["type"],
+                        "maxLength": prop[1].get("maxLength"),
                         "schema_ref": prop["model_ref"].replace("Model", "Schema"),
                         "required": prop["required"]
                     })

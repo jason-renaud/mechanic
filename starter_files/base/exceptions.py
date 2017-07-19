@@ -32,6 +32,7 @@ class MechanicResourceAlreadyExistsException(MechanicException):
 
 
 class MechanicBadRequestException(MechanicException):
+    status_code = 400
     message = "The given request is invalid."
     resolution = "Retry the operation with valid request."
 

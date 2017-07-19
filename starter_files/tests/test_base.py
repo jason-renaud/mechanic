@@ -7,7 +7,7 @@ class BaseUnitTest(unittest.TestCase):
     conf_file_path = "/etc/YOURAPPNAME/app.conf"
 
     def setUp(self):
-        app.init_app(self.conf_file_path, app_type='TEST')
+        app.init_app(self.conf_file_path, app_type="TEST")
         self.app = app.app.test_client()
         self.app.testing = True
 

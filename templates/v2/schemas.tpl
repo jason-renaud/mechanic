@@ -1,6 +1,6 @@
 # do not modify - generated code at UTC {{ timestamp }}
 
-from marshmallow import fields
+from marshmallow import fields, validate
 
 from base.schemas import BaseModelSchema, BaseSchema
 {% for package in data.models_to_import.keys() %}
@@ -14,7 +14,7 @@ class {{ item.class_name }}(BaseModelSchema):
     {%- if prop.schema_ref %}
     {{ prop.name }} = fields.Nested("{{ prop.schema_ref }}"{% if prop.type == "array" %}, many=True{% endif %})
     {%- else %}
-    {{ prop.name }} = fields.{{ prop.type }}()
+    {{ prop.name }} = fields.{{ prop.type }}({% if prop.maxLength %}max_length={{ prop.maxLength }}{% endif %})
     {%- endif %}
     {%- endfor %}
 
@@ -24,7 +24,7 @@ class {{ item.class_name }}(BaseModelSchema):
 {% else %}
 class {{ item.class_name }}(BaseSchema):
     {%- for prop in item.additional_fields %}
-    {{ prop.name }} = fields.{{ prop.type }}({% if prop.required %}required=True{% endif %})
+    {{ prop.name }} = fields.{{ prop.type }}({% if prop.required %}required=True, {% endif %}{% if prop.maxLength %}validate=[validate.Length(min=0, max={{ prop.maxLength }})]{% endif %})
     {%- endfor %}
 
     class Meta:

@@ -10,9 +10,9 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from requests.exceptions import ConnectionError
 
-
 from app import db
-from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, MechanicBadRequestException
+from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, \
+    MechanicBadRequestException
 
 logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
 PRIMARY_KEY_NAME = "identifier"
@@ -329,20 +329,23 @@ class BaseCommandController(Resource):
             host_url = self.resource_host_url + "/" if not self.resource_host_url.endswith("/") \
                 else self.resource_host_url
 
-            resource_url = host_url + self.resource_uri[1:] if self.resource_uri.endswith("/") else host_url + self.resource_uri
+            resource_url = host_url + self.resource_uri[1:] if self.resource_uri.endswith(
+                "/") else host_url + self.resource_uri
             resource_url = resource_url + "/" if not resource_url.endswith("/") else resource_url
 
             schema = self.requests["post"]["schema"]()
             schema.validate(request_body)
-
             service = self.service_class()
-            # responsible for doing additional validation of the command and creating a task object and saving to DB
+
+            # responsible for doing additional validation of the command and creating a task object
             task_model = service.validate_command_and_create_task(request_body, resource_url)
+            db.session.add(task_model)
+            db.session.commit()
 
             # retrieve the resource being operated on
             r = requests.get(resource_url + resource_id)
 
-            if r.status_code == 404:
+            if r.status_code == 404 or r.status_code == 204:
                 raise MechanicNotFoundException()
             elif r.status_code == 400:
                 raise MechanicBadRequestException()
@@ -354,11 +357,11 @@ class BaseCommandController(Resource):
             service.validate_retrieved_resource(r)
 
             # responsible for marking task as "Running" and executing the command.
-            service.initiate_command(async=self.responses["post"]["async"])
+            service.initiate_command(task_model, async_exec=self.responses["post"]["async"])
 
             # responsible for marking task as "Completed" or "Error" and other command-specific completion items.
             # also responsible for calling correct url and updating the appropriate resource
-            service.finish_command()
+            service.finish_command(task_model)
 
             db.session.add(task_model)
             db.session.commit()
