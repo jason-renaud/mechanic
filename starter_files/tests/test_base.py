@@ -3,9 +3,11 @@ import app
 
 
 class BaseUnitTest(unittest.TestCase):
+    # this attribute needs to be overridden in test cases inheriting from this class
+    conf_file_path = "/etc/YOURAPPNAME/app.conf"
+
     def setUp(self):
-        print("ERROR: edit line below this in test_base.py to get your unit tests running with nose2.")
-        app.init_app("/etc/YOURAPPNAME/app.conf", app_type='TEST')
+        app.init_app(self.conf_file_path, app_type='TEST')
         self.app = app.app.test_client()
         self.app.testing = True
 

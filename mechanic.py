@@ -3,7 +3,7 @@
 Usage:
     mechanic.py convert <INPUT_FILE> [<OUTPUT_FILE>]
     mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--skip-starter-files] [--exclude <TYPE>]...
-    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests]
+    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests --app]
 
 Arguments:
     INPUT_FILE              OpenAPI 3.0 specification file
@@ -585,13 +585,13 @@ def mkdir_p_with_file(path, make_py_packages=False):
             raise
 
 
-def generate(input, output_dir, exclude=[], skip_starter_files=False):
+def generate(input_file, output_dir, exclude_resources=[], skip_starter_files=False):
     """
-    :param input:
+    :param input_file:
     :param output_dir:
     :return:
     """
-    with open(input) as f:
+    with open(input_file) as f:
         in_data = json.load(f)
 
     mkdir_p_with_file(output_dir)
@@ -621,18 +621,17 @@ def generate(input, output_dir, exclude=[], skip_starter_files=False):
         path = output_dir + "/" + file_path
         mkdir_p_with_file(output_dir + "/" + file_path, make_py_packages=True)
 
-        with open(path, "w") as f:
-            if file_path.startswith("controllers") and "controllers" not in exclude:
-                create_file_from_template("templates/v2/controllers.tpl", path, file_obj)
-            elif file_path.startswith("models") and "models" not in exclude:
-                create_file_from_template("templates/v2/models.tpl", path, file_obj)
-            elif file_path.startswith("schemas") and "schemas" not in exclude:
-                create_file_from_template("templates/v2/schemas.tpl", path, file_obj)
-            elif file_path.startswith("app") and "apis" not in exclude:
-                create_file_from_template("templates/v2/api.tpl", path, file_obj)
+        if file_path.startswith("controllers") and "controllers" not in exclude_resources:
+            create_file_from_template("templates/v2/controllers.tpl", path, file_obj)
+        elif file_path.startswith("models") and "models" not in exclude_resources:
+            create_file_from_template("templates/v2/models.tpl", path, file_obj)
+        elif file_path.startswith("schemas") and "schemas" not in exclude_resources:
+            create_file_from_template("templates/v2/schemas.tpl", path, file_obj)
+        elif file_path.startswith("app") and "apis" not in exclude_resources:
+            create_file_from_template("templates/v2/api.tpl", path, file_obj)
 
 
-def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, services=False, tests=False):
+def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, services=False, tests=False, app=False):
     filename = os.path.abspath(sys.argv[0])
     basedir = "/".join(filename.split("/")[:-1])
 
@@ -642,6 +641,7 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         schemas = True
         services = True
         tests = True
+        app = True
 
     if controllers:
         shutil.copy(basedir + "/starter_files/base/controllers.py", output_dir + "/base/controllers.py")
@@ -653,6 +653,8 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         shutil.copy(basedir + "/starter_files/base/services.py", output_dir + "/base/services.py")
     if tests:
         shutil.copy(basedir + "/starter_files/tests/test_base.py", output_dir + "/tests/test_base.py")
+    if app:
+        shutil.copy(basedir + "/starter_files/app/__init__.py", output_dir + "/app/__init__.py")
 
 
 def create_file_from_template(template_path, output_path, file_data):
@@ -682,9 +684,10 @@ if __name__ == "__main__":
         input_file = arguments["<INPUT_FILE>"]
         convert(input_file, output_file)
     elif arguments["generate"]:
-        generate(arguments["<INPUT_MECHANIC_FILE>"], arguments["<OUTPUT_DIRECTORY>"], exclude=arguments["--exclude"],
-                 skip_starter_files=arguments["--skip-starter-files"])
+        generate(arguments["<INPUT_MECHANIC_FILE>"], arguments["<OUTPUT_DIRECTORY>"],
+                 exclude_resources=arguments["--exclude"], skip_starter_files=arguments["--skip-starter-files"])
     elif arguments["update-base"]:
         update_base(arguments["<OUTPUT_DIRECTORY>"], update_all=arguments["--all"],
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
-                    schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"])
+                    schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"],
+                    app=arguments["--app"])
