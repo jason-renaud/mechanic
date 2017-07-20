@@ -82,3 +82,5 @@ def init_app(conf_file_path, app_type="DEV"):
     # TODO drop_all() is development only, remove before production
     db.drop_all()
     db.create_all()
+
+
