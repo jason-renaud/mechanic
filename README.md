@@ -100,6 +100,8 @@ In a command API, it is assumed the parameters being passed in are from a schema
 | extension                 | description |
 | ---------                 | ----------- |
 | x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. |
+| x-mechanic-plural         | mechanic uses a library called 'inflect' to automatically determine plural and singular forms of words. However it doesn't always work as needed, so you can use this attribute to override the plural form of the schema name. |
+| x-mechanic-external-resource | A way to mark a server url as an external url to retrieve a resource. Used in command APIs, where the url to get the needed resource lives on another server. |
 | *x-mechanic-async         | Specify if you want this method to return asynchronously
 *not supported yet but in progress
 

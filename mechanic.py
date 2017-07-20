@@ -40,6 +40,7 @@ HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "tra
 MECHANIC_SUPPORTED_HTTP_METHODS = ["get", "put", "post", "delete"]
 EXTENSION_NAMESPACE = "x-mechanic-namespace"
 EXTENSION_EXTERNAL_RESOURCE = "x-mechanic-external-resource"
+EXTENSION_PLURAL = "x-mechanic-plural"
 
 data_map = {
     "integer": "Integer",
@@ -170,10 +171,11 @@ def parse_method_from_path_method(current_file_json, method_name, method_obj, cu
     return method
 
 
-def build_models_from_reference_link(current_file_json, reference, namespace, models, current_dir):
+def build_models_from_reference_link(current_file_json, reference, namespace, models, current_dir, visited_models):
     """
     Recursive method that returns a list of models from following the reference link paths.
 
+    :param visited_models:
     :param current_file_json:
     :param reference:
     :param namespace:
@@ -189,7 +191,11 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
     model = dict()
     model["class_name"] = schema.get("title") + "Model"
     model["resource_name"] = schema.get("title")
-    model["db_table_name"] = engine.plural_noun(schema.get("title").replace("-", "").replace("_", "")).lower()
+    db_table_name = engine.plural_noun(schema.get("title").replace("-", "").replace("_", "")).lower()
+    if schema.get(EXTENSION_PLURAL):
+        db_table_name = schema.get(EXTENSION_PLURAL)
+
+    model["db_table_name"] = db_table_name
     model["db_schema_name"] = namespace
     model["namespace"] = namespace
     model["properties"] = []
@@ -201,7 +207,7 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
     for prop in schema["properties"].items():
         new_prop = dict()
         new_prop["name"] = prop[0].replace("-", "_")
-        new_prop["type"] = data_map.get(prop[1]["type"]) or prop[1].get("type")
+        new_prop["type"] = data_map.get(prop[1].get("type")) or prop[1].get("type") or "object"
         new_prop["required"] = prop[0] in schema.get("required", [])
         new_prop["maxLength"] = prop[1].get("maxLength")
 
@@ -218,6 +224,11 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
                 schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
                 new_prop["model_ref"] = schema_ref.get("title") + "Model"
 
+                # create model from nested references
+                if schema_ref is not None:
+                    if new_prop["model_ref"] not in visited_models and ref != reference:
+                        build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir, visited_models)
+
             # Next, see if there is an array of references
             ref = property_object.get("items", {}).get("$ref")
             if ref is not None:
@@ -226,9 +237,11 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
 
                 # create model from nested references
                 if schema_ref is not None:
-                    build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir)
+                    if new_prop["model_ref"] not in visited_models and ref != reference:
+                        build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir, visited_models)
 
             model["properties"].append(new_prop)
+    visited_models.append(model["class_name"])
     models.append(model)
     return models
 
@@ -247,15 +260,15 @@ def parse_response_models_from_path_method(current_file_json, method_obj, namesp
     schema = response_2xx.get("content").get(CONTENT_TYPE).get("schema")
     schema_ref = schema.get("$ref") or schema.get("items").get("$ref")
 
-    models = build_models_from_reference_link(current_file_json, schema_ref, namespace, [], current_dir)
+    models = build_models_from_reference_link(current_file_json, schema_ref, namespace, [], current_dir, [])
     return models
 
 
 def parse_schemas_from_path_method(current_file_json, method_obj, namespace, current_dir, command=False):
     schemas = []
-    response_schemas = parse_response_models_from_path_method(current_file_json, method_obj, namespace, current_dir)
+    response_models = parse_response_models_from_path_method(current_file_json, method_obj, namespace, current_dir)
 
-    for item in response_schemas:
+    for item in response_models:
         schema = dict()
         schema["class_name"] = item["resource_name"] + "Schema"
         schema["model"] = item["class_name"]
@@ -324,7 +337,6 @@ def build_controller_models_schemas_from_path(current_file_json, path_uri, path_
     controller["methods"] = []
     controller["namespace"] = namespace
     controller["uri"] = path_uri
-
 
     if is_command:
         # randomly gets a url from the base servers list as default
@@ -413,7 +425,7 @@ def configure_resource_relationships(models, schemas):
                     origin_schema[0]["additional_fields"].append({
                         "name": prop["name"],
                         "type": prop["type"],
-                        "maxLength": prop[1].get("maxLength"),
+                        "maxLength": prop.get("maxLength"),
                         "schema_ref": prop["model_ref"].replace("Model", "Schema"),
                         "required": prop["required"]
                     })
