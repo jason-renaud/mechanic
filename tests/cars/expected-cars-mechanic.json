@@ -34,7 +34,9 @@
                     {
                         "async": false,
                         "name": "post",
-                        "query_params": [],
+                        "query_params": [
+                            "id"
+                        ],
                         "request": {
                             "model": "",
                             "schema": "WheelRotate"
@@ -56,8 +58,8 @@
                     "CarsTaskModel"
                 ],
                 "referenced_schemas": [
-                    "WheelRotate",
-                    "CarsTaskSchema"
+                    "CarsTaskSchema",
+                    "WheelRotate"
                 ],
                 "resource_host_url": "http://localhost:5000/api",
                 "resource_uri": "/cars/wheels/",
@@ -75,8 +77,8 @@
         "schemas_to_import": {
             "schemas.cars.schemas": {
                 "modules": [
-                    "WheelRotate",
-                    "CarsTaskSchema"
+                    "CarsTaskSchema",
+                    "WheelRotate"
                 ]
             }
         },
@@ -121,7 +123,8 @@
                         "type": "String"
                     }
                 ],
-                "resource_name": "CarsTask"
+                "resource_name": "CarsTask",
+                "unique_name": "cars:CarsTaskModel"
             }
         ]
     },
@@ -136,16 +139,19 @@
                 "additional_fields": [],
                 "class_name": "CarsTaskSchema",
                 "model": "CarsTaskModel",
-                "namespace": "cars"
+                "namespace": "cars",
+                "unique_name": "cars:CarsTaskSchema"
             },
             {
                 "additional_fields": [
                     {
+                        "maxLength": null,
                         "name": "size",
                         "required": true,
                         "type": "String"
                     },
                     {
+                        "maxLength": null,
                         "name": "direction",
                         "required": true,
                         "type": "String"
@@ -153,7 +159,8 @@
                 ],
                 "class_name": "WheelRotate",
                 "model": null,
-                "namespace": "cars"
+                "namespace": "cars",
+                "unique_name": "cars:WheelRotate"
             }
         ]
     }

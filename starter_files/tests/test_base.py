@@ -24,7 +24,7 @@ class BaseUnitTest(unittest.TestCase):
     # taken from and modified:
     # https://stackoverflow.com/questions/25851183/how-to-compare-two-json-objects-with-the-same-elements-in-a-different-order-equa
     def ordered(self, obj, remove_attr=[]):
-        [obj.pop(x) for x in remove_attr if isinstance(obj, dict) and obj.get(x)]
+        [obj.pop(x) for x in remove_attr if isinstance(obj, dict)]
 
         if isinstance(obj, dict):
             return sorted((k, self.ordered(v, remove_attr=remove_attr)) for k, v in obj.items())

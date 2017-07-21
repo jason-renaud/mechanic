@@ -2,8 +2,11 @@ import os
 import unittest
 import json
 import shutil
+import pprint
 
 import mechanic
+
+pp = pprint.PrettyPrinter(indent=4)
 
 data = {
     "components": {
@@ -280,6 +283,11 @@ class MechanicTestConvertMethods(unittest.TestCase):
         self.assertEqual(len(obj["properties"]), 1)
         self.assertEqual(obj["properties"]["brand"]["type"], "string")
 
+        obj = mechanic.follow_reference_link("", "cars/requestBodies/enginetype.json#/components/schemas/enginetype",
+                                             current_dir="cars/schemas")[0]
+        self.assertEqual(len(obj["properties"]), 1)
+        self.assertEqual(obj["properties"]["name"]["type"], "string")
+
     def test_build_controller_and_models_from_path(self):
         controller, models, schemas = mechanic.build_controller_models_schemas_from_path(data, "/pets", PATH_OBJ, "")
         self.assertEqual(controller.get("class_name"), "PetCollectionController")
@@ -287,7 +295,7 @@ class MechanicTestConvertMethods(unittest.TestCase):
         self.assertEqual(controller.get("service_class"), "PetService")
         self.assertEqual(controller.get("methods")[0]["name"], "get")
         self.assertEqual(controller.get("methods")[0]["async"], False)
-        self.assertEqual(controller.get("methods")[0]["query_params"], [])
+        self.assertEqual(len(controller.get("methods")[0]["query_params"]), 2)
         self.assertEqual(controller.get("methods")[0]["supported"], True)
 
         list_of_model_class_names = [model["class_name"] for model in models]
@@ -446,7 +454,7 @@ class MechanicTestConvertMethods(unittest.TestCase):
         method = mechanic.parse_method_from_path_method(data, "get", GET_OBJECT, "")
         self.assertEqual(method["name"], "get")
         self.assertEqual(method["async"], False)
-        self.assertEqual(method["query_params"], [])
+        self.assertEqual(len(method["query_params"]), 2)
         self.assertEqual(method["response"]["schema"], "PetSchema")
         self.assertEqual(method["response"]["model"], "PetModel")
 
@@ -461,7 +469,7 @@ class MechanicTestConvertMethods(unittest.TestCase):
 
     def test_build_models_from_reference_link(self):
         models = mechanic.build_models_from_reference_link(data, "samples/wheel.json#/components/schemas/wheel", "cars",
-                                                           [], "")
+                                                           [], "", [])
         self.assertEqual(len(models), 2)
 
     def test_parse_schemas_from_path_method(self):
@@ -478,6 +486,8 @@ class MechanicTestConvertMethods(unittest.TestCase):
                 "resource_name": "Aggregate",
                 "db_table_name": "aggregates",
                 "db_schema_name": "storage",
+                "unique_name": "storage:AggregateModel",
+                "namespace": "storage",
                 "properties": [
                     {
                         "name": "name",
@@ -493,7 +503,7 @@ class MechanicTestConvertMethods(unittest.TestCase):
                     {
                         "name": "volumes",
                         "type": "array",
-                        "model_ref": "VolumeModel",
+                        "model_ref": "storage:VolumeModel",
                         "required": False
                     }
                 ]
@@ -503,6 +513,8 @@ class MechanicTestConvertMethods(unittest.TestCase):
                 "resource_name": "Volume",
                 "db_table_name": "volumes",
                 "db_schema_name": "storage",
+                "namespace": "storage",
+                "unique_name": "storage:VolumeModel",
                 "properties": [
                     {
                         "name": "name",
@@ -522,16 +534,22 @@ class MechanicTestConvertMethods(unittest.TestCase):
             {
                 "class_name": "CreateVolumeParameters",
                 "model": None,
+                "unique_name": "storage:CreateVolumeParameters",
+                "namespace": "storage",
                 "additional_fields": []
             },
             {
                 "class_name": "AggregateSchema",
                 "model": "AggregateModel",
+                "unique_name": "storage:AggregateSchema",
+                "namespace": "storage",
                 "additional_fields": []
             },
             {
                 "class_name": "VolumeSchema",
                 "model": "VolumeModel",
+                "unique_name": "storage:VolumeSchema",
+                "namespace": "storage",
                 "additional_fields": []
             }
         ]
@@ -602,7 +620,7 @@ class MechanicTestConvertMethods(unittest.TestCase):
         with open("output.json", "r") as f:
             actual = json.load(f)
 
-        os.remove("output.json")
+        # os.remove("output.json")
         self.assertTrue(ordered(expected) == ordered(actual))
 
 
@@ -624,7 +642,6 @@ class MechanicTestGenerateMethods(unittest.TestCase):
 
         shutil.rmtree("proj", ignore_errors=True)
         mechanic.generate("output.json", "proj")
-        print()
 
         # assert top level directories created
         self.assertTrue("controllers" in os.listdir("proj"))

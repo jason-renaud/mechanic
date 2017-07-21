@@ -1,0 +1,14 @@
+{
+  "engine": {
+    "title": "Engine",
+    "type": "object",
+    "properties": {
+      "numCylinders": {
+        "type": "integer"
+      },
+      "engineType": {
+        "$ref": "cars/requestBodies/enginetype.json#/components/schemas/enginetype"
+      }
+    }
+  }
+}

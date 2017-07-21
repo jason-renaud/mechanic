@@ -94,14 +94,32 @@ def follow_reference_link(current_file_json, ref, current_dir=""):
         return current_file_json[section][object_type][resource_name], current_dir
     else:
         current_dir = current_dir + "/" if not current_dir.endswith("/") and current_dir is not "" else current_dir
+        relative_file_path = ref.split("#")[0]
         external_file_path = current_dir + ref.split("#")[0]
+        external_path_length = len(external_file_path.split("/"))
+        external_path_segments = external_file_path.split("/")
 
-        with open(external_file_path) as f:
-            external_data = json.load(f)
+        # if path starts with a "/", first element will be ""
+        if external_path_segments[0] == "":
+            external_path_length = external_path_length - 1
 
-            object_name = ref.split("#")[-1].split("/")[-1]
-        current_dir = "/".join(os.path.abspath(external_file_path).split("/")[:-1])
-        return external_data[object_name], current_dir
+        backwards_index = 1
+        external_data = None
+        object_name = ref.split("#")[-1].split("/")[-1]
+
+        while external_data is None and backwards_index <= external_path_length:
+            try:
+                current_dir = "/".join(os.path.abspath(external_file_path).split("/")[:-backwards_index])
+                with open(current_dir + "/" + relative_file_path) as f:
+                    external_data = json.load(f)
+
+                return external_data[object_name], current_dir + "/" + "/".join(relative_file_path.split("/")[:-1])
+            except FileNotFoundError as e:
+                pass
+            backwards_index = backwards_index + 1
+
+        if external_data is None and backwards_index > external_path_length:
+            raise FileNotFoundError(current_dir + "/" + external_file_path)
 
 
 def parse_response_from_method_responses(current_file_json, response_obj, current_dir, no_model=False):
@@ -189,6 +207,7 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
         raise SyntaxError("No 'title' defined for the schema.")
 
     model = dict()
+
     model["class_name"] = schema.get("title") + "Model"
     model["resource_name"] = schema.get("title")
     db_table_name = engine.plural_noun(schema.get("title").replace("-", "").replace("_", "")).lower()
@@ -197,7 +216,8 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
 
     model["db_table_name"] = db_table_name
     model["db_schema_name"] = namespace
-    model["namespace"] = namespace
+    model["namespace"] = schema.get(EXTENSION_NAMESPACE) or namespace
+    model["unique_name"] = model["namespace"] + ":" + model["class_name"]
     model["properties"] = []
 
     if schema.get("properties") is None:
@@ -222,26 +242,29 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
             ref = property_object.get("$ref")
             if ref is not None:
                 schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
-                new_prop["model_ref"] = schema_ref.get("title") + "Model"
+                new_prop["model_ref"] = namespace + ":" + schema_ref.get("title") + "Model"
 
                 # create model from nested references
                 if schema_ref is not None:
-                    if new_prop["model_ref"] not in visited_models and ref != reference:
+                    if model["namespace"] + ":" + new_prop["model_ref"] not in visited_models and ref != reference:
+                        # print(model["namespace"] + ":" + new_prop["model_ref"])
                         build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir, visited_models)
 
             # Next, see if there is an array of references
             ref = property_object.get("items", {}).get("$ref")
             if ref is not None:
                 schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
-                new_prop["model_ref"] = schema_ref.get("title") + "Model"
+                new_prop["model_ref"] = namespace + ":" + schema_ref.get("title") + "Model"
 
                 # create model from nested references
                 if schema_ref is not None:
-                    if new_prop["model_ref"] not in visited_models and ref != reference:
+                    if model["namespace"] + ":" + new_prop["model_ref"] not in visited_models and ref != reference:
+                        # print(model["namespace"] + ":" + new_prop["model_ref"])
                         build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir, visited_models)
 
             model["properties"].append(new_prop)
-    visited_models.append(model["class_name"])
+    visited_models.append(model["unique_name"])
+    # print(model["namespace"] + ":" + model["class_name"])
     models.append(model)
     return models
 
@@ -273,6 +296,7 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
         schema["class_name"] = item["resource_name"] + "Schema"
         schema["model"] = item["class_name"]
         schema["namespace"] = namespace
+        schema["unique_name"] = schema["namespace"] + ":" + schema["class_name"]
 
         # this is populated at the end, when relationships are configured between resources
         schema["additional_fields"] = []
@@ -288,6 +312,7 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
         req_schema["class_name"] = request_schema["schema"]
         req_schema["model"] = request_schema["model"] if not command else None
         req_schema["namespace"] = namespace
+        req_schema["unique_name"] = req_schema["namespace"] + ":" + req_schema["class_name"]
 
         # this is also populated at the end for nested schemas, when relationships are configured between resources
         req_schema["additional_fields"] = []
@@ -300,7 +325,7 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
                     "required": prop[0] in req_props["required"]
                 })
 
-        if not any(item["class_name"] == req_schema["class_name"] for item in schemas):
+        if not any(item["unique_name"] == req_schema["unique_name"] for item in schemas):
             schemas.append(req_schema)
 
     return schemas
@@ -375,7 +400,7 @@ def build_controller_models_schemas_from_path(current_file_json, path_uri, path_
 
             # get only unique models for each path
             for rmodel in response_models:
-                if not any(item["class_name"] == rmodel["class_name"] for item in models):
+                if not any(item["unique_name"] == rmodel["unique_name"] for item in models):
                     models.append(rmodel)
 
             schemas.extend(parse_schemas_from_path_method(current_file_json, method[1], namespace, current_dir,
@@ -404,8 +429,7 @@ def configure_resource_relationships(models, schemas):
         for origin_prop in origin_model["properties"]:
             if origin_prop.get("model_ref"):
                 # we know there is only 1 model in list with resource_name, so get first item in list
-                target_model = list(filter(lambda x: x["class_name"] == origin_prop.get("model_ref"), models))[0]
-
+                target_model = list(filter(lambda x: x["unique_name"] == origin_prop.get("model_ref"), models))[0]
                 fkey = dict()
                 fkey["name"] = origin_model["resource_name"].lower() + "_id"
                 fkey["type"] = "String"
@@ -417,8 +441,10 @@ def configure_resource_relationships(models, schemas):
     for model in models:
         for prop in model["properties"]:
             if prop.get("model_ref"):
-                origin_schema = list(filter(lambda x: x["model"] == model["class_name"], schemas))
-                target_schema = list(filter(lambda x: x["model"] == prop.get("model_ref"), schemas))
+                origin_schema = list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == model["unique_name"], schemas))
+                target_schema = list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == prop.get("model_ref"), schemas))
+
+                model_ref_without_namespace = prop.get("model_ref").split(":")[1]
 
                 if len(target_schema) > 0:
                     # we need to add a nested schema
@@ -426,7 +452,7 @@ def configure_resource_relationships(models, schemas):
                         "name": prop["name"],
                         "type": prop["type"],
                         "maxLength": prop.get("maxLength"),
-                        "schema_ref": prop["model_ref"].replace("Model", "Schema"),
+                        "schema_ref": model_ref_without_namespace.replace("Model", "Schema"),
                         "required": prop["required"]
                     })
 
@@ -459,11 +485,11 @@ def convert(input, output):
         controllers.append(parsed_path[0])
 
         for rmodel in parsed_path[1]:
-            if not any(item["class_name"] == rmodel["class_name"] for item in models):
+            if not any(item["unique_name"] == rmodel["unique_name"] for item in models):
                 models.append(rmodel)
 
         for rschema in parsed_path[2]:
-            if not any(sitem["class_name"] == rschema["class_name"] for sitem in schemas):
+            if not any(sitem["unique_name"] == rschema["unique_name"] for sitem in schemas):
                 schemas.append(rschema)
 
     # setup foreign keys or nested schemas/ define schemas for resources that don't have a model (no DB)
