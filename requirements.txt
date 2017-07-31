@@ -1,10 +1,12 @@
 click==6.7
+deepdiff==3.3.0
 docopt==0.6.2
 Flask==0.12.2
 Flask-Testing==0.6.2
 inflect==0.2.5
 itsdangerous==0.24
 Jinja2==2.9.6
+jsonpickle==0.9.5
 MarkupSafe==1.0
 nose2==0.6.5
 pkg-resources==0.0.0
