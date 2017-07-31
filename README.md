@@ -28,7 +28,7 @@ virtualenv -p python3.6 path/to/virtualenv
 source path/to/virtualenv/bin/activate
 cd ~/mechanic/
 
-python mechanic.py generate examples/petstore-mechanic.json ~/petstore
+python mechanic.py generate examples/petstore-mechanic.json ~/petstore # Note the last segment of the directory path (in this case 'petstore') is considered the location where the app.conf file will exist. Therefore, the app.conf file MUST be located /etc/<app-name>/app.conf, in this case /etc/petstore/app.conf
 
 mkdir /etc/petstore
 cp ~/petstore/app/conf/app.conf /etc/petstore/
@@ -99,9 +99,10 @@ In a command API, it is assumed the parameters being passed in are from a schema
 #### mechanic OpenAPI 3.0 extensions and additional syntax requirements
 | extension                 | description |
 | ---------                 | ----------- |
-| x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. |
+| x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. This can also be placed on a schema object, although it is only needed if a schema is referenced by another schema outside of it's namespace. |
 | x-mechanic-plural         | mechanic uses a library called 'inflect' to automatically determine plural and singular forms of words. However it doesn't always work as needed, so you can use this attribute to override the plural form of the schema name. |
 | x-mechanic-external-resource | A way to mark a server url as an external url to retrieve a resource. Used in command APIs, where the url to get the needed resource lives on another server. |
+| x-mechanic-backref        | On a property object. Override the default name for SQLAlchemy backref. This is typically only needed if you have multiple attributes in a schema that reference the same schema. For example, if you had a schema Person, with attributes 'cars' and 'primaryCar', that each referenced a Car schema. |  
 | *x-mechanic-async         | Specify if you want this method to return asynchronously
 *not supported yet but in progress
 

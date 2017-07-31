@@ -1,0 +1,17 @@
+{
+  "actor": {
+    "title": "Actor",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "movies": {
+        "type": "array",
+        "items": {
+          "$ref": "movie.json#/components/schemas/movie"
+        }
+      }
+    }
+  }
+}

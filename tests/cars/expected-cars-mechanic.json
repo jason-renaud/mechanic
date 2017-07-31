@@ -55,11 +55,11 @@
                 ],
                 "namespace": "cars",
                 "referenced_models": [
-                    "CarsTaskModel"
+                    "models.cars.models.CarsTaskModel"
                 ],
                 "referenced_schemas": [
-                    "CarsTaskSchema",
-                    "WheelRotate"
+                    "schemas.cars.schemas.CarsTaskSchema",
+                    "schemas.cars.schemas.WheelRotate"
                 ],
                 "resource_host_url": "http://localhost:5000/api",
                 "resource_uri": "/cars/wheels/",
@@ -91,34 +91,54 @@
         }
     },
     "models/cars/models.py": {
+        "m2m_relationships": {},
         "models": [
             {
                 "class_name": "CarsTaskModel",
                 "db_schema_name": "cars",
                 "db_table_name": "carstasks",
                 "namespace": "cars",
+                "path": "models.cars.models.CarsTaskModel",
                 "properties": [
                     {
+                        "backref_name": "carsTask",
+                        "enum_validate": [
+                            "Completed",
+                            "Running",
+                            "Pending",
+                            "Error",
+                            "Canceled"
+                        ],
                         "maxLength": null,
                         "name": "status",
+                        "regex_validate": null,
                         "required": false,
                         "type": "String"
                     },
                     {
+                        "backref_name": "carsTask",
+                        "enum_validate": [],
                         "maxLength": null,
                         "name": "message",
+                        "regex_validate": null,
                         "required": false,
                         "type": "String"
                     },
                     {
+                        "backref_name": "carsTask",
+                        "enum_validate": [],
                         "maxLength": null,
                         "name": "resourceUri",
+                        "regex_validate": "/(.*)/(\\d*)-(\\d*)-(\\d*)-(\\d*)",
                         "required": false,
                         "type": "String"
                     },
                     {
+                        "backref_name": "carsTask",
+                        "enum_validate": [],
                         "maxLength": null,
                         "name": "executionStage",
+                        "regex_validate": null,
                         "required": false,
                         "type": "String"
                     }
@@ -136,23 +156,51 @@
         },
         "schemas": [
             {
-                "additional_fields": [],
+                "additional_fields": [
+                    {
+                        "enum_validate": [
+                            "Completed",
+                            "Running",
+                            "Pending",
+                            "Error",
+                            "Canceled"
+                        ],
+                        "maxLength": null,
+                        "name": "status",
+                        "regex_validate": null,
+                        "required": false,
+                        "type": "String"
+                    },
+                    {
+                        "enum_validate": [],
+                        "maxLength": null,
+                        "name": "resourceUri",
+                        "regex_validate": "/(.*)/(\\d*)-(\\d*)-(\\d*)-(\\d*)",
+                        "required": false,
+                        "type": "String"
+                    }
+                ],
                 "class_name": "CarsTaskSchema",
                 "model": "CarsTaskModel",
                 "namespace": "cars",
+                "path": "schemas.cars.schemas.CarsTaskSchema",
                 "unique_name": "cars:CarsTaskSchema"
             },
             {
                 "additional_fields": [
                     {
+                        "enum_validate": [],
                         "maxLength": null,
                         "name": "size",
+                        "regex_validate": null,
                         "required": true,
                         "type": "String"
                     },
                     {
+                        "enum_validate": [],
                         "maxLength": null,
                         "name": "direction",
+                        "regex_validate": null,
                         "required": true,
                         "type": "String"
                     }
@@ -160,6 +208,7 @@
                 "class_name": "WheelRotate",
                 "model": null,
                 "namespace": "cars",
+                "path": "schemas.cars.schemas.WheelRotate",
                 "unique_name": "cars:WheelRotate"
             }
         ]

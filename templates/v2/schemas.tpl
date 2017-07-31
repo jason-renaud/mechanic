@@ -1,7 +1,7 @@
 # do not modify - generated code at UTC {{ timestamp }}
+import re
 
 from marshmallow import fields, validate
-
 from base.schemas import BaseModelSchema, BaseSchema
 {% for package in data.models_to_import.keys() %}
 from {{ package }} import {% for item in data.models_to_import[package] %}{{ item }}{{ ", " if not loop.last }}{% endfor %}
@@ -14,7 +14,7 @@ class {{ item.class_name }}(BaseModelSchema):
     {%- if prop.schema_ref %}
     {{ prop.name }} = fields.Nested("{{ prop.schema_ref }}"{% if prop.type == "array" %}, many=True{% endif %})
     {%- else %}
-    {{ prop.name }} = fields.{{ prop.type }}({% if prop.maxLength %}max_length={{ prop.maxLength }}{% endif %})
+    {{ prop.name }} = fields.{{ prop.type }}({% if prop.required %}required=True, {% endif %}{% if prop.maxLength %}max_length={{ prop.maxLength }}, {% endif %}{% if prop.enum_validate %}validate=validate.OneOf({{ prop.enum_validate }}), {% endif %}{% if prop.regex_validate %}validate=validate.Regexp(r"{{ prop.regex_validate }}"){% endif %})
     {%- endif %}
     {%- endfor %}
 
