@@ -1,11 +1,13 @@
-import app
-import argparse
+import os
+from app import create_app
 
+
+config_name = os.getenv("FLASK_CONFIG")
+port = os.getenv("FLASK_PORT")
+app = create_app(config_name)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("conf")
-    args = vars(parser.parse_args())
-
-    app.init_app(args["conf"], app_type="DEV")
-    app.app.run(debug=True, port=int(app.settings["PORT"]))
+    if port:
+        app.run(port=int(port))
+    else:
+        app.run()

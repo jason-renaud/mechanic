@@ -3,7 +3,7 @@
 Usage:
     mechanic.py convert <INPUT_FILE> [<OUTPUT_FILE>]
     mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--skip-starter-files] [--exclude <TYPE>]...
-    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests --app]
+    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests --app --config]
 
 Arguments:
     INPUT_FILE              OpenAPI 3.0 specification file
@@ -41,10 +41,12 @@ MECHANIC_SUPPORTED_HTTP_METHODS = ["get", "put", "post", "delete"]
 EXTENSION_NAMESPACE = "x-mechanic-namespace"
 EXTENSION_EXTERNAL_RESOURCE = "x-mechanic-external-resource"
 EXTENSION_PLURAL = "x-mechanic-plural"
+count = 0
 
 data_map = {
     "integer": "Integer",
     "string": "String",
+    "float": "Float"
 }
 
 
@@ -189,22 +191,35 @@ def parse_method_from_path_method(current_file_json, method_name, method_obj, cu
     return method
 
 
-def build_models_from_reference_link(current_file_json, reference, namespace, models, current_dir, visited_models):
+# for debugging
+def print_if(statement, msg):
+    if statement:
+        print(msg)
+
+
+def build_models_from_reference_link(current_file_json, reference, namespace, models, current_dir, visited_models, m2m,
+                                     origin_title=None):
     """
     Recursive method that returns a list of models from following the reference link paths.
 
+    :param m2m:
     :param visited_models:
     :param current_file_json:
     :param reference:
     :param namespace:
     :param models:
     :param current_dir:
+    :param origin_title:
     :return: list of models
     """
     schema, curr_dir = follow_reference_link(current_file_json, reference, current_dir=current_dir)
 
     if schema.get("title") is None:
         raise SyntaxError("No 'title' defined for the schema.")
+
+    if origin_title is None:
+        origin_title = schema.get("title")
+
 
     model = dict()
 
@@ -218,53 +233,96 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
     model["db_schema_name"] = namespace
     model["namespace"] = schema.get(EXTENSION_NAMESPACE) or namespace
     model["unique_name"] = model["namespace"] + ":" + model["class_name"]
+    model["path"] = "models." + model["namespace"] + ".models." + model["class_name"]
     model["properties"] = []
 
+    # if properties is empty, this means
     if schema.get("properties") is None:
-        raise SyntaxError(
-            "mechanic only supports schema 'properties' being defined at the top level of the object. "
-            "I.e., properties objects embedded within allOf, anyOf, etc. is not supported.")
-    for prop in schema["properties"].items():
-        new_prop = dict()
-        new_prop["name"] = prop[0].replace("-", "_")
-        new_prop["type"] = data_map.get(prop[1].get("type")) or prop[1].get("type") or "object"
-        new_prop["required"] = prop[0] in schema.get("required", [])
-        new_prop["maxLength"] = prop[1].get("maxLength")
-
-        property_object = prop[1]
-        if property_object.get("type") == "array" and property_object.get("items", {}).get(
-                "type") == "string":
-            # We want to leave this out of the model definition, this is a list of items which would not be stored
-            # in the DB. Therefore, don't do anything here.
-            pass
-        else:
-            # First, see if there is a direct reference
-            ref = property_object.get("$ref")
-            if ref is not None:
-                schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
-                new_prop["model_ref"] = namespace + ":" + schema_ref.get("title") + "Model"
-
-                # create model from nested references
-                if schema_ref is not None:
-                    if model["namespace"] + ":" + new_prop["model_ref"] not in visited_models and ref != reference:
-                        # print(model["namespace"] + ":" + new_prop["model_ref"])
-                        build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir, visited_models)
-
-            # Next, see if there is an array of references
-            ref = property_object.get("items", {}).get("$ref")
-            if ref is not None:
-                schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
-                new_prop["model_ref"] = namespace + ":" + schema_ref.get("title") + "Model"
-
-                # create model from nested references
-                if schema_ref is not None:
-                    if model["namespace"] + ":" + new_prop["model_ref"] not in visited_models and ref != reference:
-                        # print(model["namespace"] + ":" + new_prop["model_ref"])
-                        build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir, visited_models)
-
+        if schema.get("type") == "string":
+            # if the schema type is just a "string", add a single property that is named "value".
+            new_prop = dict()
+            new_prop["name"] = model["resource_name"].lower()
+            new_prop["type"] = data_map.get("string")
+            new_prop["required"] = True
+            new_prop["maxLength"] = None
+            # new_prop["backref_name"] = model["resource_name"].lower()
+            new_prop["backref_name"] = model["resource_name"][0].lower() + model["resource_name"][1:]
             model["properties"].append(new_prop)
-    visited_models.append(model["unique_name"])
-    # print(model["namespace"] + ":" + model["class_name"])
+        else:
+            raise SyntaxError(
+                "mechanic only supports schema 'properties' being defined at the top level of the object. "
+                "I.e., properties objects embedded within allOf, anyOf, etc. is not supported.")
+    else:
+        model_refs_in_props = []
+        for prop in schema["properties"].items():
+            new_prop = dict()
+            new_prop["name"] = prop[0].replace("-", "_")
+            new_prop["type"] = data_map.get(prop[1].get("type")) or prop[1].get("type") or "object"
+            new_prop["required"] = prop[0] in schema.get("required", [])
+            new_prop["maxLength"] = prop[1].get("maxLength")
+            new_prop["backref_name"] = model["resource_name"][0].lower() + model["resource_name"][1:]
+            new_prop["enum_validate"] = prop[1].get("enum") or []
+            new_prop["regex_validate"] = prop[1].get("pattern")
+
+            property_object = prop[1]
+            prop_ref = property_object.get("items", {}).get("$ref")
+            referenced_model = None
+            if prop_ref:
+                referenced_model, x = follow_reference_link(current_file_json, prop_ref, current_dir=curr_dir)
+
+            if property_object.get("type") == "array" and property_object.get("items", {}).get(
+                    "type") == "string":
+                # We want to leave this out of the model definition, this is a list of items which would not be stored
+                # in the DB. Therefore, don't do anything here.
+                pass
+            else:
+                # First, see if there is a direct reference
+                ref = property_object.get("$ref")
+                if ref is not None:
+                    schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
+                    model_namespace = schema_ref.get(EXTENSION_NAMESPACE) or namespace
+                    new_prop["model_ref"] = "models." + model_namespace + ".models." + schema_ref.get("title") + "Model"
+
+                    if new_prop["model_ref"] in model_refs_in_props:
+                        # if there is already a model_ref to the same model, don't do a backref for the same object.
+                        new_prop["backref_name"] = None
+                    else:
+                        model_refs_in_props.append(new_prop["model_ref"])
+
+                    # create model from nested references
+                    if schema_ref is not None:
+                        if new_prop["model_ref"] not in visited_models and ref != reference:
+                            build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir,
+                                                             visited_models, m2m, origin_title=schema.get("title"))
+
+                # Next, see if there is an array of references
+                ref = property_object.get("items", {}).get("$ref")
+                if ref is not None:
+                    schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
+                    model_namespace = schema_ref.get(EXTENSION_NAMESPACE) or namespace
+                    new_prop["model_ref"] = new_prop["model_ref"] = "models." + model_namespace + ".models." + schema_ref.get("title") + "Model"
+
+                    if new_prop["model_ref"] in model_refs_in_props:
+                        # if there is already a model_ref to the same model, don't do a backref for the same object.
+                        new_prop["backref_name"] = None
+                    else:
+                        model_refs_in_props.append(new_prop["model_ref"])
+
+                    rel_map = referenced_model.get("title") + ":" + schema.get("title")
+
+                    if referenced_model.get("title") == origin_title:
+                        new_prop["rel_type"] = "m2m"
+                        new_prop["m2m_db_name"] = model["resource_name"].lower() + referenced_model.get("title").lower()
+                        m2m.append(rel_map)
+
+                    # create model from nested references
+                    if schema_ref is not None and rel_map not in m2m:
+                        if new_prop["model_ref"] not in visited_models and ref != reference:
+                            build_models_from_reference_link(current_file_json, ref, namespace, models, curr_dir,
+                                                             visited_models, m2m, origin_title=schema.get("title"))
+
+                model["properties"].append(new_prop)
+    visited_models.append(model["path"])
     models.append(model)
     return models
 
@@ -283,7 +341,7 @@ def parse_response_models_from_path_method(current_file_json, method_obj, namesp
     schema = response_2xx.get("content").get(CONTENT_TYPE).get("schema")
     schema_ref = schema.get("$ref") or schema.get("items").get("$ref")
 
-    models = build_models_from_reference_link(current_file_json, schema_ref, namespace, [], current_dir, [])
+    models = build_models_from_reference_link(current_file_json, schema_ref, namespace, [], current_dir, [], [])
     return models
 
 
@@ -295,11 +353,22 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
         schema = dict()
         schema["class_name"] = item["resource_name"] + "Schema"
         schema["model"] = item["class_name"]
-        schema["namespace"] = namespace
+        schema["namespace"] = item.get("namespace") or namespace
         schema["unique_name"] = schema["namespace"] + ":" + schema["class_name"]
+        schema["path"] = item["path"].replace("Model", "Schema").replace("models", "schemas")
 
-        # this is populated at the end, when relationships are configured between resources
+        # this is also populated at the end, when relationships are configured between resources
         schema["additional_fields"] = []
+        for model_prop in item["properties"]:
+            if model_prop.get("enum_validate") or model_prop.get("regex_validate"):
+                schema["additional_fields"].append({
+                    "name": model_prop.get("name"),
+                    "type": data_map.get(model_prop.get("type")) or model_prop.get("type"),
+                    "maxLength": model_prop.get("maxLength"),
+                    "required": model_prop.get("required"),
+                    "enum_validate": model_prop.get("enum_validate"),
+                    "regex_validate": model_prop.get("regex_validate")
+                })
 
         if not any(item["class_name"] == schema["class_name"] for item in schemas):
             schemas.append(schema)
@@ -313,6 +382,7 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
         req_schema["model"] = request_schema["model"] if not command else None
         req_schema["namespace"] = namespace
         req_schema["unique_name"] = req_schema["namespace"] + ":" + req_schema["class_name"]
+        req_schema["path"] = "schemas." + req_schema["namespace"] + ".schemas." + req_schema["class_name"]
 
         # this is also populated at the end for nested schemas, when relationships are configured between resources
         req_schema["additional_fields"] = []
@@ -322,7 +392,9 @@ def parse_schemas_from_path_method(current_file_json, method_obj, namespace, cur
                     "name": prop[0],
                     "type": data_map.get(prop[1]["type"]) or prop[1].get("type"),
                     "maxLength": prop[1].get("maxLength"),
-                    "required": prop[0] in req_props["required"]
+                    "required": prop[0] in req_props["required"],
+                    "enum_validate": prop[1].get("enum") or [],
+                    "regex_validate": prop[1].get("pattern")
                 })
 
         if not any(item["unique_name"] == req_schema["unique_name"] for item in schemas):
@@ -400,7 +472,7 @@ def build_controller_models_schemas_from_path(current_file_json, path_uri, path_
 
             # get only unique models for each path
             for rmodel in response_models:
-                if not any(item["unique_name"] == rmodel["unique_name"] for item in models):
+                if not any(item["path"] == rmodel["path"] for item in models):
                     models.append(rmodel)
 
             schemas.extend(parse_schemas_from_path_method(current_file_json, method[1], namespace, current_dir,
@@ -408,8 +480,8 @@ def build_controller_models_schemas_from_path(current_file_json, path_uri, path_
         else:
             raise SyntaxError("HTTP method is not supported by mechanic.")
 
-    controller["referenced_models"] = [x["class_name"] for x in models]
-    controller["referenced_schemas"] = list(set([x["class_name"] for x in schemas]))
+    controller["referenced_models"] = [x["path"] for x in models]
+    controller["referenced_schemas"] = list(set([x["path"] for x in schemas]))
     return controller, models, schemas
 
 
@@ -425,36 +497,55 @@ def _replace_or_append_dict_with_key_value_in_list(dict_list, key, value, new_di
 
 
 def configure_resource_relationships(models, schemas):
+    # many to many relationships
+    for model in models:
+        for prop in model["properties"]:
+            if prop.get("model_ref") and prop.get("rel_type"):
+                target_model = list(filter(lambda x: x["path"] == prop.get("model_ref"), models))[0]
+
+                if not target_model.get("rel_type"):
+                    for target_prop in target_model.get("properties"):
+                            if target_prop.get("model_ref") == model["path"]:
+                                target_prop["rel_type"] = "m2m"
+                                # m2m_relationships
+
+    # foreign keys for one-to-many relationships
     for origin_model in models:
         for origin_prop in origin_model["properties"]:
-            if origin_prop.get("model_ref"):
+            if origin_prop.get("model_ref") and origin_prop.get("rel_type") != "m2m":
                 # we know there is only 1 model in list with resource_name, so get first item in list
-                target_model = list(filter(lambda x: x["unique_name"] == origin_prop.get("model_ref"), models))[0]
+                target_model = list(filter(lambda x: x["path"] == origin_prop.get("model_ref"), models))[0]
                 fkey = dict()
                 fkey["name"] = origin_model["resource_name"].lower() + "_id"
                 fkey["type"] = "String"
                 fkey["maxLength"] = 36
                 fkey["fkey"] = origin_model["db_schema_name"] + "." + origin_model["db_table_name"] + ".identifier"
-                target_model["properties"].append(fkey)
+
+                if not any(x["name"] == fkey["name"] for x in target_model["properties"]):
+                    target_model["properties"].append(fkey)
 
     # nested schemas
+    nested_schemas = False
     for model in models:
         for prop in model["properties"]:
             if prop.get("model_ref"):
-                origin_schema = list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == model["unique_name"], schemas))
-                target_schema = list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == prop.get("model_ref"), schemas))
-
-                model_ref_without_namespace = prop.get("model_ref").split(":")[1]
+                origin_schema = list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == model["unique_name"], schemas))[0]
+                unique_target_schema_path = prop.get("model_ref").replace("Model", "Schema").replace("models", "schemas")
+                target_schema = list(filter(lambda x: x["path"] == unique_target_schema_path, schemas))
 
                 if len(target_schema) > 0:
                     # we need to add a nested schema
-                    origin_schema[0]["additional_fields"].append({
+                    origin_schema["additional_fields"].append({
                         "name": prop["name"],
                         "type": prop["type"],
                         "maxLength": prop.get("maxLength"),
-                        "schema_ref": model_ref_without_namespace.replace("Model", "Schema"),
+                        "schema_ref": unique_target_schema_path,
                         "required": prop["required"]
                     })
+                    nested_schemas = True
+
+    if not nested_schemas:
+        print("INFO: No nested schemas detected.")
 
     return models, schemas
 
@@ -485,11 +576,11 @@ def convert(input, output):
         controllers.append(parsed_path[0])
 
         for rmodel in parsed_path[1]:
-            if not any(item["unique_name"] == rmodel["unique_name"] for item in models):
+            if not any(item["path"] == rmodel["path"] for item in models):
                 models.append(rmodel)
 
         for rschema in parsed_path[2]:
-            if not any(sitem["unique_name"] == rschema["unique_name"] for sitem in schemas):
+            if not any(sitem["path"] == rschema["path"] for sitem in schemas):
                 schemas.append(rschema)
 
     # setup foreign keys or nested schemas/ define schemas for resources that don't have a model (no DB)
@@ -511,25 +602,65 @@ def attach_resources_to_files(controllers, models, schemas):
         if namespace_models_key not in files.keys():
             files[namespace_models_key] = {}
             files[namespace_models_key]["models"] = []
+            files[namespace_models_key]["m2m_relationships"] = {}
 
         files[namespace_models_key]["models"].append(model)
+
+        for prop in model["properties"]:
+            if prop.get("rel_type") == "m2m":
+                target_model = list(filter(lambda x: x["path"] == prop.get("model_ref"), models))[0]
+
+                m2m_rel = dict()
+                table_name = model["resource_name"].lower() + target_model["resource_name"].lower()
+
+                """
+                Used only to check the uniqueness of the m2m relationship. For example, if we had an m2m relationship
+                of Orders and Products, we would unintentionally create 2 m2m db tables, one named orderproduct, and one
+                named productorder. Therefore this property allows us to check if the rel already exists.
+                """
+                reversed_table_name = target_model["resource_name"].lower() + model["resource_name"].lower()
+                m2m_rel["db_schema_name"] = model["db_schema_name"]
+                m2m_rel["model_refs"] = [
+                    {
+                        "name": model["resource_name"].lower() + "_id",
+                        "fkey": model["db_schema_name"] + "." + model["db_table_name"] + ".identifier",
+                        "type": "String",
+                        "db_table_name": model["db_schema_name"] + "." + table_name,
+                        "maxLength": 36
+                    },
+                    {
+                        "name": target_model["resource_name"].lower() + "_id",
+                        "fkey": target_model["db_schema_name"] + "." + target_model["db_table_name"] + ".identifier",
+                        "type": "String",
+                        "db_table_name": target_model["db_schema_name"] + "." + table_name,
+                        "maxLength": 36
+                    }
+                ]
+
+                if files[namespace_models_key]["m2m_relationships"].get(reversed_table_name) is None:
+                    files[namespace_models_key]["m2m_relationships"][table_name] = m2m_rel
 
     for schema in schemas:
         namespace = schema["namespace"]
         namespace_schemas_key = "schemas/" + namespace + "/schemas.py"
-        namespace_models_package = "models." + namespace + ".models"
+        # namespace_models_package = "models." + namespace + ".models"
+        schema_package = schema["path"].rsplit(".", 1)[0]
+        model_package = schema_package.replace("schemas", "models")
 
         if namespace_schemas_key not in files.keys():
             files[namespace_schemas_key] = {}
             files[namespace_schemas_key]["schemas"] = []
             files[namespace_schemas_key]["models_to_import"] = {
-                namespace_models_package: []
+                model_package: []
             }
+
+        if model_package not in files[namespace_schemas_key]["models_to_import"].keys():
+            files[namespace_schemas_key]["models_to_import"][model_package] = []
 
         files[namespace_schemas_key]["schemas"].append(schema)
 
         if schema["model"] != "" and schema["model"] is not None:
-            files[namespace_schemas_key]["models_to_import"][namespace_models_package].append(schema["model"])
+            files[namespace_schemas_key]["models_to_import"][model_package].append(schema["model"])
 
     files["app/api.py"] = {}
     files["app/api.py"]["config_module"] = "app"
@@ -590,17 +721,36 @@ def attach_resources_to_files(controllers, models, schemas):
             files[namespace_controllers_key]["services_to_import"][namespace_services_package]["modules"].append(
                 controller["service_class"])
 
-        # add referenced models, and then remove duplicates by converting to set, then back to a list
-        files[namespace_controllers_key]["models_to_import"][namespace_models_package]["modules"].extend(
-            controller["referenced_models"])
-        files[namespace_controllers_key]["models_to_import"][namespace_models_package]["modules"] = list(
-            set(files[namespace_controllers_key]["models_to_import"][namespace_models_package]["modules"]))
+        # add referenced models
+        for item in controller["referenced_models"]:
+            # example: models.cars.models.CarModel --> models.cars.models
+            model_package = item.rsplit(".", 1)[0]
+            # example: models.cars.models.CarModel --> CarModel
+            model_name = item.rsplit(".", 1)[1]
 
-        # add referenced schemas, and then remove duplicates by converting to set, then back to a list
-        files[namespace_controllers_key]["schemas_to_import"][namespace_schemas_package]["modules"].extend(
-            controller["referenced_schemas"])
-        files[namespace_controllers_key]["schemas_to_import"][namespace_schemas_package]["modules"] = list(
-            set(files[namespace_controllers_key]["schemas_to_import"][namespace_schemas_package]["modules"]))
+            if model_package not in files[namespace_controllers_key]["models_to_import"].keys():
+                files[namespace_controllers_key]["models_to_import"][model_package] = {
+                    "modules": []
+                }
+
+            if model_name not in files[namespace_controllers_key]["models_to_import"][model_package]["modules"]:
+                files[namespace_controllers_key]["models_to_import"][model_package]["modules"].append(model_name)
+
+        # add referenced schemas
+        for item in controller["referenced_schemas"]:
+            # example: schemas.cars.schemas.CarSchema --> schemas.cars.schemas
+            schema_package = item.rsplit(".", 1)[0]
+            # example: schemas.cars.schemas.CarSchema --> CarSchema
+            schema_name = item.rsplit(".", 1)[1]
+
+            if schema_package not in files[namespace_controllers_key]["schemas_to_import"].keys():
+                files[namespace_controllers_key]["schemas_to_import"][schema_package] = {
+                    "modules": []
+                }
+
+            if schema_name not in files[namespace_controllers_key]["schemas_to_import"][schema_package]["modules"]:
+                files[namespace_controllers_key]["schemas_to_import"][schema_package]["modules"].append(
+                    schema_name)
 
         # append the controller to this file
         files[namespace_controllers_key]["controllers"].append(controller)
@@ -671,7 +821,8 @@ def generate(input_file, output_dir, exclude_resources=[], skip_starter_files=Fa
             create_file_from_template("templates/v2/api.tpl", path, file_obj)
 
 
-def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, services=False, tests=False, app=False):
+def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, services=False,
+                tests=False, app=False, config=False):
     filename = os.path.abspath(sys.argv[0])
     basedir = "/".join(filename.split("/")[:-1])
 
@@ -682,6 +833,7 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         services = True
         tests = True
         app = True
+        config = True
 
     if controllers:
         shutil.copy(basedir + "/starter_files/base/controllers.py", output_dir + "/base/controllers.py")
@@ -695,6 +847,19 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         shutil.copy(basedir + "/starter_files/tests/test_base.py", output_dir + "/tests/test_base.py")
     if app:
         shutil.copy(basedir + "/starter_files/app/__init__.py", output_dir + "/app/__init__.py")
+    if config:
+        shutil.copy(basedir + "/starter_files/app/config.py", basedir + "/starter_files/app/temp-config.py")
+        app_name = output_dir.rsplit("/", 1)[1]
+
+        with open(basedir + "/starter_files/app/temp-config.py", "r") as f:
+            file_text = f.read()
+
+        with open(basedir + "/starter_files/app/temp-config.py", "w") as f:
+            updated_text = file_text.replace("YOURAPPNAME_HERE", app_name)
+            f.write(updated_text)
+
+        shutil.copy(basedir + "/starter_files/app/temp-config.py", output_dir + "/app/config.py")
+        os.remove(basedir + "/starter_files/app/temp-config.py")
 
 
 def create_file_from_template(template_path, output_path, file_data):
@@ -730,4 +895,4 @@ if __name__ == "__main__":
         update_base(arguments["<OUTPUT_DIRECTORY>"], update_all=arguments["--all"],
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
                     schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"],
-                    app=arguments["--app"])
+                    app=arguments["--app"], config=arguments["--config"])
