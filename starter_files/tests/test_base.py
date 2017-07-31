@@ -47,8 +47,6 @@ class BaseUnitTest(TestCase):
         else:
             return obj
 
-    # levels should be a list of indices that match ignore_attr. For example, to ignore the attr 'identifier' at only
-    # level 1, ignore_attr should = ['identifier'] and levels = [1]
     def compare(self, obj1, obj2, ignore_attr=[]):
         return self.ordered(obj1, remove_attr=ignore_attr) == self.ordered(obj2, remove_attr=ignore_attr)
 

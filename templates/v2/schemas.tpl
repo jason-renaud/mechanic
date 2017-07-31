@@ -2,14 +2,14 @@
 import re
 
 from marshmallow import fields, validate
-from base.schemas import BaseModelSchema, BaseSchema
+from base.schemas import BaseSchema
 {% for package in data.models_to_import.keys() %}
 from {{ package }} import {% for item in data.models_to_import[package] %}{{ item }}{{ ", " if not loop.last }}{% endfor %}
 {%- endfor %}
 
 {% for item in data.schemas %}
 {%- if item.model %}
-class {{ item.class_name }}(BaseModelSchema):
+class {{ item.class_name }}(BaseSchema):
     {%- for prop in item.additional_fields %}
     {%- if prop.schema_ref %}
     {{ prop.name }} = fields.Nested("{{ prop.schema_ref }}"{% if prop.type == "array" %}, many=True{% endif %})
