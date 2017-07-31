@@ -55,7 +55,8 @@ class PetService(BaseService):
 ```
 - Before running again, verify the 'dev' DB specified in /etc/petstore/app.conf exists.
 ```bash
-python run.py /etc/petstore/app.conf
+export FLASK_CONFIG=development
+python run.py
 ```
 - Now you will see an error similar this:
 ```bash
@@ -65,7 +66,7 @@ LINE 2: CREATE TABLE store.pets (
 - We need to create the schemas in the database for each 'namespace', in this case 'store'. 
 - Once you have created the schema 'store' in your database, try running again
 ```bash
-python run.py /etc/petstore/app.conf
+python run.py
 ```
 - This time it should succeed, and you should have a fully functioning API. Try doing some REST calls to test it out.
 
