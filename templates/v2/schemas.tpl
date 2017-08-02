@@ -12,7 +12,7 @@ from {{ package }} import {% for item in data.models_to_import[package] %}{{ ite
 class {{ item.class_name }}(BaseSchema):
     created = fields.DateTime(load_only=True, dump_only=True)
     last_modified = fields.DateTime(load_only=True, dump_only=True)
-    locked = fields.Boolean(load_only=True)
+    locked = fields.Boolean(load_only=True, dump_only=True)
     etag = fields.String(load_only=True, dump_only=True)
 
     {%- for prop in item.additional_fields %}
