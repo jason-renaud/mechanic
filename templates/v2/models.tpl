@@ -22,6 +22,10 @@ class {{ item.class_name }}(db.Model):
     __table_args__ = {"schema": "{{ item.db_schema_name }}"}
 
     identifier = db.Column(db.String(36), primary_key=True, nullable=False, default=random_uuid)
+    created = db.Column(db.DateTime)
+    last_modified = db.Column(db.DateTime)
+    locked = db.Column(db.Boolean, default=False)
+    etag = db.Column(db.String(36), default=random_uuid)
     {%- for prop in item.properties %}
 
     {#- self-referencing one-to-one -#}

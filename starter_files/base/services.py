@@ -36,7 +36,7 @@ class BaseCommandService:
     def validate_retrieved_resource(self, json_data):
         pass
 
-    def initiate_command(self, task, async_exec=False):
+    def initiate_command(self, task, get_response, resource_url, async_exec=False):
         pass
 
     def finish_command(self, task):
