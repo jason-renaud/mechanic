@@ -821,7 +821,7 @@ def generate(input_file, output_dir, exclude_resources=[], skip_starter_files=Fa
             create_file_from_template("templates/v2/api.tpl", path, file_obj)
 
 
-def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, services=False,
+def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, helpers=False, services=False,
                 tests=False, app=False, config=False):
     filename = os.path.abspath(sys.argv[0])
     basedir = "/".join(filename.split("/")[:-1])
@@ -830,6 +830,7 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         controllers = True
         exceptions = True
         schemas = True
+        helpers = True
         services = True
         tests = True
         app = True
@@ -841,6 +842,8 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         shutil.copy(basedir + "/starter_files/base/exceptions.py", output_dir + "/base/exceptions.py")
     if schemas:
         shutil.copy(basedir + "/starter_files/base/schemas.py", output_dir + "/base/schemas.py")
+    if services:
+        shutil.copy(basedir + "/starter_files/base/db_rest_helper.py", output_dir + "/base/db_rest_helper.py")
     if services:
         shutil.copy(basedir + "/starter_files/base/services.py", output_dir + "/base/services.py")
     if tests:

@@ -3,3 +3,4 @@ __pycache__/
 tests/debug.json
 
 update-cmdb.sh
+update-sa.sh

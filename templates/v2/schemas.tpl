@@ -10,6 +10,11 @@ from {{ package }} import {% for item in data.models_to_import[package] %}{{ ite
 {% for item in data.schemas %}
 {%- if item.model %}
 class {{ item.class_name }}(BaseSchema):
+    created = fields.DateTime(load_only=True, dump_only=True)
+    last_modified = fields.DateTime(load_only=True, dump_only=True)
+    locked = fields.Boolean(load_only=True)
+    etag = fields.String(load_only=True, dump_only=True)
+
     {%- for prop in item.additional_fields %}
     {%- if prop.schema_ref %}
     {{ prop.name }} = fields.Nested("{{ prop.schema_ref }}"{% if prop.type == "array" %}, many=True{% endif %})
@@ -23,6 +28,11 @@ class {{ item.class_name }}(BaseSchema):
         strict = True
 {% else %}
 class {{ item.class_name }}(BaseSchema):
+    created = fields.DateTime(load_only=True, dump_only=True)
+    last_modified = fields.DateTime(load_only=True, dump_only=True)
+    locked = fields.Boolean(load_only=True, dump_only=True)
+    etag = fields.String(load_only=True, dump_only=True)
+
     {%- for prop in item.additional_fields %}
     {{ prop.name }} = fields.{{ prop.type }}({% if prop.required %}required=True, {% endif %}{% if prop.maxLength %}validate=[validate.Length(min=0, max={{ prop.maxLength }})]{% endif %})
     {%- endfor %}

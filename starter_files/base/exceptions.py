@@ -40,3 +40,44 @@ class MechanicBadRequestException(MechanicException):
         super(MechanicBadRequestException, self).__init__(self.message)
         self.message = msg
         self.resolution = res
+
+
+class MechanicResourceLockedException(MechanicException):
+    status_code = 423
+    message = "The resource is locked."
+    resolution = "Wait until all operations are finished on the resource and try again."
+
+    def __init__(self, msg=message, res=resolution):
+        super(MechanicResourceLockedException, self).__init__(self.message)
+        self.message = msg
+        self.resolution = res
+
+
+class MechanicPreconditionFailedException(MechanicException):
+    status_code = 412
+    message = "A precondition failed and it is unsafe to perform the operation."
+    resolution = "Retry the operation with the most up-to-date resource."
+
+    def __init__(self, msg=message, res=resolution):
+        super(MechanicPreconditionFailedException, self).__init__(self.message)
+        self.message = msg
+        self.resolution = res
+
+
+class MechanicInvalidETagException(MechanicPreconditionFailedException):
+    message = "The given ETag does not match the resource's ETag."
+
+    def __init__(self, msg=message):
+        super(MechanicInvalidETagException, self).__init__(self.message)
+        self.message = msg
+
+
+class MechanicNotModifiedException(MechanicException):
+    status_code = 304
+    message = "The resource has not been modified since the specified time."
+    resolution = "Use existing version of resource."
+
+    def __init__(self, msg=message, res=resolution):
+        super(MechanicNotModifiedException, self).__init__(self.message)
+        self.message = msg
+        self.resolution = res
