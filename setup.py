@@ -8,7 +8,7 @@ setup(
     author="Zack Schrag",
     author_email="zack.schrag@factioninc.com",
     url="https://github.com/factioninc/mechanic",
-    download_url="https://github.com/factioninc/mechanic/archive/0.1.tar.gz",
+    download_url="https://github.com/factioninc/mechanic/archive/0.1.1.tar.gz",
     keywords=["openapi", "api", "generation"],
     license="MIT",
     classifiers=[

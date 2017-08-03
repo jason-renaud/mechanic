@@ -878,7 +878,8 @@ def render(tpl_path, context):
         loader=jinja2.FileSystemLoader(path or './')
     ).get_template(filename).render(context)
 
-if __name__ == "__main__":
+
+def main():
     arguments = docopt(__doc__, version="1.0")
 
     if arguments["convert"]:
@@ -899,3 +900,6 @@ if __name__ == "__main__":
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
                     schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"],
                     app=arguments["--app"], config=arguments["--config"])
+
+if __name__ == "__main__":
+    main()
