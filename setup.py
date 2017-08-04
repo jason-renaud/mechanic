@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="mechanic",
+    name="mechanic-gen",
     packages=["mechanic"],
     version="0.1.0",
     description="Generates python code from the controller layer to the DB layer from an OpenAPI specification file.",
