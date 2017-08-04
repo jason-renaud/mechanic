@@ -48,6 +48,7 @@ port: 5000
 - Run your app
 ```bash
 cd ~/<your-project-name>
+pip3 install -r requirements.txt
 python run.py
 ```
 
