@@ -10,9 +10,10 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from requests.exceptions import ConnectionError
 
-
 from app import db
-from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, MechanicBadRequestException
+from base import db_rest_helper as db_helper
+from base.exceptions import MechanicException, MechanicNotFoundException, MechanicResourceAlreadyExistsException, \
+    MechanicBadRequestException, MechanicNotModifiedException
 
 logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
 PRIMARY_KEY_NAME = "identifier"
@@ -108,8 +109,7 @@ class BaseCollectionController(Resource):
             service.post_after_validation(model_instance)
 
             # save to DB
-            db.session.add(model_instance)
-            db.session.commit()
+            created_model = db_helper.create(model_instance)
         except ValidationError as e:
             error_response = {
                 "message": e.messages,
@@ -133,7 +133,7 @@ class BaseCollectionController(Resource):
             logger.error(error_response)
             return error_response, e.status_code
 
-        return make_response(schema.jsonify(model_instance), self.responses["post"]["code"])
+        return make_response(schema.jsonify(created_model), self.responses["post"]["code"])
 
     def get(self):
         """
@@ -213,30 +213,56 @@ class BaseController(Resource):
     }
 
     def get(self, resource_id):
-        model_instance = self.responses["get"]["model"].query.get(resource_id)
+        if_match = request.headers.get("If-Match", "").split(",")
+        if "" in if_match:
+            if_match.remove("")
+
+        if_none_match = request.headers.get("If-None-Match", "").split(",")
+        if "" in if_none_match:
+            if_none_match.remove("")
+
+        if_modified_since = request.headers.get("If-Modified-Since")
+        if_unmodified_since = request.headers.get("If-Unmodified-Since")
+
+        try:
+            model_instance = db_helper.read(resource_id, self.responses["get"]["model"], if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since, if_match=if_match, if_none_match=if_none_match)
+        except MechanicException as e:
+            error_response = {
+                "message": e.message,
+                "resolution": e.resolution
+            }
+            logger.error(error_response)
+            return error_response, e.status_code
+
         model_schema = self.responses["get"]["schema"]()
 
         # If no item found, return 204 'NO CONTENT'
         if model_instance is None:
             resp_code = 204
+            return make_response(model_schema.jsonify(model_instance), resp_code)
         else:
             resp_code = self.responses["get"]["code"]
-
-        service = self.service_class()
-
-        return make_response(model_schema.jsonify(model_instance), resp_code)
+            return make_response(model_schema.jsonify(model_instance), resp_code, {"ETag": model_instance.etag})
 
     def put(self, resource_id):
         try:
             request_body = request.get_json(force=True)
+            if_match = request.headers.get("If-Match", "").split(",")
+            if "" in if_match:
+                if_match.remove("")
 
-            # TODO - etag validation
+            if_none_match = request.headers.get("If-None-Match", "").split(",")
+            if "" in if_none_match:
+                if_none_match.remove("")
+
+            if_modified_since = request.headers.get("If-Modified-Since")
+            if_unmodified_since = request.headers.get("If-Unmodified-Since")
 
             # do any work needed before validation
             service = self.service_class()
             modified_request_body = service.put_before_validation(request_body)
 
-            model_instance = self.responses["get"]["model"].query.get(resource_id)
+            model_instance = db_helper.read(resource_id, self.responses["get"]["model"])
 
             if model_instance is None:
                 raise MechanicNotFoundException()
@@ -254,8 +280,10 @@ class BaseController(Resource):
             service.put_after_validation(updated_model_instance)
 
             # save to DB
-            db.session.merge(updated_model_instance)
-            db.session.commit()
+            updated_db_model = db_helper.replace(resource_id, updated_model_instance,
+                                                 if_modified_since=if_modified_since,
+                                                 if_unmodified_since=if_unmodified_since, if_match=if_match,
+                                                 if_none_match=if_none_match)
         except ValidationError as e:
             error_response = {
                 "message": e.messages,
@@ -279,18 +307,19 @@ class BaseController(Resource):
             }
             logger.error(error_response)
             return error_response, e.status_code
-        return make_response(schema.jsonify(updated_model_instance), self.responses["put"]["code"])
+        return make_response(schema.jsonify(updated_db_model), self.responses["put"]["code"])
 
     def delete(self, resource_id):
         try:
-            model_class = self.responses["delete"]["model"] or self.responses["get"]["model"]
-            model_instance = model_class.query.get(resource_id)
+            # model_class = self.responses["delete"]["model"] or self.responses["get"]["model"]
+            # model_instance = model_class.query.get(resource_id)
 
-            if model_instance is None:
-                raise MechanicNotFoundException()
+            # if model_instance is None:
+            #     raise MechanicNotFoundException()
 
-            db.session.delete(model_instance)
-            db.session.commit()
+            db_helper.delete(resource_id, self.responses["delete"]["model"] or self.responses["get"]["model"])
+            # db.session.delete(model_instance)
+            # db.session.commit()
         except MechanicException as e:
             error_response = {
                 "message": e.message,
@@ -329,20 +358,21 @@ class BaseCommandController(Resource):
             host_url = self.resource_host_url + "/" if not self.resource_host_url.endswith("/") \
                 else self.resource_host_url
 
-            resource_url = host_url + self.resource_uri[1:] if self.resource_uri.endswith("/") else host_url + self.resource_uri
+            resource_url = host_url + self.resource_uri[1:] if self.resource_uri.endswith(
+                "/") else host_url + self.resource_uri
             resource_url = resource_url + "/" if not resource_url.endswith("/") else resource_url
 
             schema = self.requests["post"]["schema"]()
             schema.validate(request_body)
-
             service = self.service_class()
-            # responsible for doing additional validation of the command and creating a task object and saving to DB
+
+            # responsible for doing additional validation of the command and creating a task object
             task_model = service.validate_command_and_create_task(request_body, resource_url)
 
             # retrieve the resource being operated on
             r = requests.get(resource_url + resource_id)
 
-            if r.status_code == 404:
+            if r.status_code == 404 or r.status_code == 204:
                 raise MechanicNotFoundException()
             elif r.status_code == 400:
                 raise MechanicBadRequestException()
@@ -354,14 +384,12 @@ class BaseCommandController(Resource):
             service.validate_retrieved_resource(r)
 
             # responsible for marking task as "Running" and executing the command.
-            service.initiate_command(async=self.responses["post"]["async"])
+            service.initiate_command(task_model, r.json(), resource_url + resource_id, async_exec=self.responses["post"]["async"])
 
             # responsible for marking task as "Completed" or "Error" and other command-specific completion items.
             # also responsible for calling correct url and updating the appropriate resource
-            service.finish_command()
-
-            db.session.add(task_model)
-            db.session.commit()
+            service.finish_command(task_model)
+            new_task = db_helper.create(task_model)
         except ValidationError as e:
             error_response = {
                 "message": e.messages,
@@ -383,4 +411,4 @@ class BaseCommandController(Resource):
             }
             logger.error(error_response)
             return error_response, e.status_code
-        return make_response(schema.jsonify(task_model), self.responses["post"]["code"])
+        return make_response(schema.jsonify(new_task), self.responses["post"]["code"])

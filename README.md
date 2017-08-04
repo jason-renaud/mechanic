@@ -21,14 +21,44 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 2) If you are specific in how things are implemented, this tool may not be for you.
 3) mechanic enforces some REST API 'best practices' in order to generate meaningful code. If you have an API that doesn't follow the enforced best practices outline below, this tool may not be for you.
 
-### Quickstart
+### Install with pip
+```bash
+pip3 install mechanic
+
+# converts OpenAPI 3.0 spec file into mechanic format
+mechanic convert path/to/openapi3.0/spec output/file/path
+
+# generates code from mechanic file
+mechanic generate output/file/path ~/<your-project-name> # <your-project-name> must NOT end with a "/", and is also used as the location in /etc to place the app.conf file.
+
+# adds all of the starter files to your project that allow the project to be run
+mechanic update-base ~/<your-project-name> --all
+
+```
+- Create **/etc/<your-project-name>/app.conf file with this text (fill out details specific to your project)
+    - Dev is the only one needed to run the app immediately. Test is needed for running unit tests.
+```bash
+[database]
+dev:     postgresql://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
+test:    postgresql://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
+
+[server]
+port: 5000
+```
+- Run your app
+```bash
+cd ~/<your-project-name>
+python run.py
+```
+
+### Starting from source code
 - Clone the mechanic repo first, then execute these commands:
 ```bash
 virtualenv -p python3.6 path/to/virtualenv
 source path/to/virtualenv/bin/activate
 cd ~/mechanic/
 
-python mechanic.py generate examples/petstore-mechanic.json ~/petstore
+python mechanic.py generate examples/petstore-mechanic.json ~/petstore # Note the last segment of the directory path (in this case 'petstore') is considered the location where the app.conf file will exist. Therefore, the app.conf file MUST be located /etc/<app-name>/app.conf, in this case /etc/petstore/app.conf
 
 mkdir /etc/petstore
 cp ~/petstore/app/conf/app.conf /etc/petstore/
@@ -55,7 +85,8 @@ class PetService(BaseService):
 ```
 - Before running again, verify the 'dev' DB specified in /etc/petstore/app.conf exists.
 ```bash
-python run.py /etc/petstore/app.conf
+export FLASK_CONFIG=development
+python run.py
 ```
 - Now you will see an error similar this:
 ```bash
@@ -65,7 +96,7 @@ LINE 2: CREATE TABLE store.pets (
 - We need to create the schemas in the database for each 'namespace', in this case 'store'. 
 - Once you have created the schema 'store' in your database, try running again
 ```bash
-python run.py /etc/petstore/app.conf
+python run.py
 ```
 - This time it should succeed, and you should have a fully functioning API. Try doing some REST calls to test it out.
 
@@ -99,7 +130,10 @@ In a command API, it is assumed the parameters being passed in are from a schema
 #### mechanic OpenAPI 3.0 extensions and additional syntax requirements
 | extension                 | description |
 | ---------                 | ----------- |
-| x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. |
+| x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. This can also be placed on a schema object, although it is only needed if a schema is referenced by another schema outside of it's namespace. |
+| x-mechanic-plural         | mechanic uses a library called 'inflect' to automatically determine plural and singular forms of words. However it doesn't always work as needed, so you can use this attribute to override the plural form of the schema name. |
+| x-mechanic-external-resource | A way to mark a server url as an external url to retrieve a resource. Used in command APIs, where the url to get the needed resource lives on another server. |
+| x-mechanic-backref        | On a property object. Override the default name for SQLAlchemy backref. This is typically only needed if you have multiple attributes in a schema that reference the same schema. For example, if you had a schema Person, with attributes 'cars' and 'primaryCar', that each referenced a Car schema. |  
 | *x-mechanic-async         | Specify if you want this method to return asynchronously
 *not supported yet but in progress
 

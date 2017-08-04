@@ -1,0 +1,11 @@
+{
+  "enginetype": {
+    "title": "EngineType",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      }
+    }
+  }
+}
