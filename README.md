@@ -23,7 +23,7 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 
 ### Install with pip
 ```bash
-pip3 install mechanic
+pip3 install mechanic-gen
 
 # converts OpenAPI 3.0 spec file into mechanic format
 mechanic convert path/to/openapi3.0/spec output/file/path
@@ -48,6 +48,7 @@ port: 5000
 - Run your app
 ```bash
 cd ~/<your-project-name>
+pip3 install -r requirements.txt
 python run.py
 ```
 
@@ -68,7 +69,7 @@ cp ~/petstore/app/conf/app.conf /etc/petstore/
 ```bash
 cd ~/petstore
 pip3 install -r requirements.txt
-python run.py /etc/petstore/app.conf
+python run.py
 ```
 - You should see an exception with this in it: 
 ```bash
