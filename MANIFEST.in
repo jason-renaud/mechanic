@@ -1,5 +1,3 @@
 include LICENSE.txt
-include mechanic.py
-
-recursive-include starter_files *
-recursive-include templates *
+include requirements.txt
+recursive-include mechanic *

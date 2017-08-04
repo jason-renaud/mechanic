@@ -1,14 +1,14 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(
     name="mechanic",
-    packages=["starter_files", "templates"],
+    packages=["mechanic"],
     version="0.1.0",
     description="Generates python code from the controller layer to the DB layer from an OpenAPI specification file.",
     author="Zack Schrag",
     author_email="zack.schrag@factioninc.com",
     url="https://github.com/factioninc/mechanic",
-    download_url="https://github.com/factioninc/mechanic/archive/0.1.1.tar.gz",
+    download_url="https://github.com/factioninc/mechanic/archive/0.1.0.tar.gz",
     keywords=["openapi", "api", "generation"],
     license="MIT",
     classifiers=[
@@ -23,4 +23,11 @@ setup(
             "mechanic=mechanic:main",
         ],
     },
+    install_requires=[
+        "docopt==0.6.2",
+        "inflect==0.2.5",
+        "itsdangerous==0.24",
+        "Jinja2==2.9.6"
+    ],
+    include_package_data=True
 )

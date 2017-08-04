@@ -29,6 +29,7 @@ import errno
 import jinja2
 import datetime
 import random
+import pkg_resources
 
 from enum import Enum
 from docopt import docopt
@@ -81,8 +82,10 @@ def parse_resource_name_segments_from_path(path_uri):
     names["service"] = naming["resource"].replace("-", "") + naming["command"].title() + "Service"
     names["model"] = naming["resource"].replace("-", "") + "Model"
     names["schema"] = naming["resource"].replace("-", "") + "Schema"
-    names["command_name"] = naming["resource"].replace("-", "") + naming["command"].title() if naming["command"] != "" else ""
-    names["command_parameters"] = naming["resource"].replace("-", "") + naming["command"].title() if naming["command"] != "" else ""
+    names["command_name"] = naming["resource"].replace("-", "") + naming["command"].title() if naming[
+                                                                                                   "command"] != "" else ""
+    names["command_parameters"] = naming["resource"].replace("-", "") + naming["command"].title() if naming[
+                                                                                                         "command"] != "" else ""
     return names
 
 
@@ -182,7 +185,8 @@ def parse_method_from_path_method(current_file_json, method_name, method_obj, cu
         method["query_params"] = [p["name"] for p in method_obj.get("parameters")]
 
     method["response"] = parse_response_from_method_responses(current_file_json, method_obj["responses"], current_dir)
-    request, props = parse_request_from_requestBody(current_file_json, method_obj.get("requestBody"), current_dir, command=command)
+    request, props = parse_request_from_requestBody(current_file_json, method_obj.get("requestBody"), current_dir,
+                                                    command=command)
     method["request"] = request or {
         "model": "",
         "schema": ""
@@ -219,7 +223,6 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
 
     if origin_title is None:
         origin_title = schema.get("title")
-
 
     model = dict()
 
@@ -300,7 +303,8 @@ def build_models_from_reference_link(current_file_json, reference, namespace, mo
                 if ref is not None:
                     schema_ref, curr_dir = follow_reference_link(current_file_json, ref, current_dir=curr_dir)
                     model_namespace = schema_ref.get(EXTENSION_NAMESPACE) or namespace
-                    new_prop["model_ref"] = new_prop["model_ref"] = "models." + model_namespace + ".models." + schema_ref.get("title") + "Model"
+                    new_prop["model_ref"] = new_prop[
+                        "model_ref"] = "models." + model_namespace + ".models." + schema_ref.get("title") + "Model"
 
                     if new_prop["model_ref"] in model_refs_in_props:
                         # if there is already a model_ref to the same model, don't do a backref for the same object.
@@ -505,9 +509,9 @@ def configure_resource_relationships(models, schemas):
 
                 if not target_model.get("rel_type"):
                     for target_prop in target_model.get("properties"):
-                            if target_prop.get("model_ref") == model["path"]:
-                                target_prop["rel_type"] = "m2m"
-                                # m2m_relationships
+                        if target_prop.get("model_ref") == model["path"]:
+                            target_prop["rel_type"] = "m2m"
+                            # m2m_relationships
 
     # foreign keys for one-to-many relationships
     for origin_model in models:
@@ -529,8 +533,10 @@ def configure_resource_relationships(models, schemas):
     for model in models:
         for prop in model["properties"]:
             if prop.get("model_ref"):
-                origin_schema = list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == model["unique_name"], schemas))[0]
-                unique_target_schema_path = prop.get("model_ref").replace("Model", "Schema").replace("models", "schemas")
+                origin_schema = \
+                list(filter(lambda x: model["namespace"] + ":" + str(x["model"]) == model["unique_name"], schemas))[0]
+                unique_target_schema_path = prop.get("model_ref").replace("Model", "Schema").replace("models",
+                                                                                                     "schemas")
                 target_schema = list(filter(lambda x: x["path"] == unique_target_schema_path, schemas))
 
                 if len(target_schema) > 0:
@@ -683,7 +689,8 @@ def attach_resources_to_files(controllers, models, schemas):
             "class_name": controller["class_name"],
             "uri": controller["uri"].replace("{id}", "<string:resource_id>")
         }
-        _replace_or_append_dict_with_key_value_in_list(files["app/api.py"][namespace_controllers_package], "class_name", controller["class_name"], new_dict)
+        _replace_or_append_dict_with_key_value_in_list(files["app/api.py"][namespace_controllers_package], "class_name",
+                                                       controller["class_name"], new_dict)
 
         # update controllers files
         if namespace_controllers_key not in files.keys():
@@ -775,6 +782,11 @@ def mkdir_p_with_file(path, make_py_packages=False):
             raise
 
 
+def make_py_packages(folder_path):
+    with open(folder_path + "/__init__.py", "w") as f:
+        pass
+
+
 def generate(input_file, output_dir, exclude_resources=[], skip_starter_files=False):
     """
     :param input_file:
@@ -786,46 +798,47 @@ def generate(input_file, output_dir, exclude_resources=[], skip_starter_files=Fa
 
     mkdir_p_with_file(output_dir)
 
-    # generate starter files
-    filename = os.path.abspath(sys.argv[0])
-    basedir = "/".join(filename.split("/")[:-1])
-
     if not skip_starter_files:
+        # generate starter files
         try:
-            shutil.copytree(basedir + "/starter_files/base/", output_dir + "/base/")
-        except FileExistsError as e:
-            print("WARNING: file exists " + e.filename)
-        try:
-            shutil.copytree(basedir + "/starter_files/app/", output_dir + "/app/")
-        except FileExistsError as e:
-            print("WARNING: file exists " + e.filename)
-        try:
-            shutil.copytree(basedir + "/starter_files/tests/", output_dir + "/tests/")
+            shutil.copytree(pkg_resources.resource_filename(__name__, "starter_files/base/"), output_dir + "/base")
         except FileExistsError as e:
             print("WARNING: file exists " + e.filename)
 
-        shutil.copy(basedir + "/starter_files/requirements.txt", output_dir)
-        shutil.copy(basedir + "/starter_files/run.py", output_dir)
+        try:
+            shutil.copytree(pkg_resources.resource_filename(__name__, "starter_files/app/"), output_dir + "/app")
+        except FileExistsError as e:
+            print("WARNING: file exists " + e.filename)
+
+        try:
+            shutil.copytree(
+                pkg_resources.resource_filename(__name__, "starter_files/tests/"), output_dir + "/tests")
+        except FileExistsError as e:
+            print("WARNING: file exists " + e.filename)
+
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/requirements.txt"), output_dir)
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/run.py"), output_dir)
 
     for file_path, file_obj in in_data.items():
         path = output_dir + "/" + file_path
         mkdir_p_with_file(output_dir + "/" + file_path, make_py_packages=True)
 
         if file_path.startswith("controllers") and "controllers" not in exclude_resources:
-            create_file_from_template("templates/v2/controllers.tpl", path, file_obj)
+            make_py_packages(output_dir + "/controllers")
+            create_file_from_template(pkg_resources.resource_filename(__name__, "templates/v2/controllers.tpl"), path, file_obj)
         elif file_path.startswith("models") and "models" not in exclude_resources:
-            create_file_from_template("templates/v2/models.tpl", path, file_obj)
+            make_py_packages(output_dir + "/models")
+            create_file_from_template(pkg_resources.resource_filename(__name__, "templates/v2/models.tpl"), path, file_obj)
         elif file_path.startswith("schemas") and "schemas" not in exclude_resources:
-            create_file_from_template("templates/v2/schemas.tpl", path, file_obj)
+            make_py_packages(output_dir + "/schemas")
+            create_file_from_template(pkg_resources.resource_filename(__name__, "templates/v2/schemas.tpl"), path, file_obj)
         elif file_path.startswith("app") and "apis" not in exclude_resources:
-            create_file_from_template("templates/v2/api.tpl", path, file_obj)
+            create_file_from_template(pkg_resources.resource_filename(__name__, "templates/v2/api.tpl"), path, file_obj)
 
 
-def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, helpers=False, services=False,
+def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, helpers=False,
+                services=False,
                 tests=False, app=False, config=False):
-    filename = os.path.abspath(sys.argv[0])
-    basedir = "/".join(filename.split("/")[:-1])
-
     if update_all:
         controllers = True
         exceptions = True
@@ -837,32 +850,32 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         config = True
 
     if controllers:
-        shutil.copy(basedir + "/starter_files/base/controllers.py", output_dir + "/base/controllers.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/base/controllers.py"), output_dir + "/base/controllers.py")
     if exceptions:
-        shutil.copy(basedir + "/starter_files/base/exceptions.py", output_dir + "/base/exceptions.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/base/exceptions.py"), output_dir + "/base/exceptions.py")
     if schemas:
-        shutil.copy(basedir + "/starter_files/base/schemas.py", output_dir + "/base/schemas.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/base/schemas.py"), output_dir + "/base/schemas.py")
+    if helpers:
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/base/db_rest_helper.py"), output_dir + "/base/db_rest_helper.py")
     if services:
-        shutil.copy(basedir + "/starter_files/base/db_rest_helper.py", output_dir + "/base/db_rest_helper.py")
-    if services:
-        shutil.copy(basedir + "/starter_files/base/services.py", output_dir + "/base/services.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/base/services.py"), output_dir + "/base/services.py")
     if tests:
-        shutil.copy(basedir + "/starter_files/tests/test_base.py", output_dir + "/tests/test_base.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/tests/test_base.py"), output_dir + "/tests/test_base.py")
     if app:
-        shutil.copy(basedir + "/starter_files/app/__init__.py", output_dir + "/app/__init__.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/app/__init__.py"), output_dir + "/app/__init__.py")
     if config:
-        shutil.copy(basedir + "/starter_files/app/config.py", basedir + "/starter_files/app/temp-config.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/app/config.py"), pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"))
         app_name = output_dir.rsplit("/", 1)[1]
 
-        with open(basedir + "/starter_files/app/temp-config.py", "r") as f:
+        with open(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"), "r") as f:
             file_text = f.read()
 
-        with open(basedir + "/starter_files/app/temp-config.py", "w") as f:
+        with open(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"), "w") as f:
             updated_text = file_text.replace("YOURAPPNAME_HERE", app_name)
             f.write(updated_text)
 
-        shutil.copy(basedir + "/starter_files/app/temp-config.py", output_dir + "/app/config.py")
-        os.remove(basedir + "/starter_files/app/temp-config.py")
+        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"), output_dir + "/app/config.py")
+        os.remove(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"))
 
 
 def create_file_from_template(template_path, output_path, file_data):
@@ -900,6 +913,7 @@ def main():
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
                     schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"],
                     app=arguments["--app"], config=arguments["--config"])
+
 
 if __name__ == "__main__":
     main()

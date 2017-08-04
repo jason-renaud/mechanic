@@ -21,7 +21,37 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 2) If you are specific in how things are implemented, this tool may not be for you.
 3) mechanic enforces some REST API 'best practices' in order to generate meaningful code. If you have an API that doesn't follow the enforced best practices outline below, this tool may not be for you.
 
-### Quickstart
+### Install with pip
+```bash
+pip3 install mechanic
+
+# converts OpenAPI 3.0 spec file into mechanic format
+mechanic convert path/to/openapi3.0/spec output/file/path
+
+# generates code from mechanic file
+mechanic generate output/file/path ~/<your-project-name> # <your-project-name> must NOT end with a "/", and is also used as the location in /etc to place the app.conf file.
+
+# adds all of the starter files to your project that allow the project to be run
+mechanic update-base ~/<your-project-name> --all
+
+```
+- Create **/etc/<your-project-name>/app.conf file with this text (fill out details specific to your project)
+    - Dev is the only one needed to run the app immediately. Test is needed for running unit tests.
+```bash
+[database]
+dev:     postgresql://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
+test:    postgresql://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
+
+[server]
+port: 5000
+```
+- Run your app
+```bash
+cd ~/<your-project-name>
+python run.py
+```
+
+### Starting from source code
 - Clone the mechanic repo first, then execute these commands:
 ```bash
 virtualenv -p python3.6 path/to/virtualenv
