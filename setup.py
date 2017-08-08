@@ -10,7 +10,7 @@ setup(
     url="https://github.com/factioninc/mechanic",
     download_url="https://github.com/factioninc/mechanic/archive/0.1.1.tar.gz",
     keywords=["openapi", "api", "generation"],
-    license="MIT",
+    license="Mozilla Public License 2.0 (MPL 2.0)",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
