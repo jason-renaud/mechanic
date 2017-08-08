@@ -7,7 +7,6 @@ from flask import request, make_response
 from flask_restful import Resource
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm.exc import UnmappedInstanceError
 from requests.exceptions import ConnectionError
 
 from app import db
@@ -234,12 +233,15 @@ class BaseController(Resource):
             logger.error(error_response)
             return error_response, e.status_code
 
+        # parse all query params, valid_filters N/A for GET {id}
+        params = parse_query_params(request, [], self.requests["get"]["query_params"])
         model_schema = self.responses["get"]["schema"]()
+        model_schema.context = {"embed": params.get("embed")}
 
         # If no item found, return 204 'NO CONTENT'
         if model_instance is None:
             resp_code = 204
-            return make_response(model_schema.jsonify(model_instance), resp_code)
+            return "", resp_code
         else:
             resp_code = self.responses["get"]["code"]
             return make_response(model_schema.jsonify(model_instance), resp_code, {"ETag": model_instance.etag})
@@ -311,15 +313,7 @@ class BaseController(Resource):
 
     def delete(self, resource_id):
         try:
-            # model_class = self.responses["delete"]["model"] or self.responses["get"]["model"]
-            # model_instance = model_class.query.get(resource_id)
-
-            # if model_instance is None:
-            #     raise MechanicNotFoundException()
-
             db_helper.delete(resource_id, self.responses["delete"]["model"] or self.responses["get"]["model"])
-            # db.session.delete(model_instance)
-            # db.session.commit()
         except MechanicException as e:
             error_response = {
                 "message": e.message,
@@ -328,7 +322,7 @@ class BaseController(Resource):
             logger.error(error_response)
             return error_response, e.status_code
 
-        return '', self.responses["delete"]["code"]
+        return "", self.responses["delete"]["code"]
 
 
 class BaseCommandController(Resource):

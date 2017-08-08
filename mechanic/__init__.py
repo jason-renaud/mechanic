@@ -3,7 +3,7 @@
 Usage:
     mechanic.py convert <INPUT_FILE> [<OUTPUT_FILE>]
     mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--skip-starter-files] [--exclude <TYPE>]...
-    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --services --tests --app --config]
+    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --helpers --services --tests --app --config]
 
 Arguments:
     INPUT_FILE              OpenAPI 3.0 specification file
@@ -911,8 +911,8 @@ def main():
     elif arguments["update-base"]:
         update_base(arguments["<OUTPUT_DIRECTORY>"], update_all=arguments["--all"],
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
-                    schemas=arguments["--schemas"], services=arguments["--services"], tests=arguments["--tests"],
-                    app=arguments["--app"], config=arguments["--config"])
+                    schemas=arguments["--schemas"], helpers=arguments["--helpers"], services=arguments["--services"],
+                    tests=arguments["--tests"], app=arguments["--app"], config=arguments["--config"])
 
 
 if __name__ == "__main__":
