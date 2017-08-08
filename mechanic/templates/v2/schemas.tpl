@@ -1,7 +1,10 @@
 # do not modify - generated code at UTC {{ timestamp }}
 import re
 
-from marshmallow import fields, validate
+from werkzeug.routing import BuildError
+from marshmallow import fields, validate, post_dump
+from flask import url_for
+from flask_marshmallow.fields import URLFor
 from base.schemas import BaseSchema
 {% for package in data.models_to_import.keys() %}
 from {{ package }} import {% for item in data.models_to_import[package] %}{{ item }}{{ ", " if not loop.last }}{% endfor %}
@@ -10,10 +13,7 @@ from {{ package }} import {% for item in data.models_to_import[package] %}{{ ite
 {% for item in data.schemas %}
 {%- if item.model %}
 class {{ item.class_name }}(BaseSchema):
-    created = fields.DateTime(load_only=True, dump_only=True)
-    last_modified = fields.DateTime(load_only=True, dump_only=True)
-    locked = fields.Boolean(load_only=True, dump_only=True)
-    etag = fields.String(load_only=True, dump_only=True)
+    uri = fields.Method("uri_or_none")
 
     {%- for prop in item.additional_fields %}
     {%- if prop.schema_ref %}
@@ -23,16 +23,19 @@ class {{ item.class_name }}(BaseSchema):
     {%- endif %}
     {%- endfor %}
 
+
+    # attempts to build a uri for the object, if there is no controller, return None
+    def uri_or_none(self, obj):
+        try:
+            return url_for("{{ item.class_name.replace("Schema", "Controller").lower() }}", resource_id=obj.identifier)
+        except BuildError:
+            return None
+
     class Meta:
         model = {{ item.model }}
         strict = True
 {% else %}
 class {{ item.class_name }}(BaseSchema):
-    created = fields.DateTime(load_only=True, dump_only=True)
-    last_modified = fields.DateTime(load_only=True, dump_only=True)
-    locked = fields.Boolean(load_only=True, dump_only=True)
-    etag = fields.String(load_only=True, dump_only=True)
-
     {%- for prop in item.additional_fields %}
     {{ prop.name }} = fields.{{ prop.type }}({% if prop.required %}required=True, {% endif %}{% if prop.maxLength %}validate=[validate.Length(min=0, max={{ prop.maxLength }})]{% endif %})
     {%- endfor %}

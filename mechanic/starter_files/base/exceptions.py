@@ -16,7 +16,9 @@ class MechanicNotFoundException(MechanicException):
     resolution = "Retry the operation with a resource that exists."
     status_code = 404
 
-    def __init__(self):
+    def __init__(self, uri=None):
+        if uri:
+            self.message = "The requested resource was not found: " + uri
         super(MechanicNotFoundException, self).__init__(self.message)
 
 

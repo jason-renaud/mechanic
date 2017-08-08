@@ -51,7 +51,7 @@ cd ~/<your-project-name>
 pip3 install -r requirements.txt
 python run.py
 ```
-
+- You should see an exception, skip to "Setting up"
 ### Starting from source code
 - Clone the mechanic repo first, then execute these commands:
 ```bash
@@ -71,7 +71,10 @@ cd ~/petstore
 pip3 install -r requirements.txt
 python run.py
 ```
-- You should see an exception with this in it: 
+- You should see an exception, skip to "Setting up"
+
+### Setting up
+- After running "python run.py" you should see an exception with this in it: 
 ```bash
 ModuleNotFoundError: No module named 'services'
 ```
