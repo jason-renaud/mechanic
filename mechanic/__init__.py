@@ -3,7 +3,7 @@
 Usage:
     mechanic.py convert <INPUT_FILE> [<OUTPUT_FILE>]
     mechanic.py generate <INPUT_MECHANIC_FILE> <OUTPUT_DIRECTORY> [--skip-starter-files] [--exclude <TYPE>]...
-    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --helpers --services --tests --app --config]
+    mechanic.py update-base <OUTPUT_DIRECTORY> [--all --controllers --exceptions --schemas --helpers --services --tests --app --config --messaging]
 
 Arguments:
     INPUT_FILE              OpenAPI 3.0 specification file
@@ -19,7 +19,6 @@ Options:
                                 to exclude multiple types.
 """
 import os
-import sys
 import json
 import re
 import inflect
@@ -30,6 +29,7 @@ import jinja2
 import datetime
 import random
 import pkg_resources
+from distutils.dir_util import copy_tree
 
 from enum import Enum
 from docopt import docopt
@@ -836,9 +836,22 @@ def generate(input_file, output_dir, exclude_resources=[], skip_starter_files=Fa
             create_file_from_template(pkg_resources.resource_filename(__name__, "templates/v2/api.tpl"), path, file_obj)
 
 
-def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, helpers=False,
-                services=False,
-                tests=False, app=False, config=False):
+def copy_file_with_replaced_text(src, dst, replace, replace_with):
+    temp_file = pkg_resources.resource_filename(__name__, "temp.py")
+    shutil.copy(src, temp_file)
+
+    with open(temp_file, "r") as f:
+        file_text = f.read()
+
+    with open(temp_file, "w") as f:
+        updated_text = file_text.replace(replace, replace_with)
+        f.write(updated_text)
+
+    shutil.copy(temp_file, dst)
+    os.remove(temp_file)
+
+
+def update_base(output_dir, update_all=False, controllers=False, exceptions=False, schemas=False, helpers=False, services=False, tests=False, app=False, config=False, messaging=False):
     if update_all:
         controllers = True
         exceptions = True
@@ -848,6 +861,9 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
         tests = True
         app = True
         config = True
+        messaging = True
+
+    app_name = output_dir.rsplit("/", 1)[1]
 
     if controllers:
         shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/base/controllers.py"), output_dir + "/base/controllers.py")
@@ -862,20 +878,17 @@ def update_base(output_dir, update_all=False, controllers=False, exceptions=Fals
     if tests:
         shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/tests/test_base.py"), output_dir + "/tests/test_base.py")
     if app:
-        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/app/__init__.py"), output_dir + "/app/__init__.py")
+        copy_file_with_replaced_text(pkg_resources.resource_filename(__name__, "starter_files/app/__init__.py"),
+                                     output_dir + "/app/__init__.py",
+                                     "YOURAPPNAME_HERE",
+                                     app_name)
+    if messaging:
+        copy_tree(pkg_resources.resource_filename(__name__, "starter_files/base/messaging"), output_dir + "/base/messaging")
     if config:
-        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/app/config.py"), pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"))
-        app_name = output_dir.rsplit("/", 1)[1]
-
-        with open(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"), "r") as f:
-            file_text = f.read()
-
-        with open(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"), "w") as f:
-            updated_text = file_text.replace("YOURAPPNAME_HERE", app_name)
-            f.write(updated_text)
-
-        shutil.copy(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"), output_dir + "/app/config.py")
-        os.remove(pkg_resources.resource_filename(__name__, "starter_files/app/temp-config.py"))
+        copy_file_with_replaced_text(pkg_resources.resource_filename(__name__, "starter_files/app/config.py"),
+                                     output_dir + "/app/config.py",
+                                     "YOURAPPNAME_HERE",
+                                     app_name)
 
 
 def create_file_from_template(template_path, output_path, file_data):
@@ -912,7 +925,8 @@ def main():
         update_base(arguments["<OUTPUT_DIRECTORY>"], update_all=arguments["--all"],
                     controllers=arguments["--controllers"], exceptions=arguments["--exceptions"],
                     schemas=arguments["--schemas"], helpers=arguments["--helpers"], services=arguments["--services"],
-                    tests=arguments["--tests"], app=arguments["--app"], config=arguments["--config"])
+                    tests=arguments["--tests"], app=arguments["--app"], config=arguments["--config"],
+                    messaging=arguments["--messaging"])
 
 
 if __name__ == "__main__":

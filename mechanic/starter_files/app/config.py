@@ -19,7 +19,7 @@ class DevelopmentConfig(Config):
     Development configurations
     """
 
-    SQLALCHEMY_ECHO = True
+    SQLALCHEMY_ECHO = False
     SQLALCHEMY_DATABASE_URI = parser.get("database", "dev")
 
 

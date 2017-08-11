@@ -6,9 +6,11 @@ import app
 from base.exceptions import MechanicResourceAlreadyExistsException, MechanicNotFoundException, \
     MechanicResourceLockedException, MechanicPreconditionFailedException, MechanicException, \
     MechanicInvalidETagException, MechanicNotModifiedException
+from base.messaging import Producer
 from app import db
 
-logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
+logger = logging.getLogger(app.config["DEFAULT_LOG_NAME"])
+producer = Producer(app.app_name)
 
 
 def read(identifier, model_class, if_modified_since=None, if_unmodified_since=None, if_match=[], if_none_match=[]):
@@ -53,7 +55,15 @@ def create(model):
     db.session.add(model)
     db.session.commit()
     logger.debug("Successfully created new object - type: %s, identifier: %s", model.__class__, model.identifier)
-    return model.__class__.query.get(model.identifier)
+    new_model = model.__class__.query.get(model.identifier)
+    msg_obj = {
+        "identifier": new_model.identifier,
+        "etag": new_model.etag,
+        "type": "create"
+    }
+    routing_key = app.app_name + "." + new_model.__table_args__["schema"] + "." + new_model.__tablename__ + ".create"
+    producer.send(routing_key, msg_obj)
+    return new_model
 
 
 def update(identifier, model_class, changed_attributes, lock=False, if_modified_since=None, if_unmodified_since=None,
@@ -100,7 +110,16 @@ def update(identifier, model_class, changed_attributes, lock=False, if_modified_
     model.last_modified = datetime.utcnow()
     model.etag = str(uuid.uuid4())
     db.session.commit()
-    return model_class.query.get(identifier)
+    updated_model = model_class.query.get(identifier)
+
+    msg_obj = {
+        "identifier": updated_model.identifier,
+        "etag": updated_model.etag,
+        "type": "update"
+    }
+    routing_key = app.app_name + "." + updated_model.__table_args__["schema"] + "." + updated_model.__tablename__ + ".update"
+    producer.send(routing_key, msg_obj)
+    return updated_model
 
 
 def replace(identifier, new_model, lock=False, if_modified_since=None, if_unmodified_since=None, if_match=[],
@@ -128,13 +147,24 @@ def replace(identifier, new_model, lock=False, if_modified_since=None, if_unmodi
         new_model.locked = True
 
     new_model.identifier = identifier
+    new_model.created = prev_created
 
     # object has been updated, change last_modified and etag
     new_model.last_modified = datetime.utcnow()
     new_model.etag = str(uuid.uuid4())
-    db.session.add(new_model)
+    db.session.delete(model)
+    db.session.merge(new_model)
     db.session.commit()
-    return new_model.__class__.query.get(identifier)
+    replaced_model = new_model.__class__.query.get(identifier)
+
+    msg_obj = {
+        "identifier": replaced_model.identifier,
+        "etag": replaced_model.etag,
+        "type": "replace"
+    }
+    routing_key = app.app_name + "." + replaced_model.__table_args__["schema"] + "." + replaced_model.__tablename__ + ".replaced"
+    producer.send(routing_key, msg_obj)
+    return replaced_model
 
 
 def delete(identifier, model_class, force=False, if_modified_since=None, if_unmodified_since=None, if_match=[], if_none_match=[]):
@@ -167,6 +197,14 @@ def delete(identifier, model_class, force=False, if_modified_since=None, if_unmo
 
     db.session.delete(model)
     db.session.commit()
+
+    msg_obj = {
+        "identifier": identifier,
+        "etag": None,
+        "type": "delete"
+    }
+    routing_key = app.app_name + "." + model.__table_args__["schema"] + "." + model.__tablename__ + ".delete"
+    producer.send(routing_key, msg_obj)
 
 
 def _validate_resource_not_locked(model):

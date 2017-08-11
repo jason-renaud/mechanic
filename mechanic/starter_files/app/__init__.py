@@ -1,4 +1,3 @@
-import os
 import logmatic
 import logging
 
@@ -23,6 +22,7 @@ logger.setLevel(logging.DEBUG)
 
 db = SQLAlchemy()
 ma = Marshmallow()
+app_name = "YOURAPPNAME_HERE"
 
 
 def create_app(config_name):

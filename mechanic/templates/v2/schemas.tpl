@@ -24,7 +24,6 @@ class {{ item.class_name }}(BaseSchema):
     {%- endfor %}
 
 
-    # attempts to build a uri for the object, if there is no controller, return None
     def uri_or_none(self, obj):
         try:
             return url_for("{{ item.class_name.replace("Schema", "Controller").lower() }}", resource_id=obj.identifier)

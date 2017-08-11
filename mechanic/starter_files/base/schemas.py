@@ -2,6 +2,7 @@ import uuid
 import requests
 
 from marshmallow import fields, pre_load, post_dump
+from flask import url_for
 
 from app import ma
 
