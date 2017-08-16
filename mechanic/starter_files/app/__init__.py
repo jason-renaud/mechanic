@@ -2,6 +2,7 @@ import logmatic
 import logging
 
 from flask import Flask
+from flask_socketio import SocketIO
 from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -22,6 +23,7 @@ logger.setLevel(logging.DEBUG)
 
 db = SQLAlchemy()
 ma = Marshmallow()
+socketio = SocketIO()
 app_name = "YOURAPPNAME_HERE"
 
 
@@ -32,6 +34,7 @@ def create_app(config_name):
 
     db.init_app(app)
     ma.init_app(app)
+    socketio.init_app(app)
     api = Api(app)
     init_api(api)
 
@@ -40,5 +43,5 @@ def create_app(config_name):
         db.session.commit()
         db.drop_all()
         db.create_all()
-    return app
+    return app, socketio
 

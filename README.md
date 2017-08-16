@@ -162,6 +162,26 @@ In a command API, it is assumed the parameters being passed in are from a schema
 - Query parameters are not supported except for GET on collection resources. You add custom query parameters besides the default supported ones.
 - consumes/produces, assumes only json
 
+#### Additional hooks
+##### Rabbitmq messaging
+- mechanic submits messages on rabbitmq onto the exchange with name "<app-name>.<db_schema_name>.<db_table_name>.<action>"
+- By default, no listeners are defined, so the messages are just dropped. In order to hook into these listeners, define listener classes in the package "services/messaging/listeners.py" file. Define classes there to listen for updates to resources. Here is an example:
+```python
+from base.messaging import Listener
+
+
+class WheelsListener(Listener):
+    queue_name = "highwayapp.cars.wheels"
+    exchange = "highwayapp"
+    routing_key = "highwayapp.cars.wheels.#"
+
+    def handle_message(self, msg):
+        print("Handling message for " + str(self.__class__))
+        print(msg)
+```
+- When an object is created, deleted, or updated, a corresponding rabbitmq message is sent, and it should be routed to this class if the queue_name, exchange, and routing_key are all configured correctly. Remember, <app-name> is defined by the folder that mechanic generates the files in. Make sure that queue_name, exchange, and routing_key all map correctly.
+- If you are unfamiliar with how rabbitmq messaging works, see the tutorials: https://www.rabbitmq.com/getstarted.html
+
 ### Future improvement ideas
 - Add support for 'embed' query parameter to display the full resource or show it's uri reference instead.
 - Add support for overriding generated code.

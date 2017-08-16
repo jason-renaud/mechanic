@@ -1,6 +1,7 @@
 import json
 import pika
 
+from app import socketio
 
 # below classes taken and slightly adapted from:
 # https://github.com/projectweekend/Pika-Pack/blob/master/pika_pack/
@@ -18,11 +19,22 @@ class Producer(object):
         self._channel = self._connection.channel()
         self._channel.exchange_declare(exchange=self._exchange, exchange_type=self._exchange_type)
 
-    def send(self, routing_key, message):
+    def send(self, routing_key, message, websocket_send=None):
+        """
+
+        :param routing_key:
+        :param message:
+        :param websocket_send: Set this variable to the event name to be sent over the websocket. If not set, no
+         websocket message will be sent.
+        :return:
+        """
         self._channel.basic_publish(
             exchange=self._exchange,
             routing_key=routing_key,
             body=json.dumps(message))
+
+        if websocket_send:
+            socketio.emit(websocket_send, message)
 
     def stop(self):
         self._connection.close()

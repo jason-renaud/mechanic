@@ -62,7 +62,7 @@ def create(model):
         "type": "create"
     }
     routing_key = app.app_name + "." + new_model.__table_args__["schema"] + "." + new_model.__tablename__ + ".create"
-    producer.send(routing_key, msg_obj)
+    producer.send(routing_key, msg_obj, websocket_send=routing_key)
     return new_model
 
 
