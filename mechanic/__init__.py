@@ -893,7 +893,7 @@ def render(tpl_path, context):
 
 
 def main():
-    arguments = docopt(__doc__, version="1.0")
+    arguments = docopt(__doc__, version="0.1.2")
 
     if arguments["convert"]:
         # default file
