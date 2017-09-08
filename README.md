@@ -1,3 +1,15 @@
+*** Add override option for app name.
+*** oneOf can only work if it's an embeddable attribute (uri)
+*** if you want a model to reference back to it's parent, it MUST be a string type (for a uri).
+
+env variables:
+FLASK_CONFIG
+FLASK_PORT
+MECHANIC_DEV_DATABASE
+MECHANIC_TEST_DATABASE
+MECHANIC_PRO_DATABASE
+
+
 ### Summary
 mechanic is a tool that can be used to generate code, from controller to database, with only an OpenAPI 3.0 specification file. Specifically, it generates code in Python 3.6, with these frameworks/tools:
 - Flask-SQLAlchemy for the models generated (for the DB integration layer)

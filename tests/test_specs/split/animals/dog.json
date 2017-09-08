@@ -1,0 +1,25 @@
+{
+  "Dog": {
+    "type": "object",
+    "allOf": [
+      {
+        "$ref": "#/components/schemas/Pet"
+      },
+      {
+        "type": "object",
+        "required": [
+          "breed",
+          "barks"
+        ],
+        "properties": {
+          "breed": {
+            "type": "string"
+          },
+          "barks": {
+            "type": "boolean"
+          }
+        }
+      }
+    ]
+  }
+}

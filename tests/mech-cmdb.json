@@ -1,0 +1,4414 @@
+{
+    "microservices": {},
+    "namespaces": {
+        "network": {
+            "models": [
+                "LagModel",
+                "PortModel",
+                "PositionModel",
+                "VlanModel",
+                "SegmentModel",
+                "NetworkModel",
+                "GatewayModel",
+                "SubnetGatewayModel",
+                "SubnetModel",
+                "InterfaceModel",
+                "IPModel",
+                "RouteModel",
+                "AsnModel",
+                "PeerModel",
+                "RouterModel",
+                "VrfModel",
+                "SwitchModel",
+                "ErrorMessageModel"
+            ],
+            "mschemas": [
+                "LagSchema",
+                "PortSchema",
+                "PositionSchema",
+                "VlanSchema",
+                "SegmentSchema",
+                "NetworkSchema",
+                "GatewaySchema",
+                "SubnetGatewaySchema",
+                "SubnetSchema",
+                "InterfaceSchema",
+                "IPSchema",
+                "RouteSchema",
+                "AsnSchema",
+                "PeerSchema",
+                "RouterSchema",
+                "VrfSchema",
+                "SwitchSchema",
+                "ErrorMessageSchema"
+            ],
+            "controllers": [
+                "SwitchCollectionController",
+                "SwitchController",
+                "PortCollectionController",
+                "PortController"
+            ]
+        },
+        "storage": {
+            "models": [
+                "StorageNodeModel",
+                "QoSModel",
+                "RuleModel",
+                "ExportPolicyModel",
+                "ScheduleModel",
+                "SnapshotPolicyModel",
+                "EfficiencyPolicyModel",
+                "FailoverGroupModel",
+                "LifModel",
+                "QtreeModel",
+                "VolumeModel",
+                "AggregateModel",
+                "StorageDeviceModel",
+                "StorageHAPairModel",
+                "SvmModel",
+                "ClusterPropertiesModel"
+            ],
+            "mschemas": [
+                "StorageNodeSchema",
+                "QoSSchema",
+                "RuleSchema",
+                "ExportPolicySchema",
+                "ScheduleSchema",
+                "SnapshotPolicySchema",
+                "EfficiencyPolicySchema",
+                "FailoverGroupSchema",
+                "LifSchema",
+                "QtreeSchema",
+                "VolumeSchema",
+                "AggregateSchema",
+                "StorageDeviceSchema",
+                "StorageHAPairSchema",
+                "SvmSchema",
+                "ClusterPropertiesSchema"
+            ],
+            "controllers": [
+                "AggregateCollectionController",
+                "AggregateController",
+                "StorageNodeCollectionController",
+                "StorageNodeController",
+                "StorageDeviceCollectionController",
+                "StorageDeviceController",
+                "ExportPolicyCollectionController",
+                "ExportPolicyController",
+                "ClusterPropertyCollectionController",
+                "ClusterPropertyController"
+            ]
+        }
+    },
+    "models": {
+        "LagModel": {
+            "resource": "Lag",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "storagenode_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.storagenodes.identifier"
+                },
+                "switch_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.switches.identifier"
+                },
+                "router_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.routers.identifier"
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "lags",
+            "db_schema_name": "network"
+        },
+        "StorageNodeModel": {
+            "resource": "StorageNode",
+            "properties": {
+                "aggregate": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "AggregateModel": "ONE",
+                        "model": "AggregateModel",
+                        "foreign_keys": null,
+                        "back_populates": "storagenode",
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "haPartner": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "StorageNodeModel": "ONE",
+                        "model": "StorageNodeModel",
+                        "foreign_keys": "StorageNodeModel.storagenode_id",
+                        "back_populates": "storagenode",
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "mgmtIP": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+                },
+                "svcProcIP": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+                },
+                "version": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "lags": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "LagModel": "MANY",
+                        "model": "LagModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "storagenode_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.storagenodes.identifier"
+                },
+                "storagehapair_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.storagehapairs.identifier"
+                }
+            },
+            "references": [
+                {
+                    "AggregateModel": "ONE"
+                },
+                {
+                    "StorageNodeModel": "ONE"
+                },
+                {
+                    "LagModel": "MANY"
+                }
+            ],
+            "relationships": [
+                {
+                    "type": "one_to_one",
+                    "AggregateModel": {
+                        "backref": "storagenode"
+                    },
+                    "StorageNodeModel": {
+                        "name": "aggregate_id",
+                        "fkey": "storage.aggregates.identifier"
+                    }
+                },
+                {
+                    "type": "one_to_one",
+                    "StorageNodeModel": {
+                        "name": "storagenode_id",
+                        "fkey": "storage.storagenodes.identifier"
+                    }
+                }
+            ],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "storagenodes",
+            "db_schema_name": "storage"
+        },
+        "QoSModel": {
+            "resource": "QoS",
+            "properties": {
+                "throughput": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}([ ]*/[ ]*[S|s])"
+                },
+                "iops": {
+                    "type": "Float",
+                    "pytype": "float",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "minIops": {
+                    "type": "Float",
+                    "pytype": "float",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "minThroughput": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}([ ]*/[ ]*[S|s])"
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "qoss",
+            "db_schema_name": "storage"
+        },
+        "RuleModel": {
+            "resource": "Rule",
+            "properties": {
+                "permissions": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "username": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "subnet": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/([0-9]|[1-2][0-9]|3[0-2]))$"
+                },
+                "ruleIndex": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "rules",
+            "db_schema_name": "storage"
+        },
+        "ExportPolicyModel": {
+            "resource": "ExportPolicy",
+            "properties": {
+                "rule": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "RuleModel": "ONE",
+                        "model": "RuleModel",
+                        "foreign_keys": "ExportPolicyModel.rule_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "rule_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.rules.identifier"
+                }
+            },
+            "references": [
+                {
+                    "RuleModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "exportpolicies",
+            "db_schema_name": "storage"
+        },
+        "ScheduleModel": {
+            "resource": "Schedule",
+            "properties": {
+                "minute": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "hour": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "dayOfMonth": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "month": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "dayOfWeek": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "schedules",
+            "db_schema_name": "storage"
+        },
+        "SnapshotPolicyModel": {
+            "resource": "SnapshotPolicy",
+            "properties": {
+                "schedule": {
+                    "type": null,
+                    "pytype": null,
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "ScheduleModel": "ONE",
+                        "model": "ScheduleModel",
+                        "foreign_keys": "SnapshotPolicyModel.schedule_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "count": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "schedule_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.schedules.identifier"
+                }
+            },
+            "references": [
+                {
+                    "ScheduleModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "snapshotpolicies",
+            "db_schema_name": "storage"
+        },
+        "EfficiencyPolicyModel": {
+            "resource": "EfficiencyPolicy",
+            "properties": {
+                "compression": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "daily",
+                        "hourly",
+                        "monthly"
+                    ],
+                    "regex": null
+                },
+                "compressionType": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "dedupe": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "compaction": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "inlinedDedupe": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "enabled",
+                        "disabled"
+                    ],
+                    "regex": null
+                },
+                "qos": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "background",
+                        "besteffort"
+                    ],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "efficiencypolicies",
+            "db_schema_name": "storage"
+        },
+        "PortModel": {
+            "resource": "Port",
+            "properties": {
+                "speed": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "label": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "description": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "uuid": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": 36,
+                    "enum": [],
+                    "regex": null
+                },
+                "failovergroup_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.failovergroups.identifier"
+                },
+                "switch_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.switches.identifier"
+                },
+                "segment_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.segments.identifier"
+                },
+                "router_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.routers.identifier"
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "ports",
+            "db_schema_name": "network"
+        },
+        "FailoverGroupModel": {
+            "resource": "FailoverGroup",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "ports": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PortModel": "MANY",
+                        "model": "PortModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                }
+            },
+            "references": [
+                {
+                    "PortModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "failovergroups",
+            "db_schema_name": "storage"
+        },
+        "LifModel": {
+            "resource": "Lif",
+            "properties": {
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "nfs",
+                        "iscsi"
+                    ],
+                    "regex": null
+                },
+                "failoverGroup": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "FailoverGroupModel": "ONE",
+                        "model": "FailoverGroupModel",
+                        "foreign_keys": "LifModel.failovergroup_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "homePort": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PortModel": "ONE",
+                        "model": "PortModel",
+                        "foreign_keys": "LifModel.port_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "currentPort": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PortModel": "ONE",
+                        "model": "PortModel",
+                        "foreign_keys": "LifModel.port_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "failoverPolicy": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "broadcast-domain-wide",
+                        "system-defined",
+                        "local-only",
+                        "sfo-partner-only",
+                        "disabled"
+                    ],
+                    "regex": null
+                },
+                "adminStatus": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "up",
+                        "down"
+                    ],
+                    "regex": null
+                },
+                "operationalStatus": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "up",
+                        "down"
+                    ],
+                    "regex": null
+                },
+                "ip": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+                },
+                "failovergroup_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.failovergroups.identifier"
+                },
+                "port_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.ports.identifier"
+                },
+                "svm_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.svms.identifier"
+                }
+            },
+            "references": [
+                {
+                    "FailoverGroupModel": "ONE"
+                },
+                {
+                    "PortModel": "ONE"
+                },
+                {
+                    "PortModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "lifs",
+            "db_schema_name": "storage"
+        },
+        "QtreeModel": {
+            "resource": "Qtree",
+            "properties": {
+                "quota": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}"
+                },
+                "exportPolicy": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "ExportPolicyModel": "ONE",
+                        "model": "ExportPolicyModel",
+                        "foreign_keys": "QtreeModel.exportpolicy_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "lif": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "LifModel": "ONE",
+                        "model": "LifModel",
+                        "foreign_keys": "QtreeModel.lif_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "exportpolicy_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.exportpolicies.identifier"
+                },
+                "lif_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.lifs.identifier"
+                }
+            },
+            "references": [
+                {
+                    "ExportPolicyModel": "ONE"
+                },
+                {
+                    "LifModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "qtrees",
+            "db_schema_name": "storage"
+        },
+        "VolumeModel": {
+            "resource": "Volume",
+            "properties": {
+                "snapshotReservationPercentage": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "dataProtocol": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "nfs",
+                        "cifs",
+                        "iscsi"
+                    ],
+                    "regex": null
+                },
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "uuid": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": 36,
+                    "enum": [],
+                    "regex": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+                },
+                "size": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}"
+                },
+                "qos": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "QoSModel": "ONE",
+                        "model": "QoSModel",
+                        "foreign_keys": "VolumeModel.qos_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "exportPolicy": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "ExportPolicyModel": "ONE",
+                        "model": "ExportPolicyModel",
+                        "foreign_keys": "VolumeModel.exportpolicy_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "snapshotPolicy": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SnapshotPolicyModel": "ONE",
+                        "model": "SnapshotPolicyModel",
+                        "foreign_keys": "VolumeModel.snapshotpolicy_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "efficiencyPolicy": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "EfficiencyPolicyModel": "ONE",
+                        "model": "EfficiencyPolicyModel",
+                        "foreign_keys": "VolumeModel.efficiencypolicy_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "schedule": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "ScheduleModel": "ONE",
+                        "model": "ScheduleModel",
+                        "foreign_keys": "VolumeModel.schedule_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "volumeClass": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "root",
+                        "data",
+                        "mirror"
+                    ],
+                    "regex": null
+                },
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "ls",
+                        "rw",
+                        "ro",
+                        "dp"
+                    ],
+                    "regex": null
+                },
+                "qtree": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "QtreeModel": "ONE",
+                        "model": "QtreeModel",
+                        "foreign_keys": "VolumeModel.qtree_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "lif": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "LifModel": "ONE",
+                        "model": "LifModel",
+                        "foreign_keys": "VolumeModel.lif_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "aggregate_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.aggregates.identifier"
+                },
+                "qos_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.qoss.identifier"
+                },
+                "exportpolicy_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.exportpolicies.identifier"
+                },
+                "snapshotpolicy_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.snapshotpolicies.identifier"
+                },
+                "efficiencypolicy_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.efficiencypolicies.identifier"
+                },
+                "schedule_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.schedules.identifier"
+                },
+                "qtree_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.qtrees.identifier"
+                },
+                "lif_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.lifs.identifier"
+                },
+                "svm_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.svms.identifier"
+                }
+            },
+            "references": [
+                {
+                    "QoSModel": "ONE"
+                },
+                {
+                    "ExportPolicyModel": "ONE"
+                },
+                {
+                    "SnapshotPolicyModel": "ONE"
+                },
+                {
+                    "EfficiencyPolicyModel": "ONE"
+                },
+                {
+                    "ScheduleModel": "ONE"
+                },
+                {
+                    "QtreeModel": "ONE"
+                },
+                {
+                    "LifModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "volumes",
+            "db_schema_name": "storage"
+        },
+        "AggregateModel": {
+            "resource": "Aggregate",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "storagenode": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "StorageNodeModel": "ONE",
+                        "model": "StorageNodeModel",
+                        "foreign_keys": "AggregateModel.storagenode_id",
+                        "back_populates": "aggregate",
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "capacitytotal": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}"
+                },
+                "capacityfree": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}"
+                },
+                "volumes": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "VolumeModel": "MANY",
+                        "model": "VolumeModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "storagenode_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.storagenodes.identifier"
+                }
+            },
+            "references": [
+                {
+                    "StorageNodeModel": "ONE"
+                },
+                {
+                    "VolumeModel": "MANY"
+                }
+            ],
+            "relationships": [
+                {
+                    "type": "one_to_one",
+                    "StorageNodeModel": {
+                        "backref": "aggregate"
+                    },
+                    "AggregateModel": {
+                        "name": "storagenode_id",
+                        "fkey": "storage.storagenodes.identifier"
+                    }
+                }
+            ],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "aggregates",
+            "db_schema_name": "storage"
+        },
+        "StorageDeviceModel": {
+            "resource": "StorageDevice",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "fas",
+                        "eseries",
+                        "sgh"
+                    ],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "storagedevices",
+            "db_schema_name": "storage"
+        },
+        "StorageHAPairModel": {
+            "resource": "StorageHAPair",
+            "properties": {
+                "storageNodes": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "StorageNodeModel": "MANY",
+                        "model": "StorageNodeModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "clusterproperties_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.clusterproperties.identifier"
+                }
+            },
+            "references": [
+                {
+                    "StorageNodeModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "storagehapairs",
+            "db_schema_name": "storage"
+        },
+        "SvmModel": {
+            "resource": "Svm",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "volumes": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "VolumeModel": "MANY",
+                        "model": "VolumeModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "exportPolicies": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "ExportPolicyModel": "ONE",
+                        "model": "ExportPolicyModel",
+                        "foreign_keys": "SvmModel.exportpolicy_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "lifs": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "LifModel": "MANY",
+                        "model": "LifModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "clusterproperties_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.clusterproperties.identifier"
+                },
+                "exportpolicy_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "storage.exportpolicies.identifier"
+                }
+            },
+            "references": [
+                {
+                    "VolumeModel": "MANY"
+                },
+                {
+                    "ExportPolicyModel": "ONE"
+                },
+                {
+                    "LifModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "svms",
+            "db_schema_name": "storage"
+        },
+        "ClusterPropertiesModel": {
+            "resource": "ClusterProperties",
+            "properties": {
+                "mgmtIP": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+                },
+                "storageHAPairs": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "StorageHAPairModel": "MANY",
+                        "model": "StorageHAPairModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "version": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "svms": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SvmModel": "MANY",
+                        "model": "SvmModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                }
+            },
+            "references": [
+                {
+                    "StorageHAPairModel": "MANY"
+                },
+                {
+                    "SvmModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "storage",
+            "base_uri": null,
+            "db_table_name": "clusterproperties",
+            "db_schema_name": "storage"
+        },
+        "PositionModel": {
+            "resource": "Position",
+            "properties": {
+                "size": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "elevation": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "positions",
+            "db_schema_name": "network"
+        },
+        "VlanModel": {
+            "resource": "Vlan",
+            "properties": {
+                "vlanid": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "vrf_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.vrfs.identifier"
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "vlans",
+            "db_schema_name": "network"
+        },
+        "SegmentModel": {
+            "resource": "Segment",
+            "properties": {
+                "network": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "port": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PortModel": "MANY",
+                        "model": "PortModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "network_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.networks.identifier"
+                }
+            },
+            "references": [
+                {
+                    "NetworkModel": "ONE"
+                },
+                {
+                    "PortModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "segments",
+            "db_schema_name": "network"
+        },
+        "NetworkModel": {
+            "resource": "Network",
+            "properties": {
+                "vlan": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "VlanModel": "ONE",
+                        "model": "VlanModel",
+                        "foreign_keys": "NetworkModel.vlan_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "vfId": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "vxLanId": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "encapMethod": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "overlay": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "segments": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SegmentModel": "MANY",
+                        "model": "SegmentModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": "network",
+                        "uselist": true
+                    }
+                },
+                "subnets": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SubnetModel": "MANY",
+                        "model": "SubnetModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": "network",
+                        "uselist": true
+                    }
+                },
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "storage",
+                        "external",
+                        "customer",
+                        "mgmt",
+                        "other"
+                    ],
+                    "regex": null
+                },
+                "vlan_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.vlans.identifier"
+                }
+            },
+            "references": [
+                {
+                    "VlanModel": "ONE"
+                },
+                {
+                    "SegmentModel": "MANY"
+                },
+                {
+                    "SubnetModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "networks",
+            "db_schema_name": "network"
+        },
+        "GatewayModel": {
+            "resource": "Gateway",
+            "properties": {
+                "firewallSvc": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "loadBalancerSvc": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "vpcSvc": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "gateways",
+            "db_schema_name": "network"
+        },
+        "SubnetGatewayModel": {
+            "resource": "SubnetGateway",
+            "properties": {
+                "gateway": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "GatewayModel": "ONE",
+                        "model": "GatewayModel",
+                        "foreign_keys": "SubnetGatewayModel.gateway_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "primary",
+                        "redundant"
+                    ],
+                    "regex": null
+                },
+                "subnet_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.subnets.identifier"
+                },
+                "gateway_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.gateways.identifier"
+                }
+            },
+            "references": [
+                {
+                    "GatewayModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "subnetgateways",
+            "db_schema_name": "network"
+        },
+        "SubnetModel": {
+            "resource": "Subnet",
+            "properties": {
+                "network": {
+                    "type": null,
+                    "pytype": null,
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "netmask": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "subnetgateways": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SubnetGatewayModel": "MANY",
+                        "model": "SubnetGatewayModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "advertise": {
+                    "type": "Boolean",
+                    "pytype": "boolean",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "network_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.networks.identifier"
+                }
+            },
+            "references": [
+                {
+                    "NetworkModel": "ONE"
+                },
+                {
+                    "SubnetGatewayModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "subnets",
+            "db_schema_name": "network"
+        },
+        "InterfaceModel": {
+            "resource": "Interface",
+            "properties": {
+                "subnet": {
+                    "type": null,
+                    "pytype": null,
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SubnetModel": "ONE",
+                        "model": "SubnetModel",
+                        "foreign_keys": "InterfaceModel.subnet_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "switch_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.switches.identifier"
+                },
+                "subnet_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.subnets.identifier"
+                },
+                "router_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.routers.identifier"
+                }
+            },
+            "references": [
+                {
+                    "SubnetModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "interfaces",
+            "db_schema_name": "network"
+        },
+        "IPModel": {
+            "resource": "IP",
+            "properties": {
+                "ip": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "ips",
+            "db_schema_name": "network"
+        },
+        "RouteModel": {
+            "resource": "Route",
+            "properties": {
+                "nexthop": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "subnet": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "SubnetModel": "ONE",
+                        "model": "SubnetModel",
+                        "foreign_keys": "RouteModel.subnet_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "protocol": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "bgp",
+                        "static",
+                        "ospf",
+                        "connected"
+                    ],
+                    "regex": null
+                },
+                "switch_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.switches.identifier"
+                },
+                "subnet_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.subnets.identifier"
+                },
+                "vrf_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.vrfs.identifier"
+                },
+                "router_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.routers.identifier"
+                }
+            },
+            "references": [
+                {
+                    "SubnetModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "routes",
+            "db_schema_name": "network"
+        },
+        "AsnModel": {
+            "resource": "Asn",
+            "properties": {
+                "asnNumber": {
+                    "type": "Integer",
+                    "pytype": "int",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "description": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "asns",
+            "db_schema_name": "network"
+        },
+        "PeerModel": {
+            "resource": "Peer",
+            "properties": {
+                "type": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "faction",
+                        "aws",
+                        "azure",
+                        "customer"
+                    ],
+                    "regex": null
+                },
+                "ip": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "AsnModel": "ONE",
+                        "model": "AsnModel",
+                        "foreign_keys": "PeerModel.asn_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "router_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.routers.identifier"
+                },
+                "asn_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.asns.identifier"
+                },
+                "vrf_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.vrfs.identifier"
+                }
+            },
+            "references": [
+                {
+                    "AsnModel": "ONE"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "peers",
+            "db_schema_name": "network"
+        },
+        "RouterModel": {
+            "resource": "Router",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "position": {
+                    "type": null,
+                    "pytype": null,
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PositionModel": "ONE",
+                        "model": "PositionModel",
+                        "foreign_keys": "RouterModel.position_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "model": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "firmware": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "ports": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PortModel": "MANY",
+                        "model": "PortModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "InterfaceModel": "MANY",
+                        "model": "InterfaceModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "ip": {
+                    "type": null,
+                    "pytype": null,
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "IPModel": "ONE",
+                        "model": "IPModel",
+                        "foreign_keys": "RouterModel.ip_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "partner": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "lags": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": true,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "LagModel": "MANY",
+                        "model": "LagModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "routes": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "RouteModel": "MANY",
+                        "model": "RouteModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "vrfs": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "VrfModel": "MANY",
+                        "model": "VrfModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": "router",
+                        "uselist": true
+                    }
+                },
+                "peers": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PeerModel": "MANY",
+                        "model": "PeerModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "position_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.positions.identifier"
+                },
+                "ip_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.ips.identifier"
+                }
+            },
+            "references": [
+                {
+                    "PositionModel": "ONE"
+                },
+                {
+                    "PortModel": "MANY"
+                },
+                {
+                    "InterfaceModel": "MANY"
+                },
+                {
+                    "IPModel": "ONE"
+                },
+                {
+                    "LagModel": "MANY"
+                },
+                {
+                    "RouteModel": "MANY"
+                },
+                {
+                    "VrfModel": "MANY"
+                },
+                {
+                    "PeerModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "routers",
+            "db_schema_name": "network"
+        },
+        "VrfModel": {
+            "resource": "Vrf",
+            "properties": {
+                "routes": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "RouteModel": "MANY",
+                        "model": "RouteModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "hardware": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "oneOf": [
+                        {
+                            "reference": {
+                                "SwitchModel": "ONE",
+                                "model": "SwitchModel",
+                                "foreign_keys": null,
+                                "back_populates": null,
+                                "backref": null,
+                                "uselist": false
+                            },
+                            "attr_name": "hardware_switchmodel"
+                        },
+                        {
+                            "reference": {
+                                "RouterModel": "ONE",
+                                "model": "RouterModel",
+                                "foreign_keys": null,
+                                "back_populates": null,
+                                "backref": null,
+                                "uselist": false
+                            },
+                            "attr_name": "hardware_routermodel"
+                        },
+                        {
+                            "type": "String",
+                            "attr_name": "hardware_string",
+                            "pytype": "str",
+                            "required": false,
+                            "maxLength": null,
+                            "enum": [],
+                            "regex": null
+                        }
+                    ]
+                },
+                "peers": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PeerModel": "MANY",
+                        "model": "PeerModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "vlans": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "VlanModel": "MANY",
+                        "model": "VlanModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "routeDistinguisher": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "switch_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.switches.identifier"
+                },
+                "router_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.routers.identifier"
+                }
+            },
+            "references": [
+                {
+                    "RouteModel": "MANY"
+                },
+                {
+                    "SwitchModel": "ONE"
+                },
+                {
+                    "RouterModel": "ONE"
+                },
+                {
+                    "PeerModel": "MANY"
+                },
+                {
+                    "VlanModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "vrfs",
+            "db_schema_name": "network"
+        },
+        "SwitchModel": {
+            "resource": "Switch",
+            "properties": {
+                "name": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "position": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PositionModel": "ONE",
+                        "model": "PositionModel",
+                        "foreign_keys": "SwitchModel.position_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "role": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [
+                        "customer",
+                        "customer-colo",
+                        "storage",
+                        "core",
+                        "distribution",
+                        "aws-bridge"
+                    ],
+                    "regex": null
+                },
+                "model": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "firmware": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "ports": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "PortModel": "MANY",
+                        "model": "PortModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "interfaces": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "InterfaceModel": "MANY",
+                        "model": "InterfaceModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "fabricId": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "rbridgeId": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "ip": {
+                    "type": null,
+                    "pytype": null,
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "IPModel": "ONE",
+                        "model": "IPModel",
+                        "foreign_keys": "SwitchModel.ip_id",
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": false
+                    }
+                },
+                "partner": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                },
+                "lags": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "LagModel": "MANY",
+                        "model": "LagModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "routes": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "RouteModel": "MANY",
+                        "model": "RouteModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": null,
+                        "uselist": true
+                    }
+                },
+                "vrfs": {
+                    "type": "array",
+                    "pytype": "array",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null,
+                    "reference": {
+                        "VrfModel": "MANY",
+                        "model": "VrfModel",
+                        "foreign_keys": null,
+                        "back_populates": null,
+                        "backref": "switch",
+                        "uselist": true
+                    }
+                },
+                "position_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.positions.identifier"
+                },
+                "ip_id": {
+                    "type": "String",
+                    "maxLength": 36,
+                    "foreign_key": "network.ips.identifier"
+                }
+            },
+            "references": [
+                {
+                    "PositionModel": "ONE"
+                },
+                {
+                    "PortModel": "MANY"
+                },
+                {
+                    "InterfaceModel": "MANY"
+                },
+                {
+                    "IPModel": "ONE"
+                },
+                {
+                    "LagModel": "MANY"
+                },
+                {
+                    "RouteModel": "MANY"
+                },
+                {
+                    "VrfModel": "MANY"
+                }
+            ],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "switches",
+            "db_schema_name": "network"
+        },
+        "ErrorMessageModel": {
+            "resource": "ErrorMessage",
+            "properties": {
+                "message": {
+                    "type": "String",
+                    "pytype": "str",
+                    "required": false,
+                    "maxLength": null,
+                    "enum": [],
+                    "regex": null
+                }
+            },
+            "references": [],
+            "relationships": [],
+            "namespace": "network",
+            "base_uri": null,
+            "db_table_name": "errormessages",
+            "db_schema_name": "network"
+        }
+    },
+    "mschemas": {
+        "LagSchema": {
+            "model": "LagModel",
+            "resource": "Lag",
+            "namespace": "network",
+            "properties": {}
+        },
+        "StorageNodeSchema": {
+            "model": "StorageNodeModel",
+            "resource": "StorageNode",
+            "namespace": "storage",
+            "properties": {
+                "aggregate": {
+                    "nested": "AggregateSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "haPartner": {
+                    "nested": "StorageNodeSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "mgmtIP": {
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "svcProcIP": {
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "lags": {
+                    "nested": "LagSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "QoSSchema": {
+            "model": "QoSModel",
+            "resource": "QoS",
+            "namespace": "storage",
+            "properties": {
+                "throughput": {
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}([ ]*/[ ]*[S|s])",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "minThroughput": {
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}([ ]*/[ ]*[S|s])",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "RuleSchema": {
+            "model": "RuleModel",
+            "resource": "Rule",
+            "namespace": "storage",
+            "properties": {
+                "subnet": {
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(/([0-9]|[1-2][0-9]|3[0-2]))$",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "ExportPolicySchema": {
+            "model": "ExportPolicyModel",
+            "resource": "ExportPolicy",
+            "namespace": "storage",
+            "properties": {
+                "rule": {
+                    "nested": "RuleSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                }
+            }
+        },
+        "ScheduleSchema": {
+            "model": "ScheduleModel",
+            "resource": "Schedule",
+            "namespace": "storage",
+            "properties": {}
+        },
+        "SnapshotPolicySchema": {
+            "model": "SnapshotPolicyModel",
+            "resource": "SnapshotPolicy",
+            "namespace": "storage",
+            "properties": {
+                "schedule": {
+                    "nested": "ScheduleSchema",
+                    "many": false,
+                    "required": true,
+                    "maxLength": null,
+                    "type": null
+                }
+            }
+        },
+        "EfficiencyPolicySchema": {
+            "model": "EfficiencyPolicyModel",
+            "resource": "EfficiencyPolicy",
+            "namespace": "storage",
+            "properties": {
+                "compression": {
+                    "enum": [
+                        "daily",
+                        "hourly",
+                        "monthly"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "inlinedDedupe": {
+                    "enum": [
+                        "enabled",
+                        "disabled"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "qos": {
+                    "enum": [
+                        "background",
+                        "besteffort"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "PortSchema": {
+            "model": "PortModel",
+            "resource": "Port",
+            "namespace": "network",
+            "properties": {}
+        },
+        "FailoverGroupSchema": {
+            "model": "FailoverGroupModel",
+            "resource": "FailoverGroup",
+            "namespace": "storage",
+            "properties": {
+                "ports": {
+                    "nested": "PortSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "LifSchema": {
+            "model": "LifModel",
+            "resource": "Lif",
+            "namespace": "storage",
+            "properties": {
+                "type": {
+                    "enum": [
+                        "nfs",
+                        "iscsi"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "failoverGroup": {
+                    "nested": "FailoverGroupSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "homePort": {
+                    "nested": "PortSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "currentPort": {
+                    "nested": "PortSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "failoverPolicy": {
+                    "enum": [
+                        "broadcast-domain-wide",
+                        "system-defined",
+                        "local-only",
+                        "sfo-partner-only",
+                        "disabled"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "adminStatus": {
+                    "enum": [
+                        "up",
+                        "down"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "operationalStatus": {
+                    "enum": [
+                        "up",
+                        "down"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "ip": {
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "QtreeSchema": {
+            "model": "QtreeModel",
+            "resource": "Qtree",
+            "namespace": "storage",
+            "properties": {
+                "quota": {
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "exportPolicy": {
+                    "nested": "ExportPolicySchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "lif": {
+                    "nested": "LifSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                }
+            }
+        },
+        "VolumeSchema": {
+            "model": "VolumeModel",
+            "resource": "Volume",
+            "namespace": "storage",
+            "properties": {
+                "dataProtocol": {
+                    "enum": [
+                        "nfs",
+                        "cifs",
+                        "iscsi"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "uuid": {
+                    "regex": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                    "required": false,
+                    "maxLength": 36,
+                    "type": "String"
+                },
+                "size": {
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "qos": {
+                    "nested": "QoSSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "exportPolicy": {
+                    "nested": "ExportPolicySchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "snapshotPolicy": {
+                    "nested": "SnapshotPolicySchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "efficiencyPolicy": {
+                    "nested": "EfficiencyPolicySchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "schedule": {
+                    "nested": "ScheduleSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "volumeClass": {
+                    "enum": [
+                        "root",
+                        "data",
+                        "mirror"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "type": {
+                    "enum": [
+                        "ls",
+                        "rw",
+                        "ro",
+                        "dp"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "qtree": {
+                    "nested": "QtreeSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "lif": {
+                    "nested": "LifSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                }
+            }
+        },
+        "AggregateSchema": {
+            "model": "AggregateModel",
+            "resource": "Aggregate",
+            "namespace": "storage",
+            "properties": {
+                "storagenode": {
+                    "nested": "StorageNodeSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "capacitytotal": {
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "capacityfree": {
+                    "regex": "^[0-9]+[ ]*([k|K|m|M|g|G|t|T|p|P]){1}([B|b]){1}",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "volumes": {
+                    "nested": "VolumeSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "StorageDeviceSchema": {
+            "model": "StorageDeviceModel",
+            "resource": "StorageDevice",
+            "namespace": "storage",
+            "properties": {
+                "type": {
+                    "enum": [
+                        "fas",
+                        "eseries",
+                        "sgh"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "StorageHAPairSchema": {
+            "model": "StorageHAPairModel",
+            "resource": "StorageHAPair",
+            "namespace": "storage",
+            "properties": {
+                "storageNodes": {
+                    "nested": "StorageNodeSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "SvmSchema": {
+            "model": "SvmModel",
+            "resource": "Svm",
+            "namespace": "storage",
+            "properties": {
+                "volumes": {
+                    "nested": "VolumeSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "exportPolicies": {
+                    "nested": "ExportPolicySchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "lifs": {
+                    "nested": "LifSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "ClusterPropertiesSchema": {
+            "model": "ClusterPropertiesModel",
+            "resource": "ClusterProperties",
+            "namespace": "storage",
+            "properties": {
+                "mgmtIP": {
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "storageHAPairs": {
+                    "nested": "StorageHAPairSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "svms": {
+                    "nested": "SvmSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "PositionSchema": {
+            "model": "PositionModel",
+            "resource": "Position",
+            "namespace": "network",
+            "properties": {}
+        },
+        "VlanSchema": {
+            "model": "VlanModel",
+            "resource": "Vlan",
+            "namespace": "network",
+            "properties": {}
+        },
+        "SegmentSchema": {
+            "model": "SegmentModel",
+            "resource": "Segment",
+            "namespace": "network",
+            "properties": {
+                "port": {
+                    "nested": "PortSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "NetworkSchema": {
+            "model": "NetworkModel",
+            "resource": "Network",
+            "namespace": "network",
+            "properties": {
+                "vlan": {
+                    "nested": "VlanSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "segments": {
+                    "nested": "SegmentSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "subnets": {
+                    "nested": "SubnetSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "type": {
+                    "enum": [
+                        "storage",
+                        "external",
+                        "customer",
+                        "mgmt",
+                        "other"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "GatewaySchema": {
+            "model": "GatewayModel",
+            "resource": "Gateway",
+            "namespace": "network",
+            "properties": {}
+        },
+        "SubnetGatewaySchema": {
+            "model": "SubnetGatewayModel",
+            "resource": "SubnetGateway",
+            "namespace": "network",
+            "properties": {
+                "gateway": {
+                    "nested": "GatewaySchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "type": {
+                    "enum": [
+                        "primary",
+                        "redundant"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "SubnetSchema": {
+            "model": "SubnetModel",
+            "resource": "Subnet",
+            "namespace": "network",
+            "properties": {
+                "subnetgateways": {
+                    "nested": "SubnetGatewaySchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "InterfaceSchema": {
+            "model": "InterfaceModel",
+            "resource": "Interface",
+            "namespace": "network",
+            "properties": {
+                "subnet": {
+                    "nested": "SubnetSchema",
+                    "many": false,
+                    "required": true,
+                    "maxLength": null,
+                    "type": null
+                }
+            }
+        },
+        "IPSchema": {
+            "model": "IPModel",
+            "resource": "IP",
+            "namespace": "network",
+            "properties": {
+                "ip": {
+                    "regex": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$",
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "RouteSchema": {
+            "model": "RouteModel",
+            "resource": "Route",
+            "namespace": "network",
+            "properties": {
+                "subnet": {
+                    "nested": "SubnetSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "protocol": {
+                    "enum": [
+                        "bgp",
+                        "static",
+                        "ospf",
+                        "connected"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                }
+            }
+        },
+        "AsnSchema": {
+            "model": "AsnModel",
+            "resource": "Asn",
+            "namespace": "network",
+            "properties": {}
+        },
+        "PeerSchema": {
+            "model": "PeerModel",
+            "resource": "Peer",
+            "namespace": "network",
+            "properties": {
+                "type": {
+                    "enum": [
+                        "faction",
+                        "aws",
+                        "azure",
+                        "customer"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "ip": {
+                    "nested": "AsnSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                }
+            }
+        },
+        "RouterSchema": {
+            "model": "RouterModel",
+            "resource": "Router",
+            "namespace": "network",
+            "properties": {
+                "position": {
+                    "nested": "PositionSchema",
+                    "many": false,
+                    "required": true,
+                    "maxLength": null,
+                    "type": null
+                },
+                "ports": {
+                    "nested": "PortSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "interfaces": {
+                    "nested": "InterfaceSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "ip": {
+                    "nested": "IPSchema",
+                    "many": false,
+                    "required": true,
+                    "maxLength": null,
+                    "type": null
+                },
+                "lags": {
+                    "nested": "LagSchema",
+                    "many": true,
+                    "required": true,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "routes": {
+                    "nested": "RouteSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "vrfs": {
+                    "nested": "VrfSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "peers": {
+                    "nested": "PeerSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "VrfSchema": {
+            "model": "VrfModel",
+            "resource": "Vrf",
+            "namespace": "network",
+            "properties": {
+                "routes": {
+                    "nested": "RouteSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "hardware": {
+                    "oneOf": [
+                        {
+                            "nested": "SwitchSchema",
+                            "exclude": [
+                                "vrfs"
+                            ],
+                            "attr_name": "hardware_switchmodel"
+                        },
+                        {
+                            "nested": "RouterSchema",
+                            "exclude": [
+                                "vrfs"
+                            ],
+                            "attr_name": "hardware_routermodel"
+                        },
+                        {
+                            "type": "String",
+                            "required": false,
+                            "maxLength": null,
+                            "enum": [],
+                            "regex": null,
+                            "attr_name": "hardware_string"
+                        }
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "peers": {
+                    "nested": "PeerSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "vlans": {
+                    "nested": "VlanSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "SwitchSchema": {
+            "model": "SwitchModel",
+            "resource": "Switch",
+            "namespace": "network",
+            "properties": {
+                "position": {
+                    "nested": "PositionSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "role": {
+                    "enum": [
+                        "customer",
+                        "customer-colo",
+                        "storage",
+                        "core",
+                        "distribution",
+                        "aws-bridge"
+                    ],
+                    "required": false,
+                    "maxLength": null,
+                    "type": "String"
+                },
+                "ports": {
+                    "nested": "PortSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "interfaces": {
+                    "nested": "InterfaceSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "ip": {
+                    "nested": "IPSchema",
+                    "many": false,
+                    "required": false,
+                    "maxLength": null,
+                    "type": null
+                },
+                "lags": {
+                    "nested": "LagSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "routes": {
+                    "nested": "RouteSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                },
+                "vrfs": {
+                    "nested": "VrfSchema",
+                    "many": true,
+                    "required": false,
+                    "maxLength": null,
+                    "type": "array"
+                }
+            }
+        },
+        "ErrorMessageSchema": {
+            "model": "ErrorMessageModel",
+            "resource": "ErrorMessage",
+            "namespace": "network",
+            "properties": {}
+        }
+    },
+    "many_to_many_models": {},
+    "controllers": {
+        "AggregateCollectionController": {
+            "service": "AggregateService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "AggregateModel",
+                        "mschema": "AggregateSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "201",
+                        "model": "AggregateModel",
+                        "mschema": "AggregateSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/storage/aggregates",
+            "namespace": "storage"
+        },
+        "AggregateController": {
+            "service": "AggregateService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "AggregateModel",
+                        "mschema": "AggregateSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "AggregateModel",
+                        "mschema": "AggregateSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/storage/aggregates/{id}",
+            "namespace": "storage"
+        },
+        "StorageNodeCollectionController": {
+            "service": "StorageNodeService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "StorageNodeModel",
+                        "mschema": "StorageNodeSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "201",
+                        "model": "StorageNodeModel",
+                        "mschema": "StorageNodeSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/storage/storage-nodes",
+            "namespace": "storage"
+        },
+        "StorageNodeController": {
+            "service": "StorageNodeService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "200",
+                        "model": "StorageNodeModel",
+                        "mschema": "StorageNodeSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "StorageNodeModel",
+                        "mschema": "StorageNodeSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/storage/storage-nodes/{id}",
+            "namespace": "storage"
+        },
+        "StorageDeviceCollectionController": {
+            "service": "StorageDeviceService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "StorageDeviceModel",
+                        "mschema": "StorageDeviceSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "201",
+                        "model": "StorageDeviceModel",
+                        "mschema": "StorageDeviceSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/storage/storage-devices",
+            "namespace": "storage"
+        },
+        "StorageDeviceController": {
+            "service": "StorageDeviceService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "200",
+                        "model": "StorageDeviceModel",
+                        "mschema": "StorageDeviceSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "StorageDeviceModel",
+                        "mschema": "StorageDeviceSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/storage/storage-devices/{id}",
+            "namespace": "storage"
+        },
+        "ExportPolicyCollectionController": {
+            "service": "ExportPolicyService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "ExportPolicyModel",
+                        "mschema": "ExportPolicySchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "201",
+                        "model": "ExportPolicyModel",
+                        "mschema": "ExportPolicySchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/storage/export-policies",
+            "namespace": "storage"
+        },
+        "ExportPolicyController": {
+            "service": "ExportPolicyService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "200",
+                        "model": "ExportPolicyModel",
+                        "mschema": "ExportPolicySchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "ExportPolicyModel",
+                        "mschema": "ExportPolicySchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/storage/export-policies/{id}",
+            "namespace": "storage"
+        },
+        "ClusterPropertyCollectionController": {
+            "service": "ClusterPropertyService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "ClusterPropertiesModel",
+                        "mschema": "ClusterPropertiesSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "201",
+                        "model": "ClusterPropertiesModel",
+                        "mschema": "ClusterPropertiesSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/storage/cluster-properties",
+            "namespace": "storage"
+        },
+        "ClusterPropertyController": {
+            "service": "ClusterPropertyService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "200",
+                        "model": "ClusterPropertiesModel",
+                        "mschema": "ClusterPropertiesSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "ClusterPropertiesModel",
+                        "mschema": "ClusterPropertiesSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/storage/cluster-properties/{id}",
+            "namespace": "storage"
+        },
+        "SwitchCollectionController": {
+            "service": "SwitchService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "embed",
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "SwitchModel",
+                        "mschema": "SwitchSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "201",
+                        "model": "SwitchModel",
+                        "mschema": "SwitchSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/network/switches",
+            "namespace": "network"
+        },
+        "SwitchController": {
+            "service": "SwitchService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "SwitchModel",
+                        "mschema": "SwitchSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "SwitchModel",
+                        "mschema": "SwitchSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/network/switches/{id}",
+            "namespace": "network"
+        },
+        "PortCollectionController": {
+            "service": "PortService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [
+                        "limit",
+                        "sort"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "PortModel",
+                        "mschema": "PortSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "supported": false
+                },
+                "post": {
+                    "method": "post",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "201",
+                        "model": "PortModel",
+                        "mschema": "PortSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "delete": {
+                    "supported": false
+                }
+            },
+            "controller_type": "COLLECTION",
+            "base_controller": "BaseCollectionController",
+            "uri": "/network/ports",
+            "namespace": "network"
+        },
+        "PortController": {
+            "service": "PortService",
+            "methods": {
+                "get": {
+                    "method": "get",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "200",
+                        "model": "PortModel",
+                        "mschema": "PortSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "put": {
+                    "method": "put",
+                    "query_params": [
+                        "embed"
+                    ],
+                    "response": {
+                        "success_code": "200",
+                        "model": "PortModel",
+                        "mschema": "PortSchema"
+                    },
+                    "request": {},
+                    "supported": true
+                },
+                "post": {
+                    "supported": false
+                },
+                "delete": {
+                    "method": "delete",
+                    "query_params": [],
+                    "response": {
+                        "success_code": "204"
+                    },
+                    "request": {},
+                    "supported": true
+                }
+            },
+            "controller_type": "ITEM",
+            "base_controller": "BaseItemController",
+            "uri": "/network/ports/{id}",
+            "namespace": "network"
+        }
+    },
+    "fkeys": {
+        "AggregateModel": {
+            "storagenode_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.storagenodes.identifier"
+            }
+        },
+        "StorageNodeModel": {
+            "storagenode_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.storagenodes.identifier"
+            },
+            "storagehapair_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.storagehapairs.identifier"
+            }
+        },
+        "LagModel": {
+            "storagenode_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.storagenodes.identifier"
+            },
+            "switch_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.switches.identifier"
+            },
+            "router_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.routers.identifier"
+            }
+        },
+        "VolumeModel": {
+            "aggregate_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.aggregates.identifier"
+            },
+            "qos_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.qoss.identifier"
+            },
+            "exportpolicy_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.exportpolicies.identifier"
+            },
+            "snapshotpolicy_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.snapshotpolicies.identifier"
+            },
+            "efficiencypolicy_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.efficiencypolicies.identifier"
+            },
+            "schedule_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.schedules.identifier"
+            },
+            "qtree_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.qtrees.identifier"
+            },
+            "lif_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.lifs.identifier"
+            },
+            "svm_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.svms.identifier"
+            }
+        },
+        "ExportPolicyModel": {
+            "rule_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.rules.identifier"
+            }
+        },
+        "SnapshotPolicyModel": {
+            "schedule_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.schedules.identifier"
+            }
+        },
+        "QtreeModel": {
+            "exportpolicy_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.exportpolicies.identifier"
+            },
+            "lif_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.lifs.identifier"
+            }
+        },
+        "LifModel": {
+            "failovergroup_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.failovergroups.identifier"
+            },
+            "port_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.ports.identifier"
+            },
+            "svm_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.svms.identifier"
+            }
+        },
+        "PortModel": {
+            "failovergroup_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.failovergroups.identifier"
+            },
+            "switch_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.switches.identifier"
+            },
+            "segment_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.segments.identifier"
+            },
+            "router_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.routers.identifier"
+            }
+        },
+        "StorageHAPairModel": {
+            "clusterproperties_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.clusterproperties.identifier"
+            }
+        },
+        "SvmModel": {
+            "clusterproperties_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.clusterproperties.identifier"
+            },
+            "exportpolicy_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "storage.exportpolicies.identifier"
+            }
+        },
+        "SwitchModel": {
+            "position_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.positions.identifier"
+            },
+            "ip_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.ips.identifier"
+            }
+        },
+        "InterfaceModel": {
+            "switch_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.switches.identifier"
+            },
+            "subnet_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.subnets.identifier"
+            },
+            "router_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.routers.identifier"
+            }
+        },
+        "NetworkModel": {
+            "vlan_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.vlans.identifier"
+            }
+        },
+        "SegmentModel": {
+            "network_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.networks.identifier"
+            }
+        },
+        "SubnetModel": {
+            "network_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.networks.identifier"
+            }
+        },
+        "SubnetGatewayModel": {
+            "subnet_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.subnets.identifier"
+            },
+            "gateway_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.gateways.identifier"
+            }
+        },
+        "RouteModel": {
+            "switch_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.switches.identifier"
+            },
+            "subnet_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.subnets.identifier"
+            },
+            "vrf_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.vrfs.identifier"
+            },
+            "router_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.routers.identifier"
+            }
+        },
+        "VrfModel": {
+            "switch_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.switches.identifier"
+            },
+            "router_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.routers.identifier"
+            }
+        },
+        "RouterModel": {
+            "position_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.positions.identifier"
+            },
+            "ip_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.ips.identifier"
+            }
+        },
+        "PeerModel": {
+            "router_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.routers.identifier"
+            },
+            "asn_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.asns.identifier"
+            },
+            "vrf_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.vrfs.identifier"
+            }
+        },
+        "VlanModel": {
+            "vrf_id": {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "network.vrfs.identifier"
+            }
+        }
+    }
+}
