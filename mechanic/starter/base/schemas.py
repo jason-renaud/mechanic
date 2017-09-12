@@ -10,6 +10,7 @@ class BaseModelSchema(ma.ModelSchema):
     last_modified = fields.DateTime(load_only=True, dump_only=True)
     locked = fields.Boolean(load_only=True, dump_only=True)
     etag = fields.String(load_only=True, dump_only=True)
+    controller = fields.String(load_only=True, dump_only=True)
 
     class Meta:
         strict = True

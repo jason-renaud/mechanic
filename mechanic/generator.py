@@ -13,16 +13,22 @@ class Generator:
         self.mechanic_obj = self._deserialize_file()
         self.mechanic_conf = mechanic_conf
         self.output_dir = output_dir
+        self.BASE_INIT_SRC = pkg_resources.resource_filename(__name__, "starter/base/__init__.py")
+        self.BASE_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
         self.BASE_CONTROLLERS_SRC = pkg_resources.resource_filename(__name__, "starter/base/controllers.py")
         self.BASE_CONTROLLERS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
         self.BASE_SCHEMAS_SRC = pkg_resources.resource_filename(__name__, "starter/base/schemas.py")
         self.BASE_SCHEMAS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
+        self.BASE_EXCEPTIONS_SRC = pkg_resources.resource_filename(__name__, "starter/base/exceptions.py")
+        self.BASE_EXCEPTIONS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
         self.BASE_FIELDS_SRC = pkg_resources.resource_filename(__name__, "starter/base/fields.py")
         self.BASE_FIELDS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_INIT_SRC = pkg_resources.resource_filename(__name__, "starter/app/__init__.py")
-        self.BASE_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/app/__init__.py")
-        self.BASE_RUN_SRC = pkg_resources.resource_filename(__name__, "starter/run.py")
-        self.BASE_RUN_OUTPUT = os.path.expanduser(self.output_dir + "/")
+        self.BASE_DB_HELPER_SRC = pkg_resources.resource_filename(__name__, "starter/base/db_helper.py")
+        self.BASE_DB_HELPER_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
+        self.APP_INIT_SRC = pkg_resources.resource_filename(__name__, "starter/app/__init__.py")
+        self.APP_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/app/__init__.py")
+        self.APP_RUN_SRC = pkg_resources.resource_filename(__name__, "starter/run.py")
+        self.APP_RUN_OUTPUT = os.path.expanduser(self.output_dir + "/")
         self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "starter/requirements.txt")
         self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/")
         self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "starter/app/config.py")
@@ -162,14 +168,17 @@ class Generator:
             app = True
 
         if app:
-            shutil.copy(self.BASE_RUN_SRC, self.BASE_RUN_OUTPUT)
-            shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
+            shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
+            shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
             shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
             shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
         if base:
+            shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
             shutil.copy(self.BASE_CONTROLLERS_SRC, self.BASE_CONTROLLERS_OUTPUT)
             shutil.copy(self.BASE_SCHEMAS_SRC, self.BASE_SCHEMAS_OUTPUT)
             shutil.copy(self.BASE_FIELDS_SRC, self.BASE_FIELDS_OUTPUT)
+            shutil.copy(self.BASE_EXCEPTIONS_SRC, self.BASE_EXCEPTIONS_OUTPUT)
+            shutil.copy(self.BASE_DB_HELPER_SRC, self.BASE_DB_HELPER_OUTPUT)
 
     def _render(self, tpl_path, context):
         path, filename = os.path.split(tpl_path)

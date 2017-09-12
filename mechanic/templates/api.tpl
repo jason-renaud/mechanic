@@ -8,5 +8,5 @@ def init_api(api):
     from controllers import {% for controller_name, controller in data.items() %}{{ controller_name }}{{ ", " if not loop.last }}{% endfor %}
 
     {%- for controller_name, controller in data.items() %}
-    api.add_resource({{ controller_name }}, config["BASE_API_PATH"] + "{{ controller.uri }}")
+    api.add_resource({{ controller_name }}, config["BASE_API_PATH"] + "{{ controller.uri.replace("{id}", "<string:resource_id>") }}")
     {%- endfor %}

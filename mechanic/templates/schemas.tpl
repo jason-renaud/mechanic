@@ -20,7 +20,7 @@ class {{ schema_name }}(BaseModelSchema):
     {{ prop_name }} = OneOf(field_types=[
                                         {%- for item in prop.oneOf -%}
                                             {%- if item.nested %}
-                                    fields.Nested("{{ item.nested }}", exclude=({%- for exc in exclude %}{{ exc }},{%- endfor %})),
+                                    fields.Nested("{{ item.nested }}", exclude=({%- for exc in item.exclude %}"{{ exc }}",{%- endfor %})),
                                             {%- else %}
                                     fields.{{ item.type }}(required={{ prop.required }}, {%- if prop.maxLength %}{{ prop.maxLength }}{%- endif %}),
                                             {%- endif %}
@@ -60,7 +60,6 @@ class {{ schema_name }}(BaseSchema):
     {%- endfor %}
 
     class Meta:
-
         strict = True
     #}
     {%- endif %}

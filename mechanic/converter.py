@@ -58,6 +58,7 @@ py_data_map = {
 
 class RelationshipType(Enum):
     ONE_TO_ONE = "ONE_TO_ONE"
+    ONE_TO_ONEOF = "ONE_TO_ONEOF"
     SELF_ONE_TO_ONE = "SELF_ONE_TO_ONE"
     ONE_TO_MANY = "ONE_TO_MANY"
     MANY_TO_ONE = "MANY_TO_ONE"
@@ -450,7 +451,8 @@ class Converter:
                                            model,
                                            current_schema_key=schema_name,
                                            namespace=schema.get(EXTENSION_NAMESPACE, namespace),
-                                           schema_properties=schema.get("properties", {}))
+                                           schema_properties=schema.get("properties", {}),
+                                           required_props=schema.get("required", []))
 
         # Create mschemas from response
         self._mschema_from_model(model_key, model, namespace=model["namespace"])
@@ -469,7 +471,10 @@ class Converter:
             if prop.get("reference"):
                 if not schema["properties"].get(prop_name):
                     schema["properties"][prop_name] = dict()
-                schema["properties"][prop_name]["nested"] = prop.get("reference").get("model").replace("Model", "Schema")
+
+                referenced_schema_name = prop.get("reference").get("model").replace("Model", "Schema")
+                nested =  "self" if referenced_schema_name == schema_key else referenced_schema_name
+                schema["properties"][prop_name]["nested"] = nested
                 schema["properties"][prop_name]["many"] = prop.get("reference").get("uselist", False)
             if prop.get("enum"):
                 if not schema["properties"].get(prop_name):
@@ -834,7 +839,9 @@ class Converter:
             new_prop["reference"] = dict()
 
         new_prop["reference"][referenced_model_key] = ref_type
+        # new_prop["reference"]["model"] = "self" if model_key == referenced_model_key else referenced_model_key
         new_prop["reference"]["model"] = referenced_model_key
+        new_prop["reference"]["remote_side"] = "[identifier]" if model_key == referenced_model_key else None
         # new_prop["reference"]["resource"] = referenced_schema_key
         new_prop["reference"]["foreign_keys"] = None
         new_prop["reference"]["back_populates"] = None
@@ -903,6 +910,26 @@ class Converter:
 
             if not one_of:
                 new_prop.pop("reference")
+        elif rel_type == RelationshipType.ONE_TO_ONEOF:
+            new_prop["reference"]["uselist"] = False
+            new_prop["reference"]["back_populates"] = current_schema_key.lower() + "_" + model_key.lower()
+
+            # sorting them, because we only want 1 foreign key
+            sorted_model_keys = [referenced_model_key, model_key]
+            sorted_model_keys.sort()
+            sorted_schema_keys = [referenced_schema_key, current_schema_key]
+            sorted_schema_keys.sort()
+
+            if not self.fkeys.get(sorted_model_keys[0]):
+                self.fkeys[sorted_model_keys[0]] = dict()
+
+            self.fkeys[sorted_model_keys[0]][sorted_schema_keys[1].lower() + "_id"] = {
+                "type": "String",
+                "maxLength": 36,
+                "foreign_key": "REPLACE:" + sorted_model_keys[1]
+            }
+            if self.fkeys.get(model_key, {}).get(referenced_schema_key.lower() + "_id"):
+                new_prop["reference"]["foreign_keys"] = model_key + "." + referenced_schema_key.lower() + "_id"
         elif rel_type == RelationshipType.MANY_TO_MANY:
             print("Many to many relationships are not supported.")
             exit()
@@ -1033,7 +1060,7 @@ class Converter:
                 for item in prop["oneOf"]:
                     if item.get("$ref", "").endswith(current_schema_name.lower()):
                         if ref_type_to_schema == "ONE":
-                            return RelationshipType.ONE_TO_ONE
+                            return RelationshipType.ONE_TO_ONEOF
                         elif ref_type_to_schema == "MANY":
                             return RelationshipType.ONE_TO_MANY
                     elif item.get("items", {}).get("$ref", "").endswith(current_schema_name.lower()):

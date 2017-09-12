@@ -17,7 +17,8 @@ class OneOf(fields.Field):
         for val in vals:
             if val:
                 return val
-        raise ValidationError(attr + ": does not match any of the possible field types.")
+        return None
+        # raise ValidationError(attr + ": does not match any of the possible field types.")
 
     def _deserialize(self, value, attr, data):
         for item in self.field_types:
