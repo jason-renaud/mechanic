@@ -1,5 +1,5 @@
 from unittest import TestCase
-from mechanic.mechanic.merger import Merger
+from mechanic.mechanic.converter import Merger
 
 
 class MergerTest(TestCase):

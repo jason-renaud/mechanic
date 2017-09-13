@@ -1,18 +1,22 @@
+# native python
 import os
 import datetime
 import pkg_resources
 import shutil
 import json
+
+# third party
 import yaml
 import jinja2
 
 
 class Generator:
-    def __init__(self, mechanic_file, mechanic_conf, output_dir, app_name=None):
+    def __init__(self, mechanic_file, output_dir):
         self.mechanic_file = mechanic_file
         self.mechanic_obj = self._deserialize_file()
-        self.mechanic_conf = mechanic_conf
         self.output_dir = output_dir
+
+        # variables set for source and location of generated files.
         self.BASE_INIT_SRC = pkg_resources.resource_filename(__name__, "starter/base/__init__.py")
         self.BASE_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
         self.BASE_CONTROLLERS_SRC = pkg_resources.resource_filename(__name__, "starter/base/controllers.py")
@@ -38,21 +42,38 @@ class Generator:
         self.API_MODELS_PATH = os.path.expanduser(self.output_dir + "/models/")
         self.API_SCHEMAS_PATH = os.path.expanduser(self.output_dir + "/schemas/")
 
-        if app_name is None:
-            self.app_name = self.output_dir.split("/")[-1]
+    def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False):
+        """
+        Generates code into the directory specified by self.output_dir
 
-    def generate(self):
-        print("\n\n###")
-        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/")):
-            os.makedirs(os.path.expanduser(self.output_dir + "/app/"))
-        if not os.path.exists(os.path.expanduser(self.output_dir + "/base/")):
-            os.makedirs(os.path.expanduser(self.output_dir + "/base/"))
+        :param all: If True, all parameters below are set to True as well.
+        :param models: flag to signal SQLAlchemy models should be generated.
+        :param schemas: flag to signal Marshmallow schemas should be generated.
+        :param controllers: flag to signal controllers should be generated.
+        :param api: flag to signal api endpoint mapping code should be generated.
+        :param starter: flag to signal starter files should be generated.
+        """
+        if all:
+            models = True
+            schemas = True
+            controllers = True
+            api = True
+            starter = True
 
-        self.generate_starter_files(all=True)
-        self.generate_models()
-        self.generate_schemas()
-        self.generate_controllers()
-        self.generate_api_endpoints()
+        if starter:
+            self.generate_starter_files()
+
+        if models:
+            self.generate_models()
+
+        if schemas:
+            self.generate_schemas()
+
+        if controllers:
+            self.generate_controllers()
+
+        if api:
+            self.generate_api_endpoints()
 
     def generate_models(self):
         import_modules = ""
@@ -145,40 +166,45 @@ class Generator:
             if not os.path.exists(controllers_output):
                 os.makedirs(controllers_output)
 
-            import_modules = import_modules + "from controllers." + namespace + ".controllers import *\n"
-            with open(controllers_output + "/__init__.py", "w"):
-                pass
-
+            import_modules = import_modules + "from ." + namespace + ".controllers import *\n"
             with open(controllers_output + "/controllers.py", "w") as f:
                 f.write(controllers_result)
+
+            with open(controllers_output + "/__init__.py", "w") as f:
+                controllers_output = self.API_CONTROLLERS_PATH + namespace
+
+                # custom controllers
+                for item in os.listdir(controllers_output):
+                    # get all files in namespace controllers directory, and import all files with that.
+                    if os.path.isfile(controllers_output + "/" + item) and item != "__init__.py":
+                        item = item.strip(".py")
+                        f.write("from ." + item + " import *\n")
 
         with open(self.API_CONTROLLERS_PATH + "/__init__.py", "w") as f:
             f.write(import_modules)
 
-    def generate_starter_files(self,
-                               all=False,
-                               base=False,
-                               app=False):
+    def generate_starter_files(self):
         """
         Only generate the absolute minimum files needed for a Flask app. At this point, no model, custom controllers, or
         marshmallow schemas exist yet, but you can run the app successfully.
         """
-        if all:
-            base = True
-            app = True
+        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/")):
+            os.makedirs(os.path.expanduser(self.output_dir + "/app/"))
 
-        if app:
-            shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
-            shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
-            shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
-            shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
-        if base:
-            shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
-            shutil.copy(self.BASE_CONTROLLERS_SRC, self.BASE_CONTROLLERS_OUTPUT)
-            shutil.copy(self.BASE_SCHEMAS_SRC, self.BASE_SCHEMAS_OUTPUT)
-            shutil.copy(self.BASE_FIELDS_SRC, self.BASE_FIELDS_OUTPUT)
-            shutil.copy(self.BASE_EXCEPTIONS_SRC, self.BASE_EXCEPTIONS_OUTPUT)
-            shutil.copy(self.BASE_DB_HELPER_SRC, self.BASE_DB_HELPER_OUTPUT)
+        shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
+        shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
+        shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
+        shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
+
+        if not os.path.exists(os.path.expanduser(self.output_dir + "/base/")):
+            os.makedirs(os.path.expanduser(self.output_dir + "/base/"))
+
+        shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
+        shutil.copy(self.BASE_CONTROLLERS_SRC, self.BASE_CONTROLLERS_OUTPUT)
+        shutil.copy(self.BASE_SCHEMAS_SRC, self.BASE_SCHEMAS_OUTPUT)
+        shutil.copy(self.BASE_FIELDS_SRC, self.BASE_FIELDS_OUTPUT)
+        shutil.copy(self.BASE_EXCEPTIONS_SRC, self.BASE_EXCEPTIONS_OUTPUT)
+        shutil.copy(self.BASE_DB_HELPER_SRC, self.BASE_DB_HELPER_OUTPUT)
 
     def _render(self, tpl_path, context):
         path, filename = os.path.split(tpl_path)
@@ -202,7 +228,3 @@ class Generator:
                               "be one of those too).")
         self.root_dir = os.path.dirname(os.path.realpath(self.mechanic_file))
         return mechanic_obj
-
-    def _copy_flask_app(self):
-        pass
-

@@ -24,6 +24,9 @@ logger = logging.getLogger(app.config["DEFAULT_LOG_NAME"])
 
 
 class BaseController(Resource):
+    """
+    BaseController to define base functionilty/methods for concrete controllers.
+    """
     responses = dict()
     requests = dict()
 
@@ -42,7 +45,22 @@ class BaseController(Resource):
     def patch(self, *args, **kwargs):
         return self._not_implemented_response("PATCH")
 
+    def options(self, *args, **kwargs):
+        return self._not_implemented_response("OPTIONS")
+
+    def head(self, *args, **kwargs):
+        return self._not_implemented_response("HEAD")
+
+    def trace(self, *args, **kwargs):
+        return self._not_implemented_response("TRACE")
+
     def _not_implemented_response(self, method_type):
+        """
+        Returns a response for methods that are not implemented.
+
+        :param method_type: the HTTP method type. GET, PUT, POST, etc.
+        :return: Flask response with formatted error.
+        """
         error = dict()
         error["message"] = "The request method type: %s for path: %s is not supported." % (method_type, request.path)
         error["resolution"] = "Retry using a valid request."
@@ -71,6 +89,11 @@ class BaseController(Resource):
         return jsonify(error_response)
 
     def _get_caching_headers(self):
+        """
+        Parses caching relevant headers from the request object.
+
+        :return: Dictionary of caching headers.
+        """
         headers = dict()
 
         # Get If-Match header
@@ -87,10 +110,14 @@ class BaseController(Resource):
         headers[IF_UNMODIFIED_SINCE] = request.headers.get(IF_UNMODIFIED_SINCE)
         return headers
 
-    def _get_item_apply_query_params(self):
-        pass
+    def _retrieve_object(self, resource_id, caching_headers=None):
+        """
+        Retrieves an object from the database based on the resource_id and the model defined in the controller response.
 
-    def _retrieve_object(self, resource_id, caching_headers=None, *args, **kwargs):
+        :param resource_id: identifier of the resource in the database.
+        :param caching_headers: request headers sent in by the request.
+        :return: the retrieved object from the database as a SQLAlchemy model.
+        """
         if not caching_headers:
             model = db_helper.read(resource_id, self.responses["get"]["model"])
         else:
@@ -103,24 +130,45 @@ class BaseController(Resource):
         return model
 
     def _get_success_response_code(self, method_type):
-        return self.responses[method_type]["code"]
+        """
+        Gets the controller's success response code for the method type.
+
+        :param method_type: an HTTP method. GET, PUT, POST, DELETE, etc
+        :return: the HTTP response code number
+        """
+        return self.responses[method_type.lower()]["code"]
 
     def _verify_request(self):
+        """
+        Verifies the request. This base method only verifies that the request format is in json. This method can be
+        overridden and additional verification can be added if needed.
+        """
         if not request.is_json:
             raise MechanicNotSupportedException(msg="Only application/json is supported at this time.")
 
     def _verify_serialized_model(self, serialized_model):
+        """
+        Verifies the serialized model. This base method only verifies that the model is not None. This method can be
+        overridden and additional verification can be added if needed.
+
+        :param serialized_model: The already serialized model (i.e. a dictionary representation of the model.)
+        """
         if not serialized_model:
             raise MechanicNotFoundException(uri=request.path)
 
 
 class BaseItemController(BaseController):
+    """
+    Base class that handles API endpoints that map to a specific resource. I.e., endpoints that end with a resource id.
+    Example endpoints that match this could be:
+    /api/dogs/{id}
+    /v1/airplanes/{id}
+
+    In both cases, the {id} implies that the uri represents a specific dog or a specific airplane resource.
+    """
     def get(self, resource_id):
-        """
-        """
         try:
             caching_headers = self._get_caching_headers()
-            self._get_item_apply_query_params()
             model = self._retrieve_object(resource_id, caching_headers=caching_headers)
             model_data = self._get_item_serialize_model(model)
             self._verify_serialized_model(model_data)
@@ -138,9 +186,6 @@ class BaseItemController(BaseController):
         return ret
 
     def put(self, resource_id):
-        """
-        Replace existing object. If an attribute is left out of the request body, then don't edit the attribute?
-        """
         try:
             caching_headers = self._get_caching_headers()
 
@@ -153,7 +198,7 @@ class BaseItemController(BaseController):
             serialized_model = self._put_item_serialize_model(updated_model)
 
             resp_code = self._get_success_response_code("put")
-            ret = make_response(serialized_model, resp_code, { ETAG_HEADER: updated_model.etag })
+            ret = make_response(jsonify(serialized_model), resp_code, { ETAG_HEADER: updated_model.etag })
         except MechanicException as e:
             logger.error(e.message)
 
@@ -182,6 +227,12 @@ class BaseItemController(BaseController):
         return ret
 
     def _get_item_serialize_model(self, model):
+        """
+        Serializes the model into a python dictionary.
+
+        :param model: SQLAlchemy model to serialize.
+        :return: Dictionary represenation of the model.
+        """
         schema = self.responses["get"]["schema"]()
         serialized_model = schema.dump(model)
         return serialized_model.data
@@ -190,21 +241,64 @@ class BaseItemController(BaseController):
         super(BaseItemController, self)._verify_request()
 
     def _put_item_deserialize_request(self):
+        """
+        Deserializes the json request body into a SQLAlchemy model instance.
+
+        :return: SQLAlchemy model created from the request body.
+        """
         request_body = request.get_json()
         schema = self.responses["put"]["schema"]()
 
         try:
             # load() will raise an exception if an error occurs because all Marshmallow schemas have the Meta attribute
-            # "strict = True"
+            # "strict = True". Therefore, no need to check the 'errors' value, so we use a '_' instead.
             model_instance, _ = schema.load(request_body)
         except ValidationError as e:
+            # If the request body did not succeed through Marshmallow validation
             raise MechanicBadRequestException(msg=e.messages)
         return model_instance
 
     def _put_item_verify_deserialized_request(self, deserialized_request):
+        """
+        No-op by default, but can be overridden to add some verification.
+
+        :param deserialized_request: SQLAlchemy model deserialized from a json request body.
+        """
         pass
 
     def _put_item_db_update(self, deserialized_request, existing_model, caching_headers=None):
+        """
+        Replace existing object. The object passed in should be the exact object that is saved. This means that is an
+        attribute is not present, then the attribute will not exist in the new object. For example:
+
+        Original object:
+        {
+            "dog": "fido",
+            "cat": "sparky"
+        }
+
+        Put request body:
+        {
+            "dog": "spot"
+        }
+
+        The new object will be:
+        {
+            "dog": "spot"
+            "cat": null
+        }
+
+        **NOT**
+        {
+            "dog": "spot",
+            "cat": "sparky"
+        }
+
+        :param deserialized_request: the new SQLAlchemy model to replace the old one.
+        :param existing_model: SQLAlchemy model already in the database.
+        :param caching_headers: Dictionary of caching headers (If-Match, If-Modified-Since, etc.)
+        :return: Updated SQLAlchemy model that is in the database.
+        """
         if not existing_model:
             raise MechanicNotFoundException(uri=request.path)
 
@@ -213,18 +307,30 @@ class BaseItemController(BaseController):
         else:
             model = db_helper.replace(existing_model,
                                       deserialized_request,
-                                  if_modified_since=caching_headers[IF_MODIFIED_SINCE],
-                                  if_unmodified_since=caching_headers[IF_UNMODIFIED_SINCE],
-                                  if_match=caching_headers[IF_MATCH],
-                                  if_none_match=caching_headers[IF_NONE_MATCH])
+                                      if_modified_since=caching_headers[IF_MODIFIED_SINCE],
+                                      if_unmodified_since=caching_headers[IF_UNMODIFIED_SINCE],
+                                      if_match=caching_headers[IF_MATCH],
+                                      if_none_match=caching_headers[IF_NONE_MATCH])
         return model
 
     def _put_item_serialize_model(self, updated_model):
+        """
+        Serializes a SQLAlchemy model into a python dictionary.
+
+        :param updated_model: SQLAlchemy model that was just recently updated.
+        :return: Python dictionary representation of the model.
+        """
         schema = self.responses["put"]["schema"]()
         serialized_model = schema.dump(updated_model)
-        return jsonify(serialized_model.data)
+        return serialized_model.data
 
     def _delete_item_db_delete(self, existing_model, caching_headers=None):
+        """
+        Deletes the model in the database.
+
+        :param existing_model: model in the database to delete.
+        :param caching_headers: Dictionary of caching headers (If-Match, If-Modified-Since, etc.)
+        """
         if not existing_model:
             raise MechanicNotFoundException(uri=request.path)
 
@@ -241,9 +347,6 @@ class BaseItemController(BaseController):
 
 class BaseCollectionController(BaseController):
     def get(self):
-        """
-        Get all resources of a certain type.
-        """
         try:
             models = self._get_collection_retrieve_all_objects()
             serialized_models = self._get_collection_serialize_models(models)
@@ -257,9 +360,6 @@ class BaseCollectionController(BaseController):
         return ret
 
     def post(self):
-        """
-        Create new object.
-        """
         try:
             self._post_collection_verify_request()
             deserialized_request = self._post_collection_deserialize_request()
@@ -267,7 +367,7 @@ class BaseCollectionController(BaseController):
             created_model = self._post_collection_db_create(deserialized_request)
             serialized_model = self._post_collection_serialize_model(created_model)
             resp_code = self._get_success_response_code("post")
-            ret = make_response(serialized_model, resp_code, { ETAG_HEADER: created_model.etag })
+            ret = make_response(jsonify(serialized_model), resp_code, { ETAG_HEADER: created_model.etag })
         except MechanicException as e:
             logger.error(e.message)
             error_response = self._convert_to_error(e)
@@ -276,9 +376,20 @@ class BaseCollectionController(BaseController):
         return ret
 
     def _get_collection_retrieve_all_objects(self):
+        """
+        Retrieve all objects of the model defined in the controller's responses.get attribute.
+
+        :return: A list of SQLAlchemy models.
+        """
         return self.responses["get"]["model"].query.all()
 
     def _get_collection_serialize_models(self, models):
+        """
+        Serialize a collection of SQLAlchemy models into a python list of dictionaries.
+
+        :param models: List of SQLAlchemy models.
+        :return: List of python dictionaries.
+        """
         schema = self.responses["get"]["schema"](many=True)
         serialized_models = schema.dump(models)
         return serialized_models.data
@@ -287,6 +398,11 @@ class BaseCollectionController(BaseController):
         super(BaseCollectionController, self)._verify_request()
 
     def _post_collection_deserialize_request(self):
+        """
+        Deserializes the json request body into a SQLAlchemy model instance.
+
+        :return: SQLAlchemy model created from the request body.
+        """
         request_body = request.get_json()
 
         schema = self.responses["post"]["schema"]()
@@ -301,12 +417,29 @@ class BaseCollectionController(BaseController):
         return model_instance
 
     def _post_collection_verify_deserialized_request(self, deserialized_request):
+        """
+        No-op by default, but can be overridden to add some verification.
+
+        :param deserialized_request: SQLAlchemy model deserialized from a json request body.
+        """
         pass
 
     def _post_collection_db_create(self, deserialized_request):
+        """
+        Creates a record in the database for the deserialized request.
+
+        :param deserialized_request: SQLAlchemy model deserialized from json request body.
+        :return:
+        """
         return db_helper.create(deserialized_request)
 
     def _post_collection_serialize_model(self, model):
+        """
+        Serializes a SQLAlchemy model into a python dictionary.
+
+        :param updated_model: SQLAlchemy model that was just recently created.
+        :return: Python dictionary representation of the model.
+        """
         schema = self.responses["post"]["schema"]()
         serialized_model = schema.dump(model)
-        return jsonify(serialized_model.data)
+        return serialized_model.data

@@ -8,7 +8,7 @@ from base.exceptions import MechanicResourceAlreadyExistsException, MechanicNotF
     MechanicInvalidETagException, MechanicNotModifiedException
 from app import db
 
-logger = logging.getLogger(app.config['DEFAULT_LOG_NAME'])
+logger = logging.getLogger(app.config["DEFAULT_LOG_NAME"])
 logger.setLevel("DEBUG")
 
 
@@ -44,10 +44,9 @@ def create(model):
     if model.identifier:
         model_exists = model.__class__.query.get(model.identifier)
 
-        # if model_exists:
-        #     print("$$$$$$$$$$$$")
-        #     logger.error("Resource already exists - type: %s, identifier: %s", model.__class__, model.identifier)
-        #     raise MechanicResourceAlreadyExistsException()
+        if model_exists:
+            logger.error("Resource already exists - type: %s, identifier: %s", model.__class__, model.identifier)
+            raise MechanicResourceAlreadyExistsException()
 
     # set created and last_modified
     model.created = datetime.utcnow()
@@ -58,21 +57,19 @@ def create(model):
     return model.__class__.query.get(model.identifier)
 
 
-def update(identifier, model_class, changed_attributes, lock=False, if_modified_since=None, if_unmodified_since=None,
+def update(identifier, model_class, changed_attributes, if_modified_since=None, if_unmodified_since=None,
            if_match=[], if_none_match=[]):
     """
     Updates an object with the dictionary of changed_attributes.
 
     Retrieves the object w/ the specified identifier:
     - Compare eTag values, if eTag validation fails, raise 412 precondition failed exception.
-    - If 'locked' is set to True, raise 423 locked exception.
-    - If above validations are successful, update object. If lock=True, set 'locked' to True in addition to updating
+    - If above validations are successful, update object.
     the object.
 
     :param identifier: primary key of object.
     :param model_class: model class of the object.
     :param changed_attributes: dictionary of attributes to update.
-    :param lock: boolean to determine if 'locked' attribute should be set or not.
     :param if_modified_since
     :param if_unmodified_since
     :param if_match
@@ -86,13 +83,8 @@ def update(identifier, model_class, changed_attributes, lock=False, if_modified_
         raise MechanicNotFoundException()
 
     # validations
-    # _validate_resource_not_locked(model)
     _validate_modified_headers(if_modified_since, if_unmodified_since, model)
     _validate_match_headers(if_match, if_none_match, model)
-
-    if lock:
-        # mark resource as 'locked'
-        model.locked = True
 
     # update model
     for key, value in changed_attributes.items():
@@ -105,7 +97,7 @@ def update(identifier, model_class, changed_attributes, lock=False, if_modified_
     return model_class.query.get(identifier)
 
 
-def replace(identifier, new_model, lock=False, if_modified_since=None, if_unmodified_since=None, if_match=[],
+def replace(identifier, new_model, if_modified_since=None, if_unmodified_since=None, if_match=[],
             if_none_match=[]):
     """
     Same as an update, except instead of only updating the specified attributes, it replaces the entire object.
@@ -116,7 +108,6 @@ def replace(identifier, new_model, lock=False, if_modified_since=None, if_unmodi
         raise MechanicNotFoundException()
 
     # validations
-    # _validate_resource_not_locked(model)
     _validate_modified_headers(if_modified_since, if_unmodified_since, model)
     _validate_match_headers(if_match, if_none_match, model)
 
@@ -124,10 +115,6 @@ def replace(identifier, new_model, lock=False, if_modified_since=None, if_unmodi
 
     # first delete object
     delete(identifier, new_model.__class__, if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since, if_match=if_match, if_none_match=if_none_match)
-
-    if lock:
-        # mark resource as 'locked'
-        new_model.locked = True
 
     new_model.identifier = identifier
     new_model.create = prev_created
@@ -148,12 +135,12 @@ def delete(identifier, model_class, force=False, if_modified_since=None, if_unmo
 
     Retrieves the object w/ the specified identifier:
     - Compare eTag values, if eTag validation fails, raise 412 precondition failed exception.
-    - If 'force' is set to True, delete object regardless of eTag validation and 'locked' attribute.
+    - If 'force' is set to True, delete object regardless of eTag validation.
     - If above validations are successful, delete object.
 
     :param identifier: primary key of object.
     :param model_class
-    :param force: if set to True, delete object regardless of 'locked' attribute.
+    :param force: if set to True, delete object regardless of eTag validation.
     :param if_modified_since
     :param if_unmodified_since
     :param if_match
@@ -166,18 +153,12 @@ def delete(identifier, model_class, force=False, if_modified_since=None, if_unmo
         raise MechanicNotFoundException()
 
     # validations
-    # _validate_resource_not_locked(model)
-    _validate_modified_headers(if_modified_since, if_unmodified_since, model)
-    _validate_match_headers(if_match, if_none_match, model)
+    if not force:
+        _validate_modified_headers(if_modified_since, if_unmodified_since, model)
+        _validate_match_headers(if_match, if_none_match, model)
 
     db.session.delete(model)
     db.session.commit()
-
-
-# def _validate_resource_not_locked(model):
-#     if model.locked:
-#         logger.error("Resource is locked, cannot update - type: %s, identifier: %s", model.__class__, model.identifier)
-#         raise MechanicResourceLockedException()
 
 
 def _validate_modified_headers(if_modified_since, if_unmodified_since, model):

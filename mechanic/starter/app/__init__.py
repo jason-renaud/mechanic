@@ -5,8 +5,14 @@ from flask import Flask
 from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from app.api import init_api
 from app.config import app_config
+
+api_exists = False
+try:
+    from app.api import init_api
+    api_exists = True
+except ImportError:
+    pass
 
 config = {
     "DEFAULT_LOG_NAME": "app",
@@ -32,7 +38,9 @@ def create_app(config_name):
     db.init_app(app)
     ma.init_app(app)
     api = Api(app)
-    init_api(api)
+
+    if api_exists:
+        init_api(api)
 
     with app.app_context():
         # TODO - remove before prod
