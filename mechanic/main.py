@@ -8,14 +8,14 @@ Arguments:
     output          The output directory for generated code
 
 Options:
-    -h --help           Show this screen
-    -v --version        Show version
-    -m, --models        Generate SQLAlchemy models
-    -s, --schemas       Generate Marshmallow schemas
-    -c, --controllers   Generate controllers to handle API endpoints
-    -a, --api           Generate mapping of API endpoints to controllers
-    -b, --starter       Generate starter files needed for a baseline Flask application
-    -k, --merge=<merge-output>         Merges the OpenAPI spec if it is split into multiple files
+    -h --help                           Show this screen
+    -v --version                        Show version
+    -m, --models                        Generate SQLAlchemy models
+    -s, --schemas                       Generate Marshmallow schemas
+    -c, --controllers                   Generate controllers to handle API endpoints
+    -a, --api                           Generate mapping of API endpoints to controllers
+    -b, --starter                       Generate starter files needed for a baseline Flask application
+    -k, --merge=<merge-output>          Merges the OpenAPI spec if it is split into multiple files
 
 Examples:
     The following two commands are equivalent, and both generate all possible items:

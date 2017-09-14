@@ -4,8 +4,7 @@ from mechanic.mechanic.converter import Converter
 
 class ConverterTest(TestCase):
     def setUp(self):
-        # self.converter = Converter("test_specs/petstore.json", "mech-petstore.json")
-        self.converter = Converter("/home/zackschrag/cmdb/resources/master.json", "mech-cmdb.json")
+        self.converter = Converter("test_specs/petstore.json", "mech-petstore.json")
 
     def test_convert_invalid_version(self):
         converter = Converter("test_specs/invalid/invalid_version.json", "")

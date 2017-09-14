@@ -9,7 +9,7 @@ def init_api(api):
     import controllers
 
     {%- for controller_name, controller in data.items() %}
-    api.add_resource(_find_leaf_subclass(controllers.{{ controller_name }}), config["BASE_API_PATH"] + "{{ controller.uri.replace("{id}", "<string:resource_id>") }}")
+    api.add_resource(_find_leaf_subclass(controllers.{{ controller_name }}), config["BASE_API_PATH"] + "{{ controller.uri }}")
     {%- endfor %}
 
 def _find_leaf_subclass(cls):

@@ -166,7 +166,7 @@ class BaseItemController(BaseController):
 
     In both cases, the {id} implies that the uri represents a specific dog or a specific airplane resource.
     """
-    def get(self, resource_id):
+    def get(self, resource_id, **kwargs):
         try:
             caching_headers = self._get_caching_headers()
             model = self._retrieve_object(resource_id, caching_headers=caching_headers)
@@ -346,6 +346,15 @@ class BaseItemController(BaseController):
 
 
 class BaseCollectionController(BaseController):
+    """
+    Base class that handles API endpoints that map to a collection of resources.
+    Example endpoints that match this could be:
+    /api/dogs
+    /v1/airplanes
+
+    In both cases, the lack of {id} implies that the uri represents a collection of dogs or a collection of airplane
+    resources.
+    """
     def get(self):
         try:
             models = self._get_collection_retrieve_all_objects()

@@ -39,6 +39,8 @@ DEFAULT_RESPONSE_BODY = "ResponseBody"
 OPENAPI_PRIMITIVE_DATA_TYPES = ["string", "boolean", "integer", "long", "float", "double", "binary", "byte", "date",
                                 "dateTime", "password"]
 DEFAULT_PRIMARY_KEY = "identifier"
+# regex pattern that matches variables in the path uri. For example {id} in /api/dogs/{id}
+VAR_PATTERN = r'{([\w_-]*)}'
 
 data_map = {
     "integer": "Integer",
@@ -67,10 +69,9 @@ class RelationshipType(Enum):
 
 
 class ControllerType(Enum):
-    COLLECTION_COMMAND = '/(.*)/all/(.*)*', "BaseCommandController"
-    COMMAND = '/(.*)/{id}/(.*)', "BaseCommandController"
-    ITEM = '/(.*)/{id}*', "BaseItemController"
-    COLLECTION = '/(.*)', "BaseCollectionController"
+    BASE = "BaseController"
+    ITEM = "BaseItemController"
+    COLLECTION = "BaseCollectionController"
 
 
 class Merger:
@@ -81,12 +82,6 @@ class Merger:
     $ref: cars/wheel.yaml#wheel
 
     mechanic will merge the reference to that schema into the original file, and then save a copy.
-
-    **Note, the below is not currently supported
-    You can also reference files that don't live on the same file system. If the files are hosted at www.abc.my.api.com,
-    you could reference them like this:
-
-    $ref: http://www.abc.my.api.com/cars/wheel.yaml#wheel
     """
     root_dir = ""
     EXTERNAL_SCHEMA_REGEX = "['\"]\$ref['\"]:\s['\"](?:\w|/)*\.(?:json|yaml|yml)#[/\w]*['\"]"
@@ -95,6 +90,14 @@ class Merger:
         self.oapi_file = oapi_file
         self.oapi_obj = self._deserialize_file()
         self.output_file = output_file
+
+    def merge(self):
+        """
+        Currently only supports referencing items that will end up in the components/schemas location in the spec file.
+        """
+        self._merge_schemas()
+
+        self._write_to_file()
 
     def _deserialize_file(self):
         """
@@ -117,11 +120,12 @@ class Merger:
 
     def _follow_reference_link(self, ref, remote_only=False):
         """
-        Gets a referenced object.
+        Gets a referenced object. Note, references must be in relation to the main OpenAPI file, not in relation to the
+        current file.
 
-        :param ref: reference link, example: #/components/schemas/Pet or pet.json#/components/schemas/Pet
-        :param current_dir: current directory of looking for file
-        :return: dictionary representation of the referenced object
+        :param ref: reference link, example: #/components/schemas/Pet or pet.json#/Pet
+        :param remote_only: flag to indicate if the caller is only interested in external references.
+        :return: dictionary representation of the referenced object or None is ref is not external and remote_only=True.
         """
         is_link_in_current_file = True if ref.startswith("#/") else False
 
@@ -136,40 +140,24 @@ class Merger:
         else:
             filename = ref.split("#/")[0]
             object_name = ref.split("#/")[1]
+            data = None
 
             with open(self.root_dir + "/" + filename) as f:
                 if filename.endswith(".json"):
                     data = json.load(f)
                 elif filename.endswith(".yaml") or filename.endswith(".yml"):
                     data = yaml.load(f)
+                else:
+                    raise SyntaxError(
+                        "File is not of correct format. Must be either json or yaml (and filename extension must "
+                        "one of those too).")
 
             return data[object_name]
 
-    def merge(self):
+    def _write_to_file(self):
         """
-        Currently only supports referencing items that will end up in the components/schemas location in the spec file.
+        Write the merged data into the specified output file.
         """
-        self._merge_schemas()
-
-    def _merge_schemas(self):
-        oapi_str = str(self.oapi_obj)
-        matches = re.findall(self.EXTERNAL_SCHEMA_REGEX, oapi_str)
-
-        while len(matches) > 0:
-            for match in matches:
-                reference = match.split(":")[1].replace("'", "").strip(" ")
-                resource_name = reference.split("/")[-1]
-                obj = self._follow_reference_link(reference, remote_only=True)
-
-                if obj:
-                    oapi_str = oapi_str.replace(match, '"$ref": "#/components/schemas/' + resource_name + '"')
-                    self.oapi_obj = ast.literal_eval(oapi_str)
-
-                    if not self.oapi_obj["components"]["schemas"].get(resource_name):
-                        self.oapi_obj["components"]["schemas"][resource_name] = obj
-                    oapi_str = str(self.oapi_obj)
-            matches = re.findall(self.EXTERNAL_SCHEMA_REGEX, oapi_str)
-
         with open(self.output_file, "w") as f:
             if self.output_file.endswith(".json"):
                 json_data = json.dumps(self.oapi_obj, indent=3)
@@ -179,21 +167,58 @@ class Merger:
                                       Dumper=yamlordereddictloader.Dumper,
                                       default_flow_style=False)
                 f.write(yaml_data)
+            else:
+                raise SyntaxError("Specified output file is not of correct format. Must be either json or yaml.")
+
+    def _merge_schemas(self):
+        """
+        Merges referenced items into the components/schemas section of the specification file.
+        """
+
+        # convert the master file oapi dictionary into a string
+        oapi_str = str(self.oapi_obj)
+        # find all patterns in the string that match an external reference.
+        matches = re.findall(self.EXTERNAL_SCHEMA_REGEX, oapi_str)
+
+        # as long as there are matches, continue to merge the schemas
+        while len(matches) > 0:
+            for match in matches:
+                reference = match.split(":")[1].replace("'", "").strip(" ")
+                resource_name = reference.split("/")[-1]
+                obj = self._follow_reference_link(reference, remote_only=True)
+
+                if obj:
+                    oapi_str = oapi_str.replace(match, '"$ref": "#/components/schemas/' + resource_name + '"')
+                    # convert string back to a dictionary
+                    self.oapi_obj = ast.literal_eval(oapi_str)
+
+                    # if the object doesn't exist yet in the components/schemas section, add it.
+                    if not self.oapi_obj["components"]["schemas"].get(resource_name):
+                        self.oapi_obj["components"]["schemas"][resource_name] = obj
+
+                    # set the string object for the next iteration of the loops.
+                    oapi_str = str(self.oapi_obj)
+            # find new matches after current iteration of merging schemas. Some of the merged schemas may have external
+            # references as well, which would required several iterations of the while loop.
+            matches = re.findall(self.EXTERNAL_SCHEMA_REGEX, oapi_str)
 
 
 class Converter:
-    microservices = dict()          # ...
-    models = dict()                 # ...
-    many_to_many_models = dict()    # ...
-    many_to_one_models = dict()     # ...
-    one_to_many_models = dict()     # ...
-    one_to_one_models = dict()      # ...
-    namespaces = dict()             # the files that will house the generated code
-    controllers = dict()            # ...
-    mschemas = dict()               # not to be confused with OpenAPI schemas
-    fkeys = dict()
+    """
+    Class that provides an API for converting an OpenAPI 3.0 specification file into a mechanic formatted file that can
+    be used to generate code.
+    """
+    microservices = dict()          # Not used yet
+    models = dict()                 # Dict representation of SQLAlchemy models to be generated
+    many_to_many_models = dict()    # Not used yet.
+    namespaces = dict()             # Mapping of namespaces and resources within those namespaces
+    controllers = dict()            # Dict representation of controllers to be generated
+    mschemas = dict()               # Dict representation of Marshmallow schemas, not to be confused w/ OpenAPI schemas
+    fkeys = dict()                  # Dict representation of foreign keys that are added to the mappings at the end
+    increment = 0                   # If multiple API endpoints do not match the normal formats, append this number at the end.
 
     def __init__(self, oapi_file, output_file):
+        # first merge the file into one
         self.merger = Merger(oapi_file, "temp.json")
         self.merger.merge()
         self.temp_file = "temp.json"
@@ -206,6 +231,8 @@ class Converter:
         Converts the OpenAPI file into a mechanic readable format and writes to the specified file.
         """
         self._validate_info()
+
+        # microservices are not used by the code generator yet.
         self._init_microservices()
 
         # go through paths
@@ -217,6 +244,7 @@ class Converter:
         os.remove(self.temp_file)
         self._write_to_file()
 
+        # If merge is set, write the output of the merged OpenAPI file into the specified file.
         if merge:
             with open(merge, "w") as f:
                 if merge.endswith(".yaml") or merge.endswith(".yml"):
@@ -231,7 +259,7 @@ class Converter:
 
     def _validate_info(self):
         """
-        Validates basic information in the OpenAPI file, such as version.
+        Validates basic information in the OpenAPI file
         """
         self.version = self.oapi_obj.get("openapi")
         if self.version is None or not self.version.startswith("3"):
@@ -282,12 +310,12 @@ class Converter:
         {
             'name': 'PetController',
             'controller_type': 'ITEM',
+            'base_controller': 'BaseItemController',
             'methods': {
-                "get": {},
-                "delete": {}
+                "get": {...},
+                "delete": {...}
             },
-            "uri": "/pets/{id}",
-            "service": "PetService"
+            "uri": "/pets/{id}"
         }
         """
         names = self._parse_resource_name_segments_from_path(path_key)
@@ -296,14 +324,23 @@ class Converter:
 
         controller = dict()
         controller_name = names["controller"]
-        controller["service"] = names["service"]
         controller["methods"] = dict()
         controller["controller_type"] = controller_type.name
-        controller["base_controller"] = controller_type.value[1]
-        controller["uri"] = path_key
+        controller["base_controller"] = controller_type.value
+        # controller["uri"] = path_key
+
+        # controller["uri"] = re.sub(VAR_PATTERN, r'<string:\1>', path_key)
+        if controller_type == ControllerType.ITEM:
+            controller["uri"] = re.sub(VAR_PATTERN, r'<string:resource_id>', path_key)
+        elif controller_type == ControllerType.COLLECTION:
+            controller["uri"] = path_key
+        else:
+            controller["uri"] = re.sub(VAR_PATTERN, r'<string:\1>', path_key).replace("-", "_")
+
         controller["namespace"] = namespace
 
         self._init_http_methods(controller)
+
         # get methods that are valid http methods
         path_http_methods = [method for method in path_obj.items() if method[0] in HTTP_METHODS]
         for path_method_key, path_method in path_http_methods:
@@ -319,11 +356,21 @@ class Converter:
                 for response_code, response_obj in path_method.get("responses").items():
                     self._model_mschema_from_response(response_code, response_obj, namespace=namespace)
 
-                # if path_method.get("requestBody"):
-                #     self._mschema_from_request_body(path_method.get("requestBody"), namespace=namespace)
+                if path_method.get("requestBody"):
+                    self._mschema_from_request_body(path_method.get("requestBody"), namespace=namespace)
+
+        if self.controllers.get(controller_name):
+            if self.controllers.get(controller_name).get("uri") != controller["uri"]:
+                controller_name = controller_name + str(self.increment)
+                self.increment = self.increment + 1
         self.controllers[controller_name] = controller
 
     def _configure_relationships(self):
+        """
+        Configures any relationships that could not be configured during the initial processing. For example, adding
+        foreign keys. During initial processing, certain attributes were marked with specific string patterns to be
+        replaced with meaningful objects that had not been created at that time
+        """
         models_str = str(self.models)
         mschemas_str = str(self.mschemas)
         fkeys_str = str(self.fkeys)
@@ -332,6 +379,10 @@ class Converter:
         exclude_matches = re.findall("\[\s*'EXCLUDE:\w*:\w*'\s*\]", mschemas_str)
 
         for match in exclude_matches:
+            """
+            Find attributes marked by the exclude matches. This is used in the mschemas section, where a nested property
+            can mark certain attributes to exclude from it's schema.
+            """
             mschemas_str = str(self.mschemas)
             modelA = match.split(":")[1].strip(" ']")
             modelB = match.split(":")[2].strip(" ']")
@@ -340,6 +391,9 @@ class Converter:
             self.mschemas = ast.literal_eval(mschemas_str)
 
         for match in matches:
+            """
+            Find foreign keys based on the patterns in both fkeys and models objects.
+            """
             models_str = str(self.models)
             fkeys_str = str(self.fkeys)
             model_key = match.split(":")[-1]
@@ -352,66 +406,13 @@ class Converter:
             self.fkeys = ast.literal_eval(fkeys_str)
 
         for model_key, fkeys in self.fkeys.items():
+            """
+            Add foreign keys to model properties.
+            """
             model = self.models[model_key]
 
             for fkey, fkey_obj in fkeys.items():
                 model["properties"][fkey] = fkey_obj
-
-        for model_name, model_obj in self.models.items():
-            for reference in model_obj.get("references"):
-                for ref_name, ref_obj in reference.items():
-                    if self._has_one_to_one_relationship(model_name, ref_name):
-                        sorted_names = [model_name, ref_name]
-                        sorted_names.sort()
-                        key = "".join(sorted_names)
-
-                        self.models[model_name]["relationships"].append({
-                            "type": "one_to_one",
-                            ref_name: {
-                                "backref": self.models[model_name]["resource"].lower(),
-                            },
-                            model_name: {
-                                "name": self.models[ref_name]["resource"].lower() + "_id",
-                                "fkey": self.models[ref_name]["namespace"] +
-                                        "." +
-                                        self.models[ref_name]["db_table_name"] +
-                                        ".identifier"
-                            }
-                        })
-                    elif self._has_one_to_many_relationship(model_name, ref_name):
-                        pass
-                    elif self._has_many_to_one_relationship(model_name, ref_name):
-                        pass
-                    elif self._has_many_to_many_relationship(model_name, ref_name):
-                        # sort them so that we always have the same key for the same 2 resources
-                        sorted_names = [model_obj.get("resource").lower(), self.models[ref_name].get("resource").lower()]
-                        sorted_names.sort()
-                        table_name = "".join(sorted_names)
-
-                        if model_obj.get("namespace") != self.models[ref_name].get("namespace"):
-                            print("ERROR: many to many relationships across different namespaces is not supported.")
-                            exit()
-
-                        self.many_to_many_models[table_name] = {
-                            "namespace": model_obj.get("namespace"),
-                            "models": [
-                                {
-                                    "db_table_name": model_obj.get("db_schema_name") + "." + table_name,
-                                    "fkey": model_obj.get("db_schema_name") + "." + model_obj.get("db_table_name") + "." + DEFAULT_PRIMARY_KEY,
-                                    "maxLength": 36,
-                                    "name": model_obj.get("resource").lower() + "_id",
-                                    "type": "String"
-                                },
-                                {
-                                    "db_table_name": model_obj.get("db_schema_name") + "." + table_name,
-                                    "fkey": self.models[ref_name].get("db_schema_name") + "." + self.models[ref_name].get("db_table_name") + "." + DEFAULT_PRIMARY_KEY,
-                                    "maxLength": 36,
-                                    "name": self.models[ref_name].get("resource").lower() + "_id",
-                                    "type": "String"
-                                }
-                            ]
-                        }
-
 
     def _attach_to_namespaces(self):
         """
@@ -425,18 +426,21 @@ class Converter:
             if not namespaces[model.get("namespace")].get("models"):
                 namespaces[model.get("namespace")]["models"] = []
             namespaces[model.get("namespace")]["models"].append(model_key)
+
         for mschema_key, mschema in self.mschemas.items():
             if not namespaces.get(mschema.get("namespace")):
                 namespaces[mschema.get("namespace")] = dict()
             if not namespaces[mschema.get("namespace")].get("mschemas"):
                 namespaces[mschema.get("namespace")]["mschemas"] = []
             namespaces[mschema.get("namespace")]["mschemas"].append(mschema_key)
+
         for controller_key, controller in self.controllers.items():
             if not namespaces.get(controller.get("namespace")):
                 namespaces[controller.get("namespace")] = dict()
             if not namespaces[controller.get("namespace")].get("controllers"):
                 namespaces[controller.get("namespace")]["controllers"] = []
             namespaces[controller.get("namespace")]["controllers"].append(controller_key)
+
         for mm_key, mm_item in self.many_to_many_models.items():
             if not namespaces.get(mm_item.get("namespace")):
                 namespaces[mm_item.get("namespace")] = dict()
@@ -455,35 +459,27 @@ class Converter:
             "controllers": self.controllers,
             "fkeys": self.fkeys,
         }
+
         with open(self.output_file, "w") as f:
-            f.write(json.dumps(obj, indent=4))
+            if self.output_file.endswith(".json"):
+                json_data = json.dumps(obj, indent=3)
+                f.write(json_data)
+            elif self.output_file.endswith(".yaml") or self.output_file.endswith(".yml"):
+                yaml_data = yaml.dump(OrderedDict(obj),
+                                      Dumper=yamlordereddictloader.Dumper,
+                                      default_flow_style=False)
+                f.write(yaml_data)
+            else:
+                raise SyntaxError("Specified output file is not of correct format. Must be either json or yaml.")
 
     # ------------------------ Helper methods
-    def _has_one_to_one_relationship(self, model_a, model_b):
-        return self._has_one_relationship(model_a, model_b) and self._has_one_relationship(model_b, model_a)
-
-    def _has_one_to_many_relationship(self, model_a, model_b):
-        return self._has_one_relationship(model_a, model_b) and self._has_many_relationship(model_b, model_a)
-
-    def _has_many_to_one_relationship(self, model_a, model_b):
-        return self._has_many_relationship(model_a, model_b) and self._has_one_relationship(model_b, model_a)
-
-    def _has_many_to_many_relationship(self, model_a, model_b):
-        return self._has_many_relationship(model_a, model_b) and self._has_many_relationship(model_b, model_a)
-
-    def _has_one_relationship(self, model_name, many_one_check):
-        for item in self.models[model_name].get("references", []):
-            if item.get(many_one_check) == "ONE":
-                return True
-        return False
-
-    def _has_many_relationship(self, model_name, many_model_check):
-        for item in self.models[model_name].get("references", []):
-            if item.get(many_model_check) == "MANY":
-                return True
-        return False
-
     def _mschema_from_request_body(self, request_body, namespace=DEFAULT_NAMESPACE):
+        """
+        Builds a dictionary representation of a Marshmallow schema from an OpenAPI requestBody object.
+
+        :param request_body: requestBody object
+        :param namespace: namespace for the mschema to be placed in.
+        """
         content = request_body.get("content").get(CONTENT_TYPE)
 
         if not content.get("schema").get("$ref"):
@@ -506,62 +502,24 @@ class Converter:
 
     def _model_mschema_from_response(self, response_code, response_obj, namespace=DEFAULT_NAMESPACE):
         """
-        'ref_type' can be one of: 'oo', 'om', 'mo', 'mm'
-        'oo': One-to-one
-        'om': One-to-many
-        'mo': Many-to-one
-        'mm': Many-to-many
-        'pair': Subset of one-to-one where the objects are the same type, identifies objects that reference each other,
-                but no others.
+        Builds a model and mschema from an OpenAPI 3.0 response object.
 
-        {
-            'db_table_name': 'cars',
-            'db_schema_name': 'garage',
-            'folder': 'cars',
-            'path': 'models.CarModel',
-            'references': {
-                'wheels': {
-                    'model_path': 'models.WheelModel',
-                    'model_name': 'WheelModel',
-                    'ref_type': 'om',           # a car has many wheels
-                    'self_reference': false,
-                    'tightly_coupled': true     # implies that this object can only exist with it's parent. Admittedly,
-                                                # car/wheel analogy falls apart here. But in this case, this means that
-                                                # if a car is deleted, the wheel is also deleted.
-                }
-            },
-            'properties': {
-                'make': {
-                    'enum': [],
-                    'max_length': null,
-                    'type': 'String'
-                },
-                'model': {
-                    'type': 'String'
-                }
-            }
-
-        }
-        :param response_code:
-        :param response_obj:
-        :return:
+        :param response_code: response code of the response object
+        :param response_obj: the object itself
         """
         if response_code == "204":
             return
         content = response_obj.get("content").get(CONTENT_TYPE)
-        # current_schema_key = None
 
         if not content.get("schema").get("$ref"):
             if content.get("schema").get("type") == "array" and content.get("schema").get("items").get("$ref"):
                 # array of references
                 schema, schema_name = self._follow_reference_link(content.get("schema").get("items").get("$ref"))
-                # current_schema_key = self._schema_key_from_ref(content.get("schema").get("items").get("$ref"))
             else:
                 schema = content.get("schema")
                 schema_name = schema.get("title", DEFAULT_RESPONSE_BODY)
         else:
             schema, schema_name = self._follow_reference_link(content.get("schema").get("$ref"))
-            # current_schema_key = content.get("schema").get("$ref")
 
         # Create models from response
         model_key = self._get_model_name_from_schema(schema, schema_key=schema_name)
@@ -573,17 +531,23 @@ class Converter:
                                            schema_properties=schema.get("properties", {}),
                                            required_props=schema.get("required", []))
 
-        # Create mschemas from response
+        # Create mschemas from the model
         self._mschema_from_model(model_key, model, namespace=model["namespace"])
 
     def _mschema_from_model(self, model_key, model, namespace=DEFAULT_NAMESPACE):
+        """
+        Build an mschema from an already existing model.
+
+        :param model_key: name of the model, for example 'DogModel'
+        :param model: model object itself.
+        :param namespace: namespace to place the mschema in.
+        """
         schema_key = model_key.replace("Model", "Schema")
         schema = dict()
         schema["model"] = model_key
         schema["resource"] = model_key.replace("Model", "")
         schema["namespace"] = namespace
         model_copy = copy.deepcopy(model)
-        # schema["properties"] = copy.deepcopy(model_copy["properties"])
         schema["properties"] = dict()
 
         for prop_name, prop in model_copy["properties"].items():
@@ -592,7 +556,7 @@ class Converter:
                     schema["properties"][prop_name] = dict()
 
                 referenced_schema_name = prop.get("reference").get("model").replace("Model", "Schema")
-                nested =  "self" if referenced_schema_name == schema_key else referenced_schema_name
+                nested = "self" if referenced_schema_name == schema_key else referenced_schema_name
                 schema["properties"][prop_name]["nested"] = nested
                 schema["properties"][prop_name]["many"] = prop.get("reference").get("uselist", False)
             if prop.get("enum"):
@@ -643,6 +607,13 @@ class Converter:
         self.mschemas[schema_key] = schema
 
     def _find_model_attributes_with_reference(self, modelA_key, modelB_key):
+        """
+        Gets a list of all attributes in modelA that reference modelB.
+
+        :param modelA_key:
+        :param modelB_key:
+        :return: List of attributes in modelA that reference modelB
+        """
         attrs = []
         modelA = self.models[modelA_key]
 
@@ -660,12 +631,13 @@ class Converter:
                                         required_props=[],
                                         visited_schemas=[]):
         """
-        Recursively creates a model object from schema properties and references to other schemas.
+        Recursively creates a mschema object from schema properties and references to other schemas.
 
         :param mschema_key: the key for the mschema being created. Usually <resource-name>Schema
         :param mschema: the mschema object currently being created.
+        :param namespace: the namespace for the mschema to be placed in.
         :param schema_properties: the properties object of the schema
-        :param schema_all_of: the allOf object of the schema
+        :param schema_all_of: the allOf object of the schema if it exists.
         :param required_props: the required array of the schema
         :param visited_schemas: schemas that have been processed already.
         :return:
@@ -789,7 +761,6 @@ class Converter:
                                                          visited_schemas=visited_schemas)
 
         if not self.mschemas.get(mschema_key):
-            print(mschema_key)
             self.mschemas[mschema_key] = mschema
 
     def _model_from_schema_properties(self,
@@ -806,6 +777,8 @@ class Converter:
 
         :param model_key: the key for the model being created. Usually <resource-name>Model
         :param model: the model object currently being created.
+        :param current_schema_key: the OpenAPI key of the schema being processed.
+        :param namespace: the namespace for the model to be placed in.
         :param schema_properties: the properties object of the schema
         :param schema_all_of: the allOf object of the schema
         :param required_props: the required array of the schema
@@ -954,6 +927,18 @@ class Converter:
 
     def _create_reference_property(self, current_schema_key, model_key, new_prop, ref_type, referenced_model_key,
                                    referenced_schema, referenced_schema_key, one_of=False):
+        """
+        Creates a property that indicates a reference to another model.
+
+        :param current_schema_key: schema key of the OpenAPI schema object being processed.
+        :param model_key: model key of the model where the property will be placed
+        :param new_prop: property object being created.
+        :param ref_type: type of reference to the referenced schema. Can be 'ONE' or 'MANY'.
+        :param referenced_model_key: model key of the model being referenced.
+        :param referenced_schema: OpenAPI object of the referenced schema.
+        :param referenced_schema_key: key to the referenced schema.
+        :param one_of: indicates if this reference is coming from inside of a oneOf construct.
+        """
         if not new_prop.get("reference"):
             new_prop["reference"] = dict()
 
@@ -1054,18 +1039,20 @@ class Converter:
             exit()
 
     def _determine_controller_type(self, path_key):
-        if re.fullmatch(ControllerType.COLLECTION_COMMAND.value[0], path_key):
-            controller_type = ControllerType.COLLECTION_COMMAND
-            is_command = True
-        elif re.fullmatch(ControllerType.COMMAND.value[0], path_key):
-            controller_type = ControllerType.COMMAND
-            is_command = True
-        elif re.fullmatch(ControllerType.ITEM.value[0], path_key):
+        """
+        Based on the pattern of the path endpoint, map to the correct type of controller.
+        :param path_key: uri of the controller endpoint
+        :return: the controller type
+        """
+        matches = re.findall(VAR_PATTERN, path_key)
+        if len(matches) > 1:
+            controller_type = ControllerType.BASE
+        elif matches and (not path_key.endswith("{" + matches[0] + "}") and not path_key.endswith("{" + matches[0] + "}/")):
+            controller_type = ControllerType.BASE
+        elif len(matches) == 1 and (path_key.endswith("{" + matches[0] + "}") or path_key.endswith("{" + matches[0] + "}/")):
             controller_type = ControllerType.ITEM
-        elif re.fullmatch(ControllerType.COLLECTION.value[0], path_key):
-            controller_type = ControllerType.COLLECTION
         else:
-            raise SyntaxError("path uri does not match proper uri formatting. See mechanic documentation for details")
+            controller_type = ControllerType.COLLECTION
         return controller_type
 
     def _controller_method_from_path_method(self, method_name, method_obj):
@@ -1074,16 +1061,29 @@ class Converter:
 
         Example:
         {
-            'get': {}
+            'get': {
+                'method': 'get',
+                'query_params': [
+                    'limit',
+                    'sort'
+                ],
+                'response': {
+                    'success_code': '200',
+                    'model': 'DogModel',
+                    'mschema': 'DogSchema'
+                },
+                'request': {},
+                'supported': true
+            }
         }
         :return: dictionary representation of a controller method
         """
+
         method = dict()
         method["method"] = method_name
         method["query_params"] = []
         if method_obj.get("parameters"):
-            # TODO - make more specific so doesn't include uri params
-            method["query_params"] = [p["name"] for p in method_obj.get("parameters")]
+            method["query_params"] = [p["name"] for p in method_obj.get("parameters") if p["in"] == "query"]
         method["response"] = dict()
         method["request"] = dict()
         method["supported"] = True
@@ -1092,6 +1092,12 @@ class Converter:
         return method
 
     def _controller_method_response_from_path_response(self, method, response_obj):
+        """
+        Adds to the controller method's reponse object based on the OpenAPI response object.
+        :param method: object to be updated with the new response
+        :param response_obj: OpenAPI response object
+        :return:
+        """
         response_code = None
         response_obj_item = None
         if response_obj.get("200"):
@@ -1155,8 +1161,12 @@ class Converter:
     def _schema_key_from_ref(self, ref):
         return ref.split("/")[-1]
 
-    def _determine_relationship(self, current_schema_name, ref_type_to_schema, referenced_schema, referenced_schema_name=None):
+    def _determine_relationship(self,
+                                current_schema_name,
+                                ref_type_to_schema,
+                                referenced_schema):
         """
+        Determines the type of relationship the current schema has with the referenced schema.
 
         :param current_schema_name: the schema's name that references another schema
         :param ref_type_to_schema: the reference type the current schema has to the referenced schema
@@ -1206,7 +1216,7 @@ class Converter:
         """
         Gets a referenced object.
 
-        :param ref: reference link, example: #/components/schemas/Pet or pet.json#/components/schemas/Pet
+        :param ref: reference link, example: #/components/schemas/Pet
         :param current_dir: current directory of looking for file
         :return: dictionary representation of the referenced object
         """
@@ -1221,26 +1231,24 @@ class Converter:
 
     def _parse_resource_name_segments_from_path(self, path_uri):
         naming = dict()
-        n = path_uri.split("/{id}")[0].split("/all/")[0].split("/")[-1]
+        split = re.split(VAR_PATTERN, path_uri)[0].split("/")
+        if split[-1] != "":
+            n = split[-1]
+        else:
+            n = split[-2]
+
         naming["resource"] = self.engine.singular_noun(n.title()) or n.title()
-        naming["command"] = ""
-        naming["all"] = ""
-
-        if "/{id}/" in path_uri or "/all/" in path_uri:
-            naming["command"] = path_uri.split("/{id}/")[-1].split("/all/")[-1]
-            naming["all"] = "All" if len(path_uri.split("/all/")) > 1 else ""
-
         names = dict()
-        names["controller"] = naming["resource"].replace("-", "") + naming["command"].title() + naming["all"]
+        names["controller"] = naming["resource"].replace("-", "")
 
-        if naming["command"] != "":
-            names["controller"] = names["controller"] + "Command"
-        elif not path_uri.endswith("{id}") and not path_uri.endswith("{id}/"):
+        controller_type = self._determine_controller_type(path_uri)
+        if controller_type == ControllerType.ITEM:
+            names["controller"] = names["controller"] + "Item"
+        elif controller_type == ControllerType.COLLECTION:
             names["controller"] = names["controller"] + "Collection"
 
         names["controller"] = names["controller"] + "Controller"
         names["resource"] = naming["resource"].replace("-", "")
-        names["service"] = naming["resource"].replace("-", "") + naming["command"].title() + "Service"
         return names
 
     def _init_model_obj(self, schema_name, schema_obj, namespace=DEFAULT_NAMESPACE, base_uri=None):
