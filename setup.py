@@ -1,14 +1,19 @@
 from setuptools import setup, find_packages
+from configparser import ConfigParser
+
+cp = ConfigParser()
+cp.read("version.conf")
+current_version = cp.get("version", "current_version")
 
 setup(
     name="mechanic-gen",
     packages=["mechanic"],
-    version="0.1.2",
+    version="%s" % (current_version),
     description="Generates python code from the controller layer to the DB layer from an OpenAPI specification file.",
     author="Zack Schrag",
     author_email="zack.schrag@factioninc.com",
     url="https://github.com/factioninc/mechanic",
-    download_url="https://github.com/factioninc/mechanic/archive/0.1.2.tar.gz",
+    download_url="https://github.com/factioninc/mechanic/archive/%s.tar.gz" % (current_version),
     keywords=["openapi", "api", "generation"],
     license="Mozilla Public License 2.0 (MPL 2.0)",
     classifiers=[
@@ -20,7 +25,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "mechanic=mechanic:main",
+            "mechanic=mechanic.main:main",
         ],
     },
     install_requires=[

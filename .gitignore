@@ -107,3 +107,6 @@ ENV/
 # mypy
 .mypy_cache/
 
+/tests/mech-cmdb.json
+/mechanic/tests/mech-cmdb.json
+/mechanic/tests/mech-cmdb.yml

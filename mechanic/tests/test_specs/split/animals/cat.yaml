@@ -1,0 +1,14 @@
+Cat:
+  type: object
+  properties:
+    isTerrible:
+      type: boolean
+      example: true
+    isWorthOwning:
+      type: boolean
+      example: false
+    food:
+      x-mechanic-uri-option: true
+      oneOf:
+      - type: string
+      - "$ref": food.json#/Food

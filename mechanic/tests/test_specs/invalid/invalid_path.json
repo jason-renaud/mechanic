@@ -1,0 +1,67 @@
+{
+  "openapi": "3.0.0",
+  "servers": [
+    {
+      "url": "http://petstore.swagger.io/api",
+      "x-mechanic-microservice": {
+        "name": "petstore"
+      }
+    }
+  ],
+  "info": {
+    "version": "1.0.0",
+    "title": "Swagger Petstore",
+    "description": "A sample API that uses a petstore as an example to demonstrate features in the swagger-2.0 specification",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "Swagger API Team",
+      "email": "foo@example.com",
+      "url": "http://madskristensen.net"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "http://github.com/gruntjs/grunt/blob/master/LICENSE-MIT"
+    }
+  },
+  "paths": {
+    "/pet/{id}/{id}/"
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "title": "Pet",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {},
+    "parameters": {},
+    "examples": {},
+    "requestBodies": {},
+    "securitySchemes": {},
+    "headers": {}
+  }
+}
