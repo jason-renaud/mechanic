@@ -1,0 +1,29 @@
+{
+  "Food": {
+    "type": "object",
+    "properties": {
+      "brand": {
+        "type": "string"
+      },
+      "tasty": {
+        "type": "boolean"
+      },
+      "pet": {
+        "oneOf": [
+          {
+            "$ref": "animals/cat.yaml#/Cat"
+          },
+          {
+            "$ref": "animals/dog.json#/Dog"
+          }
+        ]
+      },
+      "drinks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Drink"
+        }
+      }
+    }
+  }
+}
