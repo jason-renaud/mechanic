@@ -1,4 +1,3 @@
 include LICENSE.txt
 include requirements.txt
-include main.py
 recursive-include mechanic *

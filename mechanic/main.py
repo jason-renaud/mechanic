@@ -47,7 +47,7 @@ from mechanic.src.generator import Generator
 
 
 def main():
-    with open(pkg_resources.resource_filename(__name__, "mechanic/VERSION")) as version_file:
+    with open(pkg_resources.resource_filename(__name__, "VERSION")) as version_file:
         current_version = version_file.read().strip()
 
     args = docopt(__doc__, version=current_version)
