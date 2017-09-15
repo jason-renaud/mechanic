@@ -1,5 +1,5 @@
 from unittest import TestCase
-from mechanic.mechanic.generator import Generator
+from mechanic.mechanic.src.generator import Generator
 
 
 class GeneratorTest(TestCase):
