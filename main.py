@@ -42,15 +42,14 @@ from configparser import ConfigParser
 from docopt import docopt
 
 # project
-from converter import Converter
-from generator import Generator
-
-cp = ConfigParser()
-cp.read(pkg_resources.resource_filename(__name__, "../version.conf"))
-current_version = cp.get("version", "current_version")
+from mechanic.src.converter import Converter
+from mechanic.src.generator import Generator
 
 
 def main():
+    with open(pkg_resources.resource_filename(__name__, "mechanic/VERSION")) as version_file:
+        current_version = version_file.read().strip()
+
     args = docopt(__doc__, version=current_version)
     oapi_file = args["<oapi>"]
     output_dir = args["<output>"]

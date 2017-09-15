@@ -12,6 +12,7 @@ from app import db
 def random_uuid():
     return str(uuid.uuid4())
 
+
 def get_uri(context):
     try:
         return str(url_for(context.current_parameters["controller"], resource_id=context.current_parameters["identifier"]))
@@ -36,7 +37,7 @@ class {{ model_name }}(db.Model):
     created = db.Column(db.DateTime)
     last_modified = db.Column(db.DateTime)
     etag = db.Column(db.String(36), default=random_uuid)
-    controller = db.Column(db.String, default="{{ model.resource.lower() }}controller")
+    controller = db.Column(db.String, default="{{ model.resource.lower() }}itemcontroller")
     uri = db.Column(db.String, default=get_uri, onupdate=get_uri)
 
     {%- if fkeys.model_name %}

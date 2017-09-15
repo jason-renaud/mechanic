@@ -17,30 +17,31 @@ class Generator:
         self.output_dir = output_dir
 
         # variables set for source and location of generated files.
-        self.BASE_INIT_SRC = pkg_resources.resource_filename(__name__, "starter/base/__init__.py")
+        self.BASE_INIT_SRC = pkg_resources.resource_filename(__name__, "../starter/base/__init__.py")
         self.BASE_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_CONTROLLERS_SRC = pkg_resources.resource_filename(__name__, "starter/base/controllers.py")
+        self.BASE_CONTROLLERS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/controllers.py")
         self.BASE_CONTROLLERS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_SCHEMAS_SRC = pkg_resources.resource_filename(__name__, "starter/base/schemas.py")
+        self.BASE_SCHEMAS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/schemas.py")
         self.BASE_SCHEMAS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_EXCEPTIONS_SRC = pkg_resources.resource_filename(__name__, "starter/base/exceptions.py")
+        self.BASE_EXCEPTIONS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/exceptions.py")
         self.BASE_EXCEPTIONS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_FIELDS_SRC = pkg_resources.resource_filename(__name__, "starter/base/fields.py")
+        self.BASE_FIELDS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/fields.py")
         self.BASE_FIELDS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_DB_HELPER_SRC = pkg_resources.resource_filename(__name__, "starter/base/db_helper.py")
+        self.BASE_DB_HELPER_SRC = pkg_resources.resource_filename(__name__, "../starter/base/db_helper.py")
         self.BASE_DB_HELPER_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.APP_INIT_SRC = pkg_resources.resource_filename(__name__, "starter/app/__init__.py")
+        self.APP_INIT_SRC = pkg_resources.resource_filename(__name__, "../starter/app/__init__.py")
         self.APP_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/app/__init__.py")
-        self.APP_RUN_SRC = pkg_resources.resource_filename(__name__, "starter/run.py")
+        self.APP_RUN_SRC = pkg_resources.resource_filename(__name__, "../starter/run.py")
         self.APP_RUN_OUTPUT = os.path.expanduser(self.output_dir + "/")
-        self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "starter/requirements.txt")
+        self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "../starter/requirements.txt")
         self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/")
-        self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "starter/app/config.py")
+        self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "../starter/app/config.py")
         self.BASE_CONFIG_OUTPUT = os.path.expanduser(self.output_dir + "/app/config.py")
         self.API_ENDPOINTS_PATH = os.path.expanduser(self.output_dir + "/app/api.py")
         self.API_CONTROLLERS_PATH = os.path.expanduser(self.output_dir + "/controllers/")
         self.API_MODELS_PATH = os.path.expanduser(self.output_dir + "/models/")
         self.API_SCHEMAS_PATH = os.path.expanduser(self.output_dir + "/schemas/")
+        self.TEMPLATE_DIR = "../templates/"
 
     def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False):
         """
@@ -88,7 +89,7 @@ class Generator:
             # for many_to_many_key in namespace_obj["many_to_many"]:
             #     data["many_to_many_models"][many_to_many_key] = self.mechanic_obj["many_to_many_models"][many_to_many_key]
 
-            models_result = self._render(pkg_resources.resource_filename(__name__, "templates/models.tpl"),
+            models_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "models.tpl"),
                                         {
                                             "data": data,
                                             "fkeys": self.mechanic_obj["fkeys"],
@@ -117,7 +118,7 @@ class Generator:
             for schema_key in namespace_obj["mschemas"]:
                 data[schema_key] = self.mechanic_obj["mschemas"][schema_key]
 
-            schemas_result = self._render(pkg_resources.resource_filename(__name__, "templates/schemas.tpl"),
+            schemas_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "schemas.tpl"),
                                         {
                                             "data": data,
                                             "timestamp": datetime.datetime.utcnow()
@@ -138,7 +139,7 @@ class Generator:
             f.write(import_modules)
 
     def generate_api_endpoints(self):
-        api_result = self._render(pkg_resources.resource_filename(__name__, "templates/api.tpl"),
+        api_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "api.tpl"),
                                           {
                                               "data": self.mechanic_obj["controllers"],
                                               "timestamp": datetime.datetime.utcnow()
@@ -154,7 +155,7 @@ class Generator:
             for controller_key in namespace_obj["controllers"]:
                 data[controller_key] = self.mechanic_obj["controllers"][controller_key]
 
-            controllers_result = self._render(pkg_resources.resource_filename(__name__, "templates/controllers.tpl"),
+            controllers_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "controllers.tpl"),
                                               {
                                                   "data": data,
                                                   "models": namespace_obj["models"],

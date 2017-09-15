@@ -1,19 +1,18 @@
+import os
 from setuptools import setup, find_packages
-from configparser import ConfigParser
 
-cp = ConfigParser()
-cp.read("version.conf")
-current_version = cp.get("version", "current_version")
+with open(os.path.join("", "mechanic/VERSION")) as version_file:
+    current_version = version_file.read().strip()
 
 setup(
     name="mechanic-gen",
     packages=["mechanic"],
-    version="%s" % (current_version),
+    version="%s" % current_version,
     description="Generates python code from the controller layer to the DB layer from an OpenAPI specification file.",
     author="Zack Schrag",
     author_email="zack.schrag@factioninc.com",
     url="https://github.com/factioninc/mechanic",
-    download_url="https://github.com/factioninc/mechanic/archive/%s.tar.gz" % (current_version),
+    download_url="https://github.com/factioninc/mechanic/archive/%s.tar.gz" % current_version,
     keywords=["openapi", "api", "generation"],
     license="Mozilla Public License 2.0 (MPL 2.0)",
     classifiers=[
@@ -32,7 +31,9 @@ setup(
         "docopt==0.6.2",
         "inflect==0.2.5",
         "itsdangerous==0.24",
-        "Jinja2==2.9.6"
+        "Jinja2==2.9.6",
+        "PyYAML==3.12",
+        "yamlordereddictloader==0.4.0"
     ],
     include_package_data=True
 )

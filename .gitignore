@@ -110,3 +110,4 @@ ENV/
 /tests/mech-cmdb.json
 /mechanic/tests/mech-cmdb.json
 /mechanic/tests/mech-cmdb.yml
+/tests/mech-petstore.json
