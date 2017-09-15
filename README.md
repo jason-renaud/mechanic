@@ -22,54 +22,100 @@ Swagger codegen appears to only generate starter code. It creates an API and val
 
 ### Getting started
 ##### Install with pip
+- (Optional) Create a virtualenv for your project
+```bash
+virtualenv -p python3.6 path/to/virtualenv
+source path/to/virtualenv/bin/activate
+```
+- Install mechanic
 ```bash
 pip3 install mechanic-gen
 
 # converts OpenAPI 3.0 spec file into mechanic format
 mechanic generate ~/my-oapi.yaml ~/my-proj
 ```
-- Set the necessary environment variables (Note that <db-type> can theoretically work with any SQL db that SQLAlchemy supports, but mechanic has only been tested with 'postgresql'):
+- Make sure your database has a schema defined called 'default'. See [here](#database-configuration) for more details.
+- Set the necessary environment variables (Note that <db-type> can theoretically work with any SQL db that SQLAlchemy 
+supports, but mechanic has only been tested with 'postgresql'):
 ```bash
 export FLASK_CONFIG=development
 export MECHANIC_DEV_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
-export MECHANIC_TEST_DATABASE=postgresql://postgres:postgres@127.0.0.1:5432/<your-test-db-name>
+export MECHANIC_TEST_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
+export MECHANIC_BASE_API_PATH=/v1
 ```
+- Install pip requirements and run the app
+```bash
+cd ~/my-proj
+pip3 install -r requirements.txt
+python run.py
+```
+- Execute some REST calls to test it out. For example, if you have an endpoint defined as **/cars** with a GET method, 
+do a GET /v1/cars request using your favorite REST client.
+
+##### Starting from source code
+- Clone the mechanic repo first
 - (Optional) Create a virtualenv for your project
 ```bash
 virtualenv -p python3.6 path/to/virtualenv
 source path/to/virtualenv/bin/activate
-```
-- Run your app
-```bash
-
-cd ~/<your-project-name>
-pip3 install -r requirements.txt
-python run.py
-```
-
-##### Starting from source code
-- Clone the mechanic repo first, then execute these commands:
-```bash
-virtualenv -p python3.6 path/to/virtualenv
-source path/to/virtualenv/bin/activate
 cd path/to/cloned/repo/mechanic/
+pip3 install -r requirements.txt
+```
+- Make sure your database has a schema defined called 'default'. See [here](#database-configuration) for more details.
+- Set the necessary environment variables (Note that <db-type> can theoretically work with any SQL db that SQLAlchemy 
+supports, but mechanic has only been tested with 'postgresql'):
+```bash
+export FLASK_CONFIG=development
+export MECHANIC_DEV_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:PORT/DB_NAME
+export MECHANIC_TEST_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:PORT/DB_NAME
+export MECHANIC_BASE_API_PATH=/v1
 
-python main.py generate ~/my-openapi-spec.yaml ~/my-proj
+python mechanic/main.py generate ~/my-openapi-spec.yaml ~/my-proj
 ```
 
-- Next install pip requirements
+- Install pip requirements and run the app
 ```bash
-cd ~/petstore
+cd ~/my-proj
 pip3 install -r requirements.txt
 python run.py
 ```
+- Execute some REST calls to test it out. For example, if you have an endpoint defined as **/cars** with a GET method, 
+do a GET /v1/cars request using your favorite REST client.
+
+##### Database configuration
+This assumes you already have a sql database created, and you have already set up the correct environment variables
+mentioned in the [Getting started](#getting-started) section.   
+
+If you use the [x-mechanic-namespace](#mechanic-openapi-extensions-and-additional-syntax-requirements) extension, create
+a schema named the same as each usage [x-mechanic-namespace](#mechanic-openapi-extensions-and-additional-syntax-requirements).
+For example, let's say in your spec you have something like this:
+```yaml
+paths:
+    /airplanes:
+      x-mechanic-namespace: sky
+      get: ...
+      post: ...
+    /cars: 
+      get: ...
+      post: ...
+    /boats:
+      x-mechanic-namespace: water
+      get: ...
+      post: ...
+```
+In this scenario, you need to define schemas "sky", "water", and "default". "default" is the schema name used when no
+[x-mechanic-namespace](#mechanic-openapi-extensions-and-additional-syntax-requirements) definition is used to define either
+an operation or a OpenAPI schema object.  
+
+If you do not define these schemas, you will see a database error when attempting to run your application.
 
 ##### Common errors during setup
 - Make sure your database has the schemas created for each namespace that is defined. If you did not define any 
 namespaces for your resources, create a schema named "default".
 - mechanic should provide informative error messages if something has gone wrong. If it does not and you think it 
-should, submit an issue.
-- First place your OpenAPI 3.0 spec file in the Swagger Editor online and make sure it is a valid specification. 
+should, submit an issue or pull request.
+- First place your OpenAPI 3.0 spec file in the Swagger Editor online and make sure it is a valid specification. If it
+is not working with mechanic, double check you have a valid OpenAPI 3.0 spec to begin with.
 
 ### REST API best practices enforced by mechanic
 ##### mechanic types of APIs
@@ -80,13 +126,12 @@ appended to the end of the controller name. For example, let's say you have 4 en
 
 1) /cars/wheels
 2) /cars/wheels/{id}
-3) /cars/wheels/{id}/rotate/{rotate-id}
+3) /cars/wheels/{id}/rotate/{direction}
 4) /cars/wheels/{id}/replace
 
 \#1 will be mapped as an Item controller, \#2 will be mapped as a Collection controller, \#3 and \#4 do not match an Item
-or Collection pattern, so they will be named WheelController and WheelController0 (depending on which one if processed
-first in mechanic). If there was a third non-Item and non-Collection controller for wheels, it would be named 
-WheelController1. Because these controllers are non-Item and non-Collection, they have to be extended to be used. See 
+or Collection pattern, so they will be named WheelRotatedirectionController and WheelReplaceController. Because these
+controllers are non-Item and non-Collection, they have to be extended to be of any use. See
 [here](#what-if-i-want-to-change-the-behavior-of-a-generated-controller) for more details on extending controllers.
 
 ##### Endpoint definitions 
@@ -116,7 +161,7 @@ specification file.
 - mechanic automatically defines foreign key relationships whenever a schema of type "array" with a reference to another
 schema is used.
 
-##### mechanic OpenAPI 3.0 extensions and additional syntax requirements
+##### mechanic OpenAPI extensions and additional syntax requirements
 | extension                 | description |
 | ---------                 | ----------- |
 | x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. This can also be placed on a schema object, although it is only needed if a schema is referenced by another schema outside of it's namespace. |
@@ -138,6 +183,7 @@ schema is used.
 | ---------                 | ----------- |
 | FLASK_CONFIG              | Must be set to either 'development', 'testing', or 'production' |
 | FLASK_PORT                | Defaults to 5000 if not set |
+| MECHANIC_BASE_API_PATH    | Defaults to "/api" if not set |
 | MECHANIC_DEV_DATABASE     | Url of the development db, used when FLASK_CONFIG is set to 'development' |
 | MECHANIC_TEST_DATABASE    | Url of the test db, used when FLASK_CONFIG is set to 'testing' |
 | MECHANIC_PRO_DATABASE     | Url of the production db, used when FLASK_CONFIG is set to 'production' |

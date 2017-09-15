@@ -1,3 +1,4 @@
+import os
 import logmatic
 import logging
 
@@ -16,7 +17,7 @@ except ImportError:
 
 config = {
     "DEFAULT_LOG_NAME": "app",
-    "BASE_API_PATH": "/api"
+    "BASE_API_PATH": os.getenv("MECHANIC_BASE_API_PATH", "/api")
 }
 
 logger = logging.getLogger(config["DEFAULT_LOG_NAME"])

@@ -215,7 +215,6 @@ class Converter:
     controllers = dict()            # Dict representation of controllers to be generated
     mschemas = dict()               # Dict representation of Marshmallow schemas, not to be confused w/ OpenAPI schemas
     fkeys = dict()                  # Dict representation of foreign keys that are added to the mappings at the end
-    increment = 0                   # If multiple API endpoints do not match the normal formats, append this number at the end.
 
     def __init__(self, oapi_file, output_file):
         # first merge the file into one
@@ -327,16 +326,7 @@ class Converter:
         controller["methods"] = dict()
         controller["controller_type"] = controller_type.name
         controller["base_controller"] = controller_type.value
-        # controller["uri"] = path_key
-
-        # controller["uri"] = re.sub(VAR_PATTERN, r'<string:\1>', path_key)
-        if controller_type == ControllerType.ITEM:
-            controller["uri"] = re.sub(VAR_PATTERN, r'<string:resource_id>', path_key)
-        elif controller_type == ControllerType.COLLECTION:
-            controller["uri"] = path_key
-        else:
-            controller["uri"] = re.sub(VAR_PATTERN, r'<string:\1>', path_key).replace("-", "_")
-
+        controller["uri"] = path_key
         controller["namespace"] = namespace
 
         self._init_http_methods(controller)
@@ -359,10 +349,20 @@ class Converter:
                 if path_method.get("requestBody"):
                     self._mschema_from_request_body(path_method.get("requestBody"), namespace=namespace)
 
-        if self.controllers.get(controller_name):
-            if self.controllers.get(controller_name).get("uri") != controller["uri"]:
-                controller_name = controller_name + str(self.increment)
-                self.increment = self.increment + 1
+        # format uri in way readable for Flask-Restful
+        if controller_type == ControllerType.ITEM:
+            controller["uri"] = re.sub(VAR_PATTERN, r'<string:resource_id>', path_key)
+        elif controller_type == ControllerType.COLLECTION:
+            controller["uri"] = path_key
+        else:
+            controller_name = controller_name.replace("Controller",
+                                                      controller["uri"].split("}/", 1)[1].
+                                                      replace("{", "").
+                                                      replace("/", "").
+                                                      replace("}", "").
+                                                      replace("-", "").
+                                                      replace("_", "").title() + "Controller")
+            controller["uri"] = re.sub(VAR_PATTERN, r'<string:\1>', path_key).replace("-", "_")
         self.controllers[controller_name] = controller
 
     def _configure_relationships(self):
