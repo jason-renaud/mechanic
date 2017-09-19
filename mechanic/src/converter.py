@@ -245,6 +245,9 @@ class Converter:
 
         # If merge is set, write the output of the merged OpenAPI file into the specified file.
         if merge:
+            if not os.path.exists(merge):
+                os.makedirs(os.path.dirname(merge))
+
             with open(merge, "w") as f:
                 if merge.endswith(".yaml") or merge.endswith(".yml"):
                     f.write(yaml.dump(OrderedDict(self.oapi_obj),
@@ -387,6 +390,7 @@ class Converter:
             modelA = match.split(":")[1].strip(" ']")
             modelB = match.split(":")[2].strip(" ']")
             refs = self._find_model_attributes_with_reference(modelA, modelB)
+
             mschemas_str = mschemas_str.replace(match, str(refs))
             self.mschemas = ast.literal_eval(mschemas_str)
 
@@ -620,6 +624,10 @@ class Converter:
         for prop_name, prop in modelA.get("properties").items():
             if prop.get("reference", {}).get(modelB_key):
                 attrs.append(prop_name)
+            elif prop.get("oneOf"):
+                for item in prop.get("oneOf"):
+                    if item.get("reference", {}).get(modelB_key):
+                        attrs.append(prop_name)
         return attrs
 
     def _mschema_from_schema_properties(self,
@@ -892,6 +900,7 @@ class Converter:
                             one_of_prop["attr_name"] = prop_name + "_" + referenced_model_key.lower()
                             new_prop["oneOf"].append(one_of_prop)
                             # model["references"].append(new_prop)
+
                             if referenced_model_key not in visited_schemas:
                                 self._model_from_schema_properties(referenced_model_key,
                                                                    self._init_model_obj(referenced_schema_key,

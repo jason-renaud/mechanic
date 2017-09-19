@@ -303,9 +303,9 @@ class BaseItemController(BaseController):
             raise MechanicNotFoundException(uri=request.path)
 
         if not caching_headers:
-            model = db_helper.replace(existing_model, deserialized_request)
+            model = db_helper.replace(existing_model.identifier, deserialized_request)
         else:
-            model = db_helper.replace(existing_model,
+            model = db_helper.replace(existing_model.identifier,
                                       deserialized_request,
                                       if_modified_since=caching_headers[IF_MODIFIED_SINCE],
                                       if_unmodified_since=caching_headers[IF_UNMODIFIED_SINCE],

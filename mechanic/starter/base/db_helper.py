@@ -117,13 +117,11 @@ def replace(identifier, new_model, if_modified_since=None, if_unmodified_since=N
     delete(identifier, new_model.__class__, if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since, if_match=if_match, if_none_match=if_none_match)
 
     new_model.identifier = identifier
-    new_model.create = prev_created
+    new_model.created = prev_created
 
     # object has been updated, change last_modified and etag
     new_model.last_modified = datetime.utcnow()
     new_model.etag = str(uuid.uuid4())
-    # db.session.add(new_model)
-    db.session.delete(model)
     db.session.merge(new_model)
     db.session.commit()
     return new_model.__class__.query.get(identifier)
