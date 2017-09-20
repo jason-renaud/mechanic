@@ -31,7 +31,8 @@ Examples:
     To only generate base files for a Flask app:
         mechanic generate ~/my-oapi.yaml ~/my-proj --starter
 
-    To generate a merged version of
+    To generate a merged version of a split OpenAPI spec file:
+        mechanic generate ~/my-oapi.yaml ~/my-proj --merge=~/my-proj/mergedfile.yaml
 """
 # native python
 import os

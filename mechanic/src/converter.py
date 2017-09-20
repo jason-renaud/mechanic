@@ -245,6 +245,9 @@ class Converter:
 
         # If merge is set, write the output of the merged OpenAPI file into the specified file.
         if merge:
+            if not os.path.exists(merge):
+                os.makedirs(os.path.dirname(merge))
+
             with open(merge, "w") as f:
                 if merge.endswith(".yaml") or merge.endswith(".yml"):
                     f.write(yaml.dump(OrderedDict(self.oapi_obj),
@@ -387,6 +390,7 @@ class Converter:
             modelA = match.split(":")[1].strip(" ']")
             modelB = match.split(":")[2].strip(" ']")
             refs = self._find_model_attributes_with_reference(modelA, modelB)
+
             mschemas_str = mschemas_str.replace(match, str(refs))
             self.mschemas = ast.literal_eval(mschemas_str)
 
@@ -528,6 +532,7 @@ class Converter:
                                            model,
                                            current_schema_key=schema_name,
                                            namespace=schema.get(EXTENSION_NAMESPACE, namespace),
+                                           schema_all_of=schema.get("allOf", []),
                                            schema_properties=schema.get("properties", {}),
                                            required_props=schema.get("required", []))
 
@@ -620,6 +625,10 @@ class Converter:
         for prop_name, prop in modelA.get("properties").items():
             if prop.get("reference", {}).get(modelB_key):
                 attrs.append(prop_name)
+            elif prop.get("oneOf"):
+                for item in prop.get("oneOf"):
+                    if item.get("reference", {}).get(modelB_key):
+                        attrs.append(prop_name)
         return attrs
 
     def _mschema_from_schema_properties(self,
@@ -892,6 +901,7 @@ class Converter:
                             one_of_prop["attr_name"] = prop_name + "_" + referenced_model_key.lower()
                             new_prop["oneOf"].append(one_of_prop)
                             # model["references"].append(new_prop)
+
                             if referenced_model_key not in visited_schemas:
                                 self._model_from_schema_properties(referenced_model_key,
                                                                    self._init_model_obj(referenced_schema_key,
@@ -916,6 +926,7 @@ class Converter:
                             new_prop["oneOf"].append(one_of_prop)
                     model["properties"][name] = new_prop
                 elif prop_all_of:
+                    print("$$$$$$$$$$$$$$$$$")
                     self._model_from_schema_properties(model_key,
                                                        model,
                                                        namespace=namespace,
@@ -1089,7 +1100,22 @@ class Converter:
         method["supported"] = True
 
         self._controller_method_response_from_path_response(method, method_obj["responses"])
+
+        if method_obj.get("requestBody"):
+            self._controller_method_request_from_path_request(method, method_obj["requestBody"])
         return method
+
+    def _controller_method_request_from_path_request(self, method, request_obj):
+        """
+        Adds to the controller method's reponse object based on the OpenAPI response object.
+        :param method: object to be updated with the new response
+        :param request_obj: OpenAPI response object
+        :return:
+        """
+        content = request_obj.get("content").get(CONTENT_TYPE)
+
+        method["request"]["model"] = self._get_model_name_from_schema(content.get("schema"))
+        method["request"]["mschema"] = self._get_mschema_name_from_schema(content.get("schema"))
 
     def _controller_method_response_from_path_response(self, method, response_obj):
         """

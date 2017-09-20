@@ -193,7 +193,7 @@ class BaseItemController(BaseController):
             deserialized_request = self._put_item_deserialize_request()
             self._put_item_verify_deserialized_request(deserialized_request)
 
-            existing_model = self._retrieve_object(resource_id, caching_headers=caching_headers)
+            existing_model = self._retrieve_object(resource_id)
             updated_model = self._put_item_db_update(deserialized_request, existing_model, caching_headers=caching_headers)
             serialized_model = self._put_item_serialize_model(updated_model)
 
@@ -211,7 +211,7 @@ class BaseItemController(BaseController):
     def delete(self, resource_id):
         try:
             caching_headers = self._get_caching_headers()
-            existing_model = self._retrieve_object(resource_id, caching_headers=caching_headers)
+            existing_model = self._retrieve_object(resource_id)
 
             self._delete_item_db_delete(existing_model, caching_headers=caching_headers)
 
@@ -247,7 +247,8 @@ class BaseItemController(BaseController):
         :return: SQLAlchemy model created from the request body.
         """
         request_body = request.get_json()
-        schema = self.responses["put"]["schema"]()
+        schema = self.requests.get("put", {}).get("schema") or self.responses.get("put", {}).get("schema")
+        schema = schema()
 
         try:
             # load() will raise an exception if an error occurs because all Marshmallow schemas have the Meta attribute
@@ -303,9 +304,9 @@ class BaseItemController(BaseController):
             raise MechanicNotFoundException(uri=request.path)
 
         if not caching_headers:
-            model = db_helper.replace(existing_model, deserialized_request)
+            model = db_helper.replace(existing_model.identifier, deserialized_request)
         else:
-            model = db_helper.replace(existing_model,
+            model = db_helper.replace(existing_model.identifier,
                                       deserialized_request,
                                       if_modified_since=caching_headers[IF_MODIFIED_SINCE],
                                       if_unmodified_since=caching_headers[IF_UNMODIFIED_SINCE],
@@ -414,7 +415,8 @@ class BaseCollectionController(BaseController):
         """
         request_body = request.get_json()
 
-        schema = self.responses["post"]["schema"]()
+        schema = self.requests.get("post", {}).get("schema") or self.responses.get("post", {}).get("schema")
+        schema = schema()
 
         try:
             # load() will raise an exception if an error occurs because all Marshmallow schemas have the Meta attribute
