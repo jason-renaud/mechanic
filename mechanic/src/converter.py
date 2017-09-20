@@ -532,6 +532,7 @@ class Converter:
                                            model,
                                            current_schema_key=schema_name,
                                            namespace=schema.get(EXTENSION_NAMESPACE, namespace),
+                                           schema_all_of=schema.get("allOf", []),
                                            schema_properties=schema.get("properties", {}),
                                            required_props=schema.get("required", []))
 
@@ -925,6 +926,7 @@ class Converter:
                             new_prop["oneOf"].append(one_of_prop)
                     model["properties"][name] = new_prop
                 elif prop_all_of:
+                    print("$$$$$$$$$$$$$$$$$")
                     self._model_from_schema_properties(model_key,
                                                        model,
                                                        namespace=namespace,
@@ -1098,7 +1100,22 @@ class Converter:
         method["supported"] = True
 
         self._controller_method_response_from_path_response(method, method_obj["responses"])
+
+        if method_obj.get("requestBody"):
+            self._controller_method_request_from_path_request(method, method_obj["requestBody"])
         return method
+
+    def _controller_method_request_from_path_request(self, method, request_obj):
+        """
+        Adds to the controller method's reponse object based on the OpenAPI response object.
+        :param method: object to be updated with the new response
+        :param request_obj: OpenAPI response object
+        :return:
+        """
+        content = request_obj.get("content").get(CONTENT_TYPE)
+
+        method["request"]["model"] = self._get_model_name_from_schema(content.get("schema"))
+        method["request"]["mschema"] = self._get_mschema_name_from_schema(content.get("schema"))
 
     def _controller_method_response_from_path_response(self, method, response_obj):
         """

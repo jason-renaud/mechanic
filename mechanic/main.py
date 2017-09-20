@@ -67,14 +67,14 @@ def main():
     if not models and not schemas and not controllers and not api and not starter and not merge:
         all_objs = True
 
-    Converter(oapi_file, "/home/zackschrag/cmdb/resources/mechanic/mechanic.json").convert(merge=merge)
-    Generator("/home/zackschrag/cmdb/resources/mechanic/mechanic.json", output_dir).generate(all=all_objs,
+    Converter(oapi_file, "temp-mech.json").convert(merge=merge)
+    Generator("temp-mech.json", output_dir).generate(all=all_objs,
                                                      models=models,
                                                      schemas=schemas,
                                                      controllers=controllers,
                                                      api=api,
                                                      starter=starter)
-    # os.remove("temp-mech.json")
+    os.remove("temp-mech.json")
 
 if __name__ == "__main__":
     main()

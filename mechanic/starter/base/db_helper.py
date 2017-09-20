@@ -22,7 +22,14 @@ def read(identifier, model_class, if_modified_since=None, if_unmodified_since=No
     """
     model = model_class.query.get(identifier)
     _validate_modified_headers(if_modified_since, if_unmodified_since, model)
-    _validate_match_headers(if_match, if_none_match, model)
+
+    if if_none_match and not if_match:
+        try:
+            _validate_match_headers(if_match, if_none_match, model)
+        except MechanicInvalidETagException:
+            raise MechanicNotModifiedException()
+    else:
+        _validate_match_headers(if_match, if_none_match, model)
 
     return model
 
