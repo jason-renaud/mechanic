@@ -926,7 +926,6 @@ class Converter:
                             new_prop["oneOf"].append(one_of_prop)
                     model["properties"][name] = new_prop
                 elif prop_all_of:
-                    print("$$$$$$$$$$$$$$$$$")
                     self._model_from_schema_properties(model_key,
                                                        model,
                                                        namespace=namespace,
