@@ -17,8 +17,8 @@ class MechanicNotSupportedException(MechanicException):
     status_code = 404
 
     def __init__(self, msg=message, res=resolution):
-        self.message = message
-        self.resolution = resolution
+        self.message = msg
+        self.resolution = res
         super(MechanicNotSupportedException, self).__init__(self.message)
 
 

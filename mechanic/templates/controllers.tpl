@@ -2,8 +2,8 @@
 from app import api
 from app import config
 from base.controllers import *
-from models import {% for model in models %}{{ model }}{{ ", " if not loop.last }}{% endfor %}
-from schemas import {% for schema in schemas %}{{ schema }}{{ ", " if not loop.last }}{% endfor %}
+from models import ({% for model in models %}{{ model }}{{ ", " if not loop.last }}{% endfor %})
+from schemas import ({% for schema in schemas %}{{ schema }}{{ ", " if not loop.last }}{% endfor %})
 
 {% for controller_name, controller in data.items() %}
 class {{ controller_name }}({{ controller.base_controller }}):
@@ -23,7 +23,7 @@ class {{ controller_name }}({{ controller.base_controller }}):
         {%- if method.supported %}
         "{{ method_name }}": {
             "model": {{ method.request.model or None }},
-            "schema": {{ method.request.schema or None }},
+            "schema": {{ method.request.mschema or None }},
             "query_params": [
                 {%- for param in  method.query_params %}
                 "{{ param }}"{{ "," if not loop.last }}

@@ -6,7 +6,7 @@ from marshmallow_sqlalchemy import field_for
 from base.schemas import BaseSchema, BaseModelSchema
 from base.fields import OneOf
 {% if data.items() -%}
-from models import {% for schema_name, schema in data.items() %}{% if schema.model %}{{ schema.model }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}
+from models import ({% for schema_name, schema in data.items() %}{% if schema.model %}{{ schema.model }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %})
 {%- endif %}
 {% for schema_name, schema in data.items() %}
     {%- if schema.model %}
