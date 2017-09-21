@@ -43,7 +43,11 @@ class Generator:
         self.API_SCHEMAS_PATH = os.path.expanduser(self.output_dir + "/schemas/")
         self.TEMPLATE_DIR = "../templates/"
 
-    def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False):
+        self.BASE_CONTROLLER = os.getenv("MECHANIC_CUSTOM_CONTROLLER", "base.controllers.BaseController")
+        self.BASE_ITEM_CONTROLLER = os.getenv("MECHANIC_CUSTOM_ITEM_CONTROLLER", "base.controllers.BaseItemController")
+        self.BASE_COLLECTION_CONTROLLER = os.getenv("MECHANIC_CUSTOM_COLLECTION_CONTROLLER", "base.controllers.BaseCollectionController")
+
+    def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False, exclude=[]):
         """
         Generates code into the directory specified by self.output_dir
 
@@ -62,7 +66,7 @@ class Generator:
             starter = True
 
         if starter:
-            self.generate_starter_files()
+            self.generate_starter_files(exclude=exclude)
 
         if models:
             self.generate_models()
@@ -155,9 +159,20 @@ class Generator:
             for controller_key in namespace_obj["controllers"]:
                 data[controller_key] = self.mechanic_obj["controllers"][controller_key]
 
+            base_controllers = dict()
+            for item in [self.BASE_CONTROLLER, self.BASE_ITEM_CONTROLLER, self.BASE_COLLECTION_CONTROLLER]:
+                module_path_key = ".".join(item.split(".")[:-1])
+                controller_name = item.split(".")[-1]
+
+                if not base_controllers.get(module_path_key):
+                    base_controllers[module_path_key] = []
+
+                base_controllers[module_path_key].append(controller_name)
+
             controllers_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "controllers.tpl"),
                                               {
                                                   "data": data,
+                                                  "base_controllers": base_controllers,
                                                   "models": namespace_obj["models"],
                                                   "schemas": namespace_obj["mschemas"],
                                                   "timestamp": datetime.datetime.utcnow()
@@ -184,7 +199,7 @@ class Generator:
         with open(self.API_CONTROLLERS_PATH + "/__init__.py", "w") as f:
             f.write(import_modules)
 
-    def generate_starter_files(self):
+    def generate_starter_files(self, exclude=[]):
         """
         Only generate the absolute minimum files needed for a Flask app. At this point, no model, custom controllers, or
         marshmallow schemas exist yet, but you can run the app successfully.
@@ -193,9 +208,14 @@ class Generator:
             os.makedirs(os.path.expanduser(self.output_dir + "/app/"))
 
         shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
-        shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
-        shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
-        shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
+
+        if "starter/app/__init__.py" not in exclude:
+            shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
+
+        if not os.path.isfile(self.BASE_REQUIREMENTS_OUTPUT):
+            shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
+        if not os.path.isfile(self.BASE_CONFIG_OUTPUT):
+            shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
 
         if not os.path.exists(os.path.expanduser(self.output_dir + "/base/")):
             os.makedirs(os.path.expanduser(self.output_dir + "/base/"))

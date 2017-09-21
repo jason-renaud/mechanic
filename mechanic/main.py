@@ -1,7 +1,7 @@
 """mechanic code generator from an OpenAPI 3.0 specification file.
 
 Usage:
-    mechanic generate <oapi> <output> [--models --schemas --controllers --api --starter --merge=<merge-output>]
+    mechanic generate <oapi> <output> [--models --schemas --controllers --api --starter --merge=<merge-output>] [--exclude=<resource-type>...]
 
 Arguments:
     oapi            OpenAPI 3.0 specification file
@@ -62,6 +62,7 @@ def main():
     api = args["--api"]
     starter = args["--starter"]
     merge = args["--merge"]
+    exclude = args["--exclude"]
 
     # if not options are specified, generate all
     if not models and not schemas and not controllers and not api and not starter and not merge:
@@ -73,7 +74,8 @@ def main():
                                                      schemas=schemas,
                                                      controllers=controllers,
                                                      api=api,
-                                                     starter=starter)
+                                                     starter=starter,
+                                                     exclude=exclude)
     os.remove("temp-mech.json")
 
 if __name__ == "__main__":

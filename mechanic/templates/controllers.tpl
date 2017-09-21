@@ -1,7 +1,9 @@
 # do not modify - generated code at UTC {{ timestamp }}
 from app import api
 from app import config
-from base.controllers import *
+{%- for key, val in base_controllers.items() %}
+from {{ key }} import ({% for item in val %}{{ item}}{{ ", " if not loop.last }}{% endfor %})
+{%- endfor %}
 from models import ({% for model in models %}{{ model }}{{ ", " if not loop.last }}{% endfor %})
 from schemas import ({% for schema in schemas %}{{ schema }}{{ ", " if not loop.last }}{% endfor %})
 

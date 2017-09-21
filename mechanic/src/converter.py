@@ -36,6 +36,7 @@ CONTENT_TYPE = "application/json"
 DEFAULT_NAMESPACE = "default"
 DEFAULT_REQUEST_BODY = "RequestBody"
 DEFAULT_RESPONSE_BODY = "ResponseBody"
+DEFAULT_BASE_CONTROLLERS_PATH = "base.controllers"
 OPENAPI_PRIMITIVE_DATA_TYPES = ["string", "boolean", "integer", "long", "float", "double", "binary", "byte", "date",
                                 "dateTime", "password"]
 DEFAULT_PRIMARY_KEY = "identifier"
@@ -328,7 +329,14 @@ class Converter:
         controller_name = names["controller"]
         controller["methods"] = dict()
         controller["controller_type"] = controller_type.name
-        controller["base_controller"] = controller_type.value
+
+        if controller_type == ControllerType.BASE:
+            controller["base_controller"] = os.getenv("MECHANIC_CUSTOM_CONTROLLER", controller_type.value).split(".")[-1]
+        elif controller_type == ControllerType.ITEM:
+            controller["base_controller"] = os.getenv("MECHANIC_CUSTOM_ITEM_CONTROLLER", controller_type.value).split(".")[-1]
+        elif controller_type == ControllerType.COLLECTION:
+            controller["base_controller"] = os.getenv("MECHANIC_CUSTOM_COLLECTION_CONTROLLER", controller_type.value).split(".")[-1]
+
         controller["uri"] = path_key
         controller["namespace"] = namespace
 
