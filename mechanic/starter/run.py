@@ -1,4 +1,7 @@
 import os
+
+from flask import render_template
+
 from app import create_app
 
 
@@ -24,6 +27,12 @@ if not os.getenv("MECHANIC_TEST_DATABASE") and config_name == "testing":
     exit()
 
 app = create_app(config_name)
+
+
+@app.route("/")
+@app.route(os.getenv("MECHANIC_BASE_API_PATH", "/api"))
+def home():
+    return render_template("index.html")
 
 if __name__ == "__main__":
     if port:

@@ -1,7 +1,7 @@
 """mechanic code generator from an OpenAPI 3.0 specification file.
 
 Usage:
-    mechanic generate <oapi> <output> [--models --schemas --controllers --api --starter --merge=<merge-output>] [--exclude=<resource-type>...]
+    mechanic generate <oapi> <output> [--models --schemas --controllers --api --starter --exclude=<resource-type>...]
 
 Arguments:
     oapi            OpenAPI 3.0 specification file
@@ -15,7 +15,6 @@ Options:
     -c, --controllers                   Generate controllers to handle API endpoints
     -a, --api                           Generate mapping of API endpoints to controllers
     -b, --starter                       Generate starter files needed for a baseline Flask application
-    -k, --merge=<merge-output>          Merges the OpenAPI spec if it is split into multiple files
 
 Examples:
     The following two commands are equivalent, and both generate all possible items:
@@ -30,14 +29,10 @@ Examples:
 
     To only generate base files for a Flask app:
         mechanic generate ~/my-oapi.yaml ~/my-proj --starter
-
-    To generate a merged version of a split OpenAPI spec file:
-        mechanic generate ~/my-oapi.yaml ~/my-proj --merge=~/my-proj/mergedfile.yaml
 """
 # native python
 import os
 import pkg_resources
-from configparser import ConfigParser
 
 # third party
 from docopt import docopt
@@ -61,14 +56,13 @@ def main():
     controllers = args["--controllers"]
     api = args["--api"]
     starter = args["--starter"]
-    merge = args["--merge"]
     exclude = args["--exclude"]
 
     # if not options are specified, generate all
-    if not models and not schemas and not controllers and not api and not starter and not merge:
+    if not models and not schemas and not controllers and not api and not starter:
         all_objs = True
 
-    Converter(oapi_file, "temp-mech.json").convert(merge=merge)
+    Converter(oapi_file, "temp-mech.json").convert(merge=pkg_resources.resource_filename(__name__, "starter/app/static/docs.yaml"))
     Generator("temp-mech.json", output_dir).generate(all=all_objs,
                                                      models=models,
                                                      schemas=schemas,
@@ -76,6 +70,7 @@ def main():
                                                      api=api,
                                                      starter=starter,
                                                      exclude=exclude)
+    os.remove(pkg_resources.resource_filename(__name__, "starter/app/static/docs.yaml"))
     os.remove("temp-mech.json")
 
 if __name__ == "__main__":

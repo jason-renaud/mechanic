@@ -33,6 +33,10 @@ class Generator:
         self.APP_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/app/__init__.py")
         self.APP_RUN_SRC = pkg_resources.resource_filename(__name__, "../starter/run.py")
         self.APP_RUN_OUTPUT = os.path.expanduser(self.output_dir + "/")
+        self.APP_DOCS_STATIC_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static")
+        self.APP_DOCS_STATIC_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/")
+        self.APP_DOCS_TEMPLATES_SRC = pkg_resources.resource_filename(__name__, "../starter/app/templates")
+        self.APP_DOCS_TEMPLATES_OUTPUT = os.path.expanduser(self.output_dir + "/app/templates/")
         self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "../starter/requirements.txt")
         self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/")
         self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "../starter/app/config.py")
@@ -211,6 +215,20 @@ class Generator:
 
         if "starter/app/__init__.py" not in exclude:
             shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
+
+        if "starter/app/static" not in exclude:
+            try:
+                shutil.copytree(self.APP_DOCS_STATIC_SRC, self.APP_DOCS_STATIC_OUTPUT)
+            except FileExistsError:
+                shutil.rmtree(self.APP_DOCS_STATIC_OUTPUT)
+                shutil.copytree(self.APP_DOCS_STATIC_SRC, self.APP_DOCS_STATIC_OUTPUT)
+
+        if "starter/app/templates" not in exclude:
+            try:
+                shutil.copytree(self.APP_DOCS_TEMPLATES_SRC, self.APP_DOCS_TEMPLATES_OUTPUT)
+            except FileExistsError:
+                shutil.rmtree(self.APP_DOCS_TEMPLATES_OUTPUT)
+                shutil.copytree(self.APP_DOCS_TEMPLATES_SRC, self.APP_DOCS_TEMPLATES_OUTPUT)
 
         if not os.path.isfile(self.BASE_REQUIREMENTS_OUTPUT):
             shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
