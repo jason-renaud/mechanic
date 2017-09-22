@@ -51,6 +51,7 @@ cd ~/my-proj
 pip3 install -r requirements.txt
 python run.py
 ```
+- Go to http://127.0.0.1:5000
 - Execute some REST calls to test it out. For example, if you have an endpoint defined as **/cars** with a GET method, 
 do a GET /v1/cars request using your favorite REST client.
 
@@ -61,7 +62,9 @@ do a GET /v1/cars request using your favorite REST client.
 virtualenv -p python3.6 path/to/virtualenv
 source path/to/virtualenv/bin/activate
 cd path/to/cloned/repo/mechanic/
-pip3 install -r requirements.txt
+
+# this installs mechanic-gen in development mode
+pip3 install -e .
 ```
 - Make sure your database has a schema defined called 'default'. See [here](#database-configuration) for more details.
 - Set the necessary environment variables (Note that <db-type> can theoretically work with any SQL db that SQLAlchemy 
@@ -72,7 +75,7 @@ export MECHANIC_DEV_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:PORT/DB_NAME
 export MECHANIC_TEST_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:PORT/DB_NAME
 export MECHANIC_BASE_API_PATH=/v1
 
-python mechanic/main.py generate ~/my-openapi-spec.yaml ~/my-proj
+mechanic generate ~/my-openapi-spec.yaml ~/my-proj
 ```
 
 - Install pip requirements and run the app
@@ -81,6 +84,7 @@ cd ~/my-proj
 pip3 install -r requirements.txt
 python run.py
 ```
+- Go to http://127.0.0.1:5000
 - Execute some REST calls to test it out. For example, if you have an endpoint defined as **/cars** with a GET method, 
 do a GET /v1/cars request using your favorite REST client.
 
@@ -202,7 +206,7 @@ schema is used.
 
 ### FAQ
 #### What if my OpenAPI file is split across many files?
-mechanic automatically merges your OpenAPI file if it is split in a particluar way. External references much be relative
+mechanic automatically merges your OpenAPI file if it is split in a particular way. External references much be relative
 to the OpenAPI main file, and mechanic currently does not support external references that are located on a different 
 filesystem. For example, let's say your directory structure looks like this:
 ```bash
@@ -231,15 +235,6 @@ Airplane:
 ```
 **Important**: notice that in airplane.yaml, the reference to pilot is still relative to master-oapi.yaml, NOT relative 
 to airplane.yaml.
-
-Since your specification is split across many files, you may have had difficulties generating documentation for your 
-specification. If you want to generate the merged file, you can simply run this command:
- ```bash
- # ~/my-dir doesn't do anything in this case, because adding the --merge flag without any other flags indicates to only 
- # generate the merged file, but no other code
- mechanic generate ~/master-oapi.yaml ~/my-dir --merge=merged-file.yaml
- ```
-Now you have a merged file that you can put into other tools (such as Swagger UI) to generate your documentation.
 
 #### What if I want to change the behavior of a generated controller?
 mechanic was designed (or at least attempted) in such a way to allow you to customize behavior to suit your needs. 

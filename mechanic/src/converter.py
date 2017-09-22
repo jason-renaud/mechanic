@@ -247,7 +247,10 @@ class Converter:
         # If merge is set, write the output of the merged OpenAPI file into the specified file.
         if merge:
             if not os.path.exists(merge):
-                os.makedirs(os.path.dirname(merge))
+                try:
+                    os.makedirs(os.path.dirname(merge))
+                except FileExistsError:
+                    pass
 
             with open(merge, "w") as f:
                 if merge.endswith(".yaml") or merge.endswith(".yml"):
