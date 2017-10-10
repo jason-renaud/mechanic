@@ -68,12 +68,10 @@ def update(identifier, model_class, changed_attributes, if_modified_since=None, 
            if_match=[], if_none_match=[]):
     """
     Updates an object with the dictionary of changed_attributes.
-
     Retrieves the object w/ the specified identifier:
     - Compare eTag values, if eTag validation fails, raise 412 precondition failed exception.
     - If above validations are successful, update object.
     the object.
-
     :param identifier: primary key of object.
     :param model_class: model class of the object.
     :param changed_attributes: dictionary of attributes to update.
@@ -118,20 +116,20 @@ def replace(identifier, new_model, if_modified_since=None, if_unmodified_since=N
     _validate_modified_headers(if_modified_since, if_unmodified_since, model)
     _validate_match_headers(if_match, if_none_match, model)
 
-    prev_created = model.created
+    created = model.created
 
-    # first delete object
-    delete(identifier, new_model.__class__, if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since, if_match=if_match, if_none_match=if_none_match)
+    # first delete the existing model in the session
+    db.session.delete(model)
+    db.session.commit()
 
     new_model.identifier = identifier
-    new_model.created = prev_created
-
-    # object has been updated, change last_modified and etag
     new_model.last_modified = datetime.utcnow()
     new_model.etag = str(uuid.uuid4())
-    db.session.merge(new_model)
+    new_model.created = created
+
+    db.session.add(new_model)
     db.session.commit()
-    return new_model.__class__.query.get(identifier)
+    return model.__class__.query.get(identifier)
 
 
 def delete(identifier, model_class, force=False, if_modified_since=None, if_unmodified_since=None, if_match=[], if_none_match=[]):

@@ -15,6 +15,7 @@ class DevelopmentConfig(Config):
     Development configurations
     """
     SQLALCHEMY_DATABASE_URI = os.getenv("MECHANIC_DEV_DATABASE")
+    SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 
 
 class ProductionConfig(Config):
@@ -24,6 +25,7 @@ class ProductionConfig(Config):
 
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.getenv("MECHANIC_PRO_DATABASE")
+    SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 
 
 class TestingConfig(Config):
@@ -33,6 +35,7 @@ class TestingConfig(Config):
 
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.getenv("MECHANIC_TEST_DATABASE")
+    SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 
 
 app_config = {

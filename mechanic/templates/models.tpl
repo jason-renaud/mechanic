@@ -1,9 +1,8 @@
 # do not modify - generated code at UTC {{ timestamp }}
 import uuid
+import datetime
 
-from werkzeug.routing import BuildError
 from flask import url_for
-from sqlalchemy.exc import DataError
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from app import db
@@ -34,11 +33,11 @@ class {{ model_name }}(db.Model):
     __table_args__ = {"schema": "{{ model.namespace }}"}
 
     identifier = db.Column(db.String(36), primary_key=True, nullable=False, default=random_uuid)
-    created = db.Column(db.DateTime)
-    last_modified = db.Column(db.DateTime)
-    etag = db.Column(db.String(36), default=random_uuid)
+    created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    last_modified = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    etag = db.Column(db.String(36), default=random_uuid, onupdate=random_uuid)
     controller = db.Column(db.String, default="{{ model.resource.lower() }}itemcontroller")
-    uri = db.Column(db.String, default=get_uri, onupdate=get_uri)
+    uri = db.Column(db.String, default=get_uri)
 
     {%- if fkeys.model_name %}
         {%- for fkey_name, fkey in fkeys.model_name.items() %}
@@ -62,21 +61,36 @@ class {{ model_name }}(db.Model):
                                         {%- if prop.reference.remote_side %}, remote_side={{ prop.reference.remote_side }}{%- endif %}
                                         {%- if prop.reference.foreign_keys %}, foreign_keys="{{ prop.reference.foreign_keys }}"{% endif %})
         {%- endif %}
-        {%- for item in prop.oneOf %}
-            {%- if item.reference %}
+
+        {%- if prop.embeddable %}
+        {#- mechanic converter ensures string attribute comes first, and reference second. #}
+    {{ prop.oneOf[1].attr_name }} = db.relationship("{{ prop.oneOf[1].reference.model }}"
+                                        {%- if prop.oneOf[1].reference.backref %}, backref=db.backref("{{ prop.oneOf[1].reference.backref }}"){%- endif %}
+                                        {%- if prop.oneOf[1].reference.back_populates and prop.oneOf[1].reference and prop.oneOf[1].reference.model != model_name %}, back_populates="{{ prop.oneOf[1].reference.back_populates }}"{%- endif -%}
+                                        , uselist={{ prop.oneOf[1].reference.uselist }})
+
+    @hybrid_property
+    def {{ prop.oneOf[0].attr_name }}(self):
+        if self.{{ prop.oneOf[1].attr_name }}:
+            return self.{{ prop.oneOf[1].attr_name }}.uri
+        return None
+{# #}
+        {%- else %}
+            {%- for item in prop.oneOf %}
+                {%- if item.reference %}
     {{ item.attr_name }} = db.relationship("{{ item.reference.model }}"
                                         {%- if item.reference.backref %}, backref=db.backref("{{ item.reference.backref }}"){%- endif %}
                                         {%- if item.reference.back_populates and item.reference and item.reference.model != model_name %}, back_populates="{{ item.reference.back_populates }}"{%- endif -%}
                                         , uselist={{ item.reference.uselist }})
-            {%- else %}
+                {%- else %}
     {{ item.attr_name }} = db.Column(db.{{ item.type }}
                                 {%- if item.maxLength %}({{ item.maxLength }}){% endif %}
                                 {%- if item.required == True %}, nullable=False{% endif %}
                                 {%- if item.foreign_key %}, db.ForeignKey("{{ item.foreign_key }}"){%- endif %})
-            {%- endif %}
-        {%- endfor %}
+                {%- endif %}
+            {%- endfor %}
 
-        {%- if prop.oneOf %}
+            {%- if prop.oneOf %}
 
     @hybrid_property
     def {{ prop_name }}(self):
@@ -86,30 +100,23 @@ class {{ model_name }}(db.Model):
                 {%- else -%}
                 self.{{ item.attr_name }}{%- if not loop.last %} or {% endif %}
                 {%- endif -%}
-            {%- endfor %}
+                {%- endfor %}
 
     @{{ prop_name }}.setter
     def {{ prop_name }}(self, val):
-            {%- for item in prop.oneOf %}
-                {%- if item.reference %}
+                {%- for item in prop.oneOf %}
+                    {%- if item.reference %}
         {% if loop.first -%}if{%- else %}elif {%- endif %} isinstance(val, {{ item.reference.model }}):
             self.{{ item.attr_name }} = val
-                {%- else %}
+                    {%- else %}
         {% if loop.first -%}if{%- else %}elif {%- endif %} isinstance(val, {{ item.pytype }}):
             self.{{ item.attr_name }} = val
-                {%- endif %}
-            {%- endfor %}
+                    {%- endif %}
+                {%- endfor %}
         else:
             raise DataError("Attribute is not of one of the possible types.", None, None)
 {# #}
-        {%- endif %}
-    {%- endfor %}
-    {#- properties that have relationships to other models #}
-    {%- for rel in model.relationships %}
-        {%- if rel.type == "one_to_one" %}
-            {%- if rel.model_name %}
-
-            {% endif %}
-        {%- endif %}
+                {%- endif %}
+            {%- endif %}
     {%- endfor %}
 {% endfor %}

@@ -30,6 +30,7 @@ engine = inflect.engine()
 EXTENSION_MICROSERVICE = "x-mechanic-microservice"
 EXTENSION_NAMESPACE = "x-mechanic-namespace"
 EXTENSION_PLURAL = "x-mechanic-plural"
+EXTENSION_EMBEDDABLE = "x-mechanic-embeddable"
 HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"]
 MECHANIC_SUPPORTED_HTTP_METHODS = ["get", "put", "post", "delete"]
 CONTENT_TYPE = "application/json"
@@ -586,6 +587,7 @@ class Converter:
             if prop.get("oneOf"):
                 if not schema["properties"].get(prop_name):
                     schema["properties"][prop_name] = dict()
+                    schema["properties"][prop_name]["embeddable"] = prop.get("embeddable", False)
                     schema["properties"][prop_name]["oneOf"] = []
 
                 for item in prop.get("oneOf"):
@@ -855,6 +857,7 @@ class Converter:
                 prop_one_of = prop_obj.get("oneOf")
                 prop_any_of = prop_obj.get("anyOf")
                 prop_all_of = prop_obj.get("allOf")
+                is_embeddable = prop_obj.get(EXTENSION_EMBEDDABLE)
 
                 new_prop = dict()
                 name = prop_name.replace("-", "_") if prop_name else None
@@ -864,6 +867,7 @@ class Converter:
                 new_prop["maxLength"] = prop_obj.get("maxLength")
                 new_prop["enum"] = prop_obj.get("enum", [])
                 new_prop["regex"] = prop_obj.get("pattern")
+                new_prop["embeddable"] = False
 
                 # Base case
                 if prop_obj.get("type") in OPENAPI_PRIMITIVE_DATA_TYPES:
@@ -891,6 +895,10 @@ class Converter:
                                                            required_props=referenced_schema.get("required", []),
                                                            visited_schemas=visited_schemas)
                 elif prop_one_of:
+                    if is_embeddable:
+                        self._validate_embeddable_requirements(prop_one_of, model_key, prop_name)
+                        new_prop["embeddable"] = True
+
                     new_prop["oneOf"] = []
                     for item in prop_one_of:
                         one_of_ref_type, one_of_ref = self._get_schema_reference_type(item)
@@ -901,6 +909,8 @@ class Converter:
                             referenced_model_key = self._get_model_name_from_schema(referenced_schema,
                                                                                     schema_key=referenced_schema.get("title", referenced_schema_key))
 
+                            if is_embeddable:
+                                new_prop["uri_ref"] = referenced_model_key
                             self._create_reference_property(current_schema_key, model_key, one_of_prop, one_of_ref_type,
                                                             referenced_model_key, referenced_schema,
                                                             referenced_schema_key, one_of=True)
@@ -945,6 +955,21 @@ class Converter:
 
         self.models[model_key] = model
         self._mschema_from_model(model_key, model, namespace=model["namespace"])
+
+    def _validate_embeddable_requirements(self, one_of_list, model_key, prop_name):
+        embeddable_req = "You have specified %s.%s as 'embeddable', but the object is not valid as 'embeddable'. The " \
+                         "schema's oneOf array must have exactly 2 elements: one being type 'string' and one as a " \
+                         "'$ref' to another schema." % (model_key, prop_name)
+        if len(one_of_list) != 2:
+            raise SyntaxError(embeddable_req)
+        if not(one_of_list[0].get("$ref") or one_of_list[1].get("$ref")):
+            raise SyntaxError(embeddable_req)
+        if not(one_of_list[0].get("type") == "string" or one_of_list[1].get("type") == "string"):
+            raise SyntaxError(embeddable_req)
+
+        # reorder list so that
+        if one_of_list[0].get("type") != "string":
+            one_of_list.reverse()
 
     def _create_reference_property(self, current_schema_key, model_key, new_prop, ref_type, referenced_model_key,
                                    referenced_schema, referenced_schema_key, one_of=False):

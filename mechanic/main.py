@@ -1,7 +1,7 @@
 """mechanic code generator from an OpenAPI 3.0 specification file.
 
 Usage:
-    mechanic generate <oapi> <output> [--models --schemas --controllers --api --starter --exclude=<resource-type>...]
+    mechanic generate <oapi> <output> [--models --schemas --controllers --api --starter --admin --exclude=<resource-type>...]
 
 Arguments:
     oapi            OpenAPI 3.0 specification file
@@ -15,6 +15,7 @@ Options:
     -c, --controllers                   Generate controllers to handle API endpoints
     -a, --api                           Generate mapping of API endpoints to controllers
     -b, --starter                       Generate starter files needed for a baseline Flask application
+    -f, --admin                         Generate Flask-Admin UI for all generated SQLAlchemy models
 
 Examples:
     The following two commands are equivalent, and both generate all possible items:
@@ -29,6 +30,9 @@ Examples:
 
     To only generate base files for a Flask app:
         mechanic generate ~/my-oapi.yaml ~/my-proj --starter
+
+    To generate all resources and enable a Flask-Admin UI:
+        mechanic generate ~/my-oapi.yaml ~/my-proj --admin
 """
 # native python
 import os
@@ -57,20 +61,21 @@ def main():
     api = args["--api"]
     starter = args["--starter"]
     exclude = args["--exclude"]
+    admin = args["--admin"]
 
     # if not options are specified, generate all
     if not models and not schemas and not controllers and not api and not starter:
         all_objs = True
 
     Converter(oapi_file, "temp-mech.json").convert(merge=pkg_resources.resource_filename(__name__, "starter/app/static/docs.yaml"))
-    Generator("temp-mech.json", output_dir).generate(all=all_objs,
+    Generator("/home/zackschrag/cmdb/resources/mechanic/mechanic.json", output_dir).generate(all=all_objs,
                                                      models=models,
                                                      schemas=schemas,
                                                      controllers=controllers,
                                                      api=api,
                                                      starter=starter,
-                                                     exclude=exclude)
-    os.remove(pkg_resources.resource_filename(__name__, "starter/app/static/docs.yaml"))
+                                                     exclude=exclude,
+                                                     admin=admin)
     os.remove("temp-mech.json")
 
 if __name__ == "__main__":

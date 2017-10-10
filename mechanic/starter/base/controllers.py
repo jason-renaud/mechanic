@@ -45,15 +45,6 @@ class BaseController(Resource):
     def patch(self, *args, **kwargs):
         return self._not_implemented_response("PATCH")
 
-    def options(self, *args, **kwargs):
-        return self._not_implemented_response("OPTIONS")
-
-    def head(self, *args, **kwargs):
-        return self._not_implemented_response("HEAD")
-
-    def trace(self, *args, **kwargs):
-        return self._not_implemented_response("TRACE")
-
     def _not_implemented_response(self, method_type):
         """
         Returns a response for methods that are not implemented.
@@ -156,6 +147,14 @@ class BaseController(Resource):
         if not serialized_model:
             raise MechanicNotFoundException(uri=request.path)
 
+    def _parse_query_params(self):
+        params = dict()
+
+        for param, param_val in request.args.items():
+            params[param] = param_val
+
+        self.query_params = params
+
 
 class BaseItemController(BaseController):
     """
@@ -169,6 +168,7 @@ class BaseItemController(BaseController):
     def get(self, resource_id, **kwargs):
         try:
             caching_headers = self._get_caching_headers()
+            self._parse_query_params()
             model = self._retrieve_object(resource_id, caching_headers=caching_headers)
             model_data = self._get_item_serialize_model(model)
             self._verify_serialized_model(model_data)
@@ -188,6 +188,7 @@ class BaseItemController(BaseController):
     def put(self, resource_id):
         try:
             caching_headers = self._get_caching_headers()
+            self._parse_query_params()
 
             self._put_item_verify_request()
             deserialized_request = self._put_item_deserialize_request()
@@ -211,6 +212,8 @@ class BaseItemController(BaseController):
     def delete(self, resource_id):
         try:
             caching_headers = self._get_caching_headers()
+            self._parse_query_params()
+
             existing_model = self._retrieve_object(resource_id)
 
             self._delete_item_db_delete(existing_model, caching_headers=caching_headers)
@@ -305,6 +308,7 @@ class BaseItemController(BaseController):
 
         if not caching_headers:
             model = db_helper.replace(existing_model.identifier, deserialized_request)
+            # model = db_helper.update(existing_model.identifier, deserialized_request)
         else:
             model = db_helper.replace(existing_model.identifier,
                                       deserialized_request,
@@ -312,6 +316,12 @@ class BaseItemController(BaseController):
                                       if_unmodified_since=caching_headers[IF_UNMODIFIED_SINCE],
                                       if_match=caching_headers[IF_MATCH],
                                       if_none_match=caching_headers[IF_NONE_MATCH])
+            # model = db_helper.update(existing_model.identifier,
+            #                          deserialized_request,
+            #                          if_modified_since=caching_headers[IF_MODIFIED_SINCE],
+            #                          if_unmodified_since=caching_headers[IF_UNMODIFIED_SINCE],
+            #                          if_match=caching_headers[IF_MATCH],
+            #                          if_none_match=caching_headers[IF_NONE_MATCH])
         return model
 
     def _put_item_serialize_model(self, updated_model):
@@ -358,6 +368,7 @@ class BaseCollectionController(BaseController):
     """
     def get(self):
         try:
+            self._parse_query_params()
             models = self._get_collection_retrieve_all_objects()
             serialized_models = self._get_collection_serialize_models(models)
             resp_code = self._get_success_response_code("get")
@@ -371,6 +382,7 @@ class BaseCollectionController(BaseController):
 
     def post(self):
         try:
+            self._parse_query_params()
             self._post_collection_verify_request()
             deserialized_request = self._post_collection_deserialize_request()
             self._post_collection_verify_deserialized_request(deserialized_request)
