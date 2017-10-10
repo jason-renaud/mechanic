@@ -1,6 +1,7 @@
 import os
 import logmatic
 import logging
+from importlib import util
 
 from flask import Flask
 from flask_restful import Api
@@ -48,5 +49,8 @@ def create_app(config_name):
         db.session.commit()
         db.drop_all()
         db.create_all()
+
+    from app.admin_init import init_models
+    init_models(app, db)
     return app
 

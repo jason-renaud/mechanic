@@ -172,6 +172,7 @@ schema is used.
 | ---------                 | ----------- |
 | x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. This can also be placed on a schema object, although it is only needed if a schema is referenced by another schema outside of it's namespace. |
 | x-mechanic-plural         | mechanic uses a library called 'inflect' to automatically determine plural and singular forms of words. However it doesn't always work as needed, so you can use this attribute to override the plural form of the schema name. |
+| x-mechanic-embeddable     | Set to 'true' if this attribute can either be represented as a uri or as a nested object. If set to true, it is required that the attribute is defined as 'oneOf', with one item being a $ref to a schema, and the other item being a 'string'. |
 
 - In order to name a model/schema differently from it's key in the OpenAPI schema, simply define the 'title' attribute.
 - 'openapi' version MUST be '3' or greater
@@ -189,6 +190,7 @@ schema is used.
 | ---------                                 | ----------- |
 | FLASK_CONFIG                              | Must be set to either 'development', 'testing', or 'production' |
 | FLASK_PORT                                | Defaults to 5000 if not set |
+| FLASK_SECRET_KEY                          | Used for Flask-Admin, no need to set this if not using Flask-Admin |
 | MECHANIC_BASE_API_PATH                    | Defaults to "/api" if not set |
 | MECHANIC_DEV_DATABASE                     | Url of the development db, used when FLASK_CONFIG is set to 'development' |
 | MECHANIC_TEST_DATABASE                    | Url of the test db, used when FLASK_CONFIG is set to 'testing' |
@@ -293,3 +295,74 @@ class MyItemController(BaseItemController):
 Now, every generated controller that would, by default, inherit from BaseItemController now will inherit from MyItemController
 instead. If you are only interested in customizing the behavior of a single controller, see 
 [here](#what-if-i-want-to-change-the-behavior-of-a-generated-controller) for more details.
+
+#### What if I want an attribute to be represented as a uri instead of a nested object?
+Let's say you have a schema, House, defined as such:
+```yaml
+House:
+    type: object
+    properties:
+      bedrooms:
+        type: integer
+      bathrooms:
+        type: integer
+```
+And then in person.yaml, you have:
+```yaml
+Person:
+    type: object
+    properties:
+      name:
+        type: string
+      house:
+        $ref: house.yaml#House
+```
+
+Assuming you've set up your API paths in the OpenAPI file, doing a GET on a Person will return something like this:
+```json
+{
+  "identifier": "...",
+  "uri": "...",
+  "name": "Taylor Swift",
+  "house": {
+    "identifier": "123-456-789-458",
+    "uri": "/api/houses/123-456-789-458",
+    "bedrooms": 2,
+    "bathrooms": 2
+  }
+}
+```
+For a simple example like this, having the object embedded is not a big deal. But if you have an object that has 10 or 
+20 nested objects, it could get annoying. mechanic allows you to define a nested object as 'embeddable', meaning that it
+be represented as a uri instead of the entire object. In the example above, you would change your Person object to be
+this:
+
+```yaml
+Person:
+    type: object
+    properties:
+      name:
+        type: string
+      house:
+        x-mechanic-embeddable: true
+        oneOf:
+          - $ref: house.yaml#House
+          - type: string
+```
+
+Then doing a GET on that Person again will return this instead:
+```json
+{
+  "identifier": "...",
+  "uri": "...",
+  "name": "Taylor Swift",
+  "house": "/api/houses/123-456-789-458"
+}
+```
+**Important:** marking an attribute as 'embeddable' means that oneOf MUST contain both a $ref and a string.
+
+#### What if I want to add support for query parameters?
+mechanic automatically parses query parameters for you in the base controllers' attributes. To handle query parameters,
+ extend the appropriate controller and add your logic for handling the query parameters. See 
+ [here](#what-if-i-want-to-customize-my-own-base-controllers-instead-of-the-mechanic-default-ones?) for details on
+ creating custom base controllers.

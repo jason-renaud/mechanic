@@ -33,14 +33,19 @@ class Generator:
         self.APP_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/app/__init__.py")
         self.APP_RUN_SRC = pkg_resources.resource_filename(__name__, "../starter/run.py")
         self.APP_RUN_OUTPUT = os.path.expanduser(self.output_dir + "/")
-        self.APP_DOCS_STATIC_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static")
-        self.APP_DOCS_STATIC_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/")
-        self.APP_DOCS_TEMPLATES_SRC = pkg_resources.resource_filename(__name__, "../starter/app/templates")
-        self.APP_DOCS_TEMPLATES_OUTPUT = os.path.expanduser(self.output_dir + "/app/templates/")
+        self.APP_DOCS_STATIC_SWAGGER_CSS_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/css/lib/swagger/")
+        self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/css/lib/swagger/")
+        self.APP_DOCS_STATIC_SWAGGER_JS_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/js/lib/swagger/")
+        self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/js/lib/swagger/")
+
+        self.APP_DOCS_TEMPLATES_INDEX_SRC = pkg_resources.resource_filename(__name__, "../starter/app/templates/index.html")
+        self.APP_DOCS_TEMPLATES_INDEX_OUTPUT = os.path.expanduser(self.output_dir + "/app/templates/index.html")
+
         self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "../starter/requirements.txt")
         self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/")
         self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "../starter/app/config.py")
         self.BASE_CONFIG_OUTPUT = os.path.expanduser(self.output_dir + "/app/config.py")
+        self.ADMIN_INIT_PATH = os.path.expanduser(self.output_dir + "/app/admin_init.py")
         self.API_ENDPOINTS_PATH = os.path.expanduser(self.output_dir + "/app/api.py")
         self.API_CONTROLLERS_PATH = os.path.expanduser(self.output_dir + "/controllers/")
         self.API_MODELS_PATH = os.path.expanduser(self.output_dir + "/models/")
@@ -51,7 +56,8 @@ class Generator:
         self.BASE_ITEM_CONTROLLER = os.getenv("MECHANIC_CUSTOM_ITEM_CONTROLLER", "base.controllers.BaseItemController")
         self.BASE_COLLECTION_CONTROLLER = os.getenv("MECHANIC_CUSTOM_COLLECTION_CONTROLLER", "base.controllers.BaseCollectionController")
 
-    def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False, exclude=[]):
+    def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False, exclude=[],
+                 admin=False):
         """
         Generates code into the directory specified by self.output_dir
 
@@ -61,6 +67,7 @@ class Generator:
         :param controllers: flag to signal controllers should be generated.
         :param api: flag to signal api endpoint mapping code should be generated.
         :param starter: flag to signal starter files should be generated.
+        :param admin: flag to signal if Flask-Admin code should be generated.
         """
         if all:
             models = True
@@ -83,6 +90,9 @@ class Generator:
 
         if api:
             self.generate_api_endpoints()
+
+        self.generate_admin(admin=admin)
+
 
     def generate_models(self):
         import_modules = ""
@@ -108,12 +118,30 @@ class Generator:
             if not os.path.exists(models_output):
                 os.makedirs(models_output)
 
-            import_modules = import_modules + "from models." + namespace + ".models import *\n"
-            with open(models_output + "/__init__.py", "w"):
-                pass
-
+            import_modules = import_modules + "from ." + namespace + ".models import *\n"
             with open(models_output + "/models.py", "w") as f:
                 f.write(models_result)
+
+            with open(models_output + "/__init__.py", "w") as f:
+                models_output = self.API_MODELS_PATH + namespace
+
+                # custom controllers
+                for item in os.listdir(models_output):
+                    # get all files in namespace controllers directory, and import all files with that.
+                    if os.path.isfile(models_output + "/" + item) and item != "__init__.py":
+                        item = item.strip(".py")
+                        f.write("from ." + item + " import *\n")
+
+            # models_output = self.API_MODELS_PATH + namespace
+            # if not os.path.exists(models_output):
+            #     os.makedirs(models_output)
+            #
+            # import_modules = import_modules + "from ." + namespace + ".models import *\n"
+            # with open(models_output + "/__init__.py", "w") as f:
+            #     pass
+            #
+            # with open(models_output + "/models.py", "w") as f:
+            #     f.write(models_result)
 
         with open(self.API_MODELS_PATH + "/__init__.py", "w") as f:
             f.write(import_modules)
@@ -211,32 +239,33 @@ class Generator:
         if not os.path.exists(os.path.expanduser(self.output_dir + "/app/")):
             os.makedirs(os.path.expanduser(self.output_dir + "/app/"))
 
-        shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
+        if "starter/run.py" not in exclude:
+            shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
 
         if "starter/app/__init__.py" not in exclude:
             shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
 
-        if "starter/app/static" not in exclude:
-            try:
-                shutil.copytree(self.APP_DOCS_STATIC_SRC, self.APP_DOCS_STATIC_OUTPUT)
-            except FileExistsError:
-                shutil.rmtree(self.APP_DOCS_STATIC_OUTPUT)
-                shutil.copytree(self.APP_DOCS_STATIC_SRC, self.APP_DOCS_STATIC_OUTPUT)
+        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/static")):
+            os.makedirs(os.path.expanduser(self.output_dir + "/app/static"))
 
-        if "starter/app/templates" not in exclude:
-            try:
-                shutil.copytree(self.APP_DOCS_TEMPLATES_SRC, self.APP_DOCS_TEMPLATES_OUTPUT)
-            except FileExistsError:
-                shutil.rmtree(self.APP_DOCS_TEMPLATES_OUTPUT)
-                shutil.copytree(self.APP_DOCS_TEMPLATES_SRC, self.APP_DOCS_TEMPLATES_OUTPUT)
-
-        if not os.path.isfile(self.BASE_REQUIREMENTS_OUTPUT):
+        if not os.path.exists(self.BASE_REQUIREMENTS_OUTPUT):
             shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
-        if not os.path.isfile(self.BASE_CONFIG_OUTPUT):
+        if not os.path.exists(self.BASE_CONFIG_OUTPUT):
             shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
 
         if not os.path.exists(os.path.expanduser(self.output_dir + "/base/")):
             os.makedirs(os.path.expanduser(self.output_dir + "/base/"))
+
+        try:
+            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_CSS_SRC, self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT)
+            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_JS_SRC, self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
+        except FileExistsError:
+            shutil.rmtree(self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT)
+            shutil.rmtree(self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
+            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_CSS_SRC, self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT)
+            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_JS_SRC, self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
+
+        shutil.copy(self.APP_DOCS_TEMPLATES_INDEX_SRC, self.APP_DOCS_TEMPLATES_INDEX_OUTPUT)
 
         shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
         shutil.copy(self.BASE_CONTROLLERS_SRC, self.BASE_CONTROLLERS_OUTPUT)
@@ -244,6 +273,17 @@ class Generator:
         shutil.copy(self.BASE_FIELDS_SRC, self.BASE_FIELDS_OUTPUT)
         shutil.copy(self.BASE_EXCEPTIONS_SRC, self.BASE_EXCEPTIONS_OUTPUT)
         shutil.copy(self.BASE_DB_HELPER_SRC, self.BASE_DB_HELPER_OUTPUT)
+
+    def generate_admin(self, admin=False):
+        admin_result = self._render(
+            pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "admin_init.tpl"),
+            {
+                "data": self.mechanic_obj["models"],
+                "timestamp": datetime.datetime.utcnow(),
+                "admin": admin
+            })
+        with open(self.ADMIN_INIT_PATH, "w") as f:
+            f.write(admin_result)
 
     def _render(self, tpl_path, context):
         path, filename = os.path.split(tpl_path)
