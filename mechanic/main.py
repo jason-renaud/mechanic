@@ -67,7 +67,7 @@ def main():
     if not models and not schemas and not controllers and not api and not starter:
         all_objs = True
 
-    filename = "/home/zackschrag/fix-automator/fix/api/mechanic.yaml"
+    filename = "temp-mech.json"
     Converter(oapi_file, filename).convert(merge=pkg_resources.resource_filename(__name__, "starter/app/static/docs.yaml"))
     Generator(filename, output_dir).generate(all=all_objs,
                                                      models=models,
@@ -77,7 +77,7 @@ def main():
                                                      starter=starter,
                                                      exclude=exclude,
                                                      admin=admin)
-    # os.remove(filename)
+    os.remove(filename)
 
 if __name__ == "__main__":
     main()

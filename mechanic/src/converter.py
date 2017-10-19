@@ -782,7 +782,6 @@ class Converter:
                                                          schema_all_of=prop_all_of,
                                                          visited_schemas=visited_schemas)
                 elif prop_obj.get("type") == "array":
-                    print("!@##@$#@$@#")
                     list_type = data_map.get(prop_obj.get("items", {}).get("type")) or prop_obj.get("items", {}).get("type")
                     new_prop["type"] = "list"
                     new_prop["items"] = list_type
