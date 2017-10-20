@@ -37,12 +37,13 @@ class Generator:
         self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/css/lib/swagger/")
         self.APP_DOCS_STATIC_SWAGGER_JS_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/js/lib/swagger/")
         self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/js/lib/swagger/")
-
+        self.APP_DOCS_STATIC_SPEC_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/docs.yaml")
+        self.APP_DOCS_STATIC_SPEC_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/docs.yaml")
         self.APP_DOCS_TEMPLATES_INDEX_SRC = pkg_resources.resource_filename(__name__, "../starter/app/templates/index.html")
         self.APP_DOCS_TEMPLATES_INDEX_OUTPUT = os.path.expanduser(self.output_dir + "/app/templates/index.html")
 
         self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "../starter/requirements.txt")
-        self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/")
+        self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/requirements.txt")
         self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "../starter/app/config.py")
         self.BASE_CONFIG_OUTPUT = os.path.expanduser(self.output_dir + "/app/config.py")
         self.ADMIN_INIT_PATH = os.path.expanduser(self.output_dir + "/app/admin_init.py")
@@ -248,8 +249,12 @@ class Generator:
         if not os.path.exists(os.path.expanduser(self.output_dir + "/app/static")):
             os.makedirs(os.path.expanduser(self.output_dir + "/app/static"))
 
+        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/templates")):
+            os.makedirs(os.path.expanduser(self.output_dir + "/app/templates"))
+
         if not os.path.exists(self.BASE_REQUIREMENTS_OUTPUT):
             shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
+
         if not os.path.exists(self.BASE_CONFIG_OUTPUT):
             shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
 
@@ -266,6 +271,7 @@ class Generator:
             shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_JS_SRC, self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
 
         shutil.copy(self.APP_DOCS_TEMPLATES_INDEX_SRC, self.APP_DOCS_TEMPLATES_INDEX_OUTPUT)
+        shutil.copy(self.APP_DOCS_STATIC_SPEC_SRC, self.APP_DOCS_STATIC_SPEC_OUTPUT)
 
         shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
         shutil.copy(self.BASE_CONTROLLERS_SRC, self.BASE_CONTROLLERS_OUTPUT)

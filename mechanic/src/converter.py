@@ -514,7 +514,8 @@ class Converter:
         self._mschema_from_schema_properties(mschema_key,
                                              mschema,
                                              namespace=mschema["namespace"],
-                                             schema_properties=schema.get("properties", {}))
+                                             schema_properties=schema.get("properties", {}),
+                                             required_props=schema.get("required", []))
 
     def _model_mschema_from_response(self, response_code, response_obj, namespace=DEFAULT_NAMESPACE):
         """
@@ -615,7 +616,6 @@ class Converter:
                             "regex": item.get("regex"),
                             "attr_name": item.get("attr_name")
                         })
-
 
             if schema["properties"].get(prop_name):
                 schema["properties"][prop_name]["required"] = prop.get("required")
@@ -781,6 +781,11 @@ class Converter:
                                                          namespace=namespace,
                                                          schema_all_of=prop_all_of,
                                                          visited_schemas=visited_schemas)
+                elif prop_obj.get("type") == "array":
+                    list_type = data_map.get(prop_obj.get("items", {}).get("type")) or prop_obj.get("items", {}).get("type")
+                    new_prop["type"] = "list"
+                    new_prop["items"] = list_type
+                    mschema["properties"][name] = new_prop
 
         if not self.mschemas.get(mschema_key):
             self.mschemas[mschema_key] = mschema

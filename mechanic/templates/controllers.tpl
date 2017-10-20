@@ -14,7 +14,7 @@ class {{ controller_name }}({{ controller.base_controller }}):
         {%- if method.supported %}
         "{{ method_name }}": {
             "code": {{ method.response.success_code }},
-            "model": {{ method.response.model or None }},
+            "model": {% if method.response.model in models %}{{ method.response.model or None }}{% else %}None{% endif %},
             "schema": {{ method.response.mschema or None }}
         }{{ "," if not loop.last }}
         {%- endif %}
@@ -24,7 +24,7 @@ class {{ controller_name }}({{ controller.base_controller }}):
         {%- for method_name, method in controller.methods.items() %}
         {%- if method.supported %}
         "{{ method_name }}": {
-            "model": {{ method.request.model or None }},
+            "model": {% if method.request.model in models %}{{ method.request.model or None }}{% else %}None{% endif %},
             "schema": {{ method.request.mschema or None }},
             "query_params": [
                 {%- for param in  method.query_params %}

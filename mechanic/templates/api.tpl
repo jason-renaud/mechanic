@@ -5,12 +5,12 @@ def init_api(api):
     # imports need to be inside this method call to ensure models and controller objects are properly created in the
     # 'api' object
     from app import config
-    # from controllers import ({% for controller_name, controller in data.items() %}{{ controller_name }}{{ ", " if not loop.last }}{% endfor %})
     import controllers
 
     {%- for controller_name, controller in data.items() %}
     api.add_resource(_find_leaf_subclass(controllers.{{ controller_name }}), config["BASE_API_PATH"] + "{{ controller.uri }}")
     {%- endfor %}
+
 
 def _find_leaf_subclass(cls):
     subclasses = cls.__subclasses__()

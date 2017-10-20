@@ -109,26 +109,32 @@ class {{ schema_name }}(BaseModelSchema):
 {# #}
 {# #}
 class {{ schema_name }}(BaseSchema):
-    pass
-    {#
-    {%- for prop_name, prop in schema.properties.items() %}
-        {%- if prop.references %}
-            {%- for ref in  prop.references.oneOf %}
-                {%- for key, val in ref.items() %}
-    {{ prop_name }} = Expandable(
-                        nested_schema=fields.Nested("{{ key }}"{% if val == "MANY" %}, many=True{% endif %}, exclude=("{{ key }}",)),
-                        nested_model={{ prop.model_ref }})
-                {% endfor %}
-            {% endfor %}
-        {%- else %}
+        {%- for prop_name, prop in schema.properties.items() %}
+            {%- if prop.references %}
+                {%- if prop.oneOf %}
+    {{ prop_name }} = OneOf(field_types=[
+                                            {#- otherwise, just have each field type in the order given #}
+                                            {%- for item in prop.oneOf -%}
+                                                {%- if item.nested %}
+                                    fields.Nested("{{ item.nested }}", exclude=({%- for exc in item.exclude %}"{{ exc }}",{%- endfor %})),
+                                                {%- else %}
+                                    fields.{{ item.type }}(required={{ prop.required }}, {%- if prop.maxLength %}{{ prop.maxLength }}{%- endif %}),
+                                                {%- endif %}
+                                            {%- endfor %}
+                                ], required={{ prop.required }})
 
+                    {%- for item in prop.oneOf %}
+    {{ item.attr_name }} = field_for({{ schema.model }}, "{{ item.attr_name }}", dump_only=True, load_only=True)
+                    {%- endfor %}
+                {%- endif %}
+            {%- elif prop.type == "list" %}
+    {{ prop_name }} = fields.List(fields.{{ prop.items }}, {% if prop.required %}required=True, {% endif %})
+            {%- else %}
     {{ prop_name }} = fields.{{ prop.type }}({% if prop.required %}required=True, {% endif %}{% if prop.maxLength %}max_length={{ prop.maxLength }}, {% endif %}{% if prop.enum_validate %}validate=validate.OneOf({{ prop.enum_validate }}), {% endif %}{% if prop.regex_validate %}validate=validate.Regexp(r"{{ prop.regex_validate }}"){% endif %})
-
-        {%- endif %}
-    {%- endfor %}
+            {%- endif %}
+        {%- endfor %}
 
     class Meta:
         strict = True
-    #}
     {%- endif %}
 {% endfor %}
