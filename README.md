@@ -1,368 +1,137 @@
-### Summary
-mechanic is a tool that can be used to generate code, from controller to database, with only an OpenAPI 3.0 specification file. Specifically, it generates code in Python 3.6, with these frameworks/tools:
-- Flask-SQLAlchemy for the models generated (for the DB integration layer)
-- Flask-Marshmallow for the schemas generated (for validation of input)
-- Flask-RESTful for the controllers generated 
+# mechanicfile reference
 
-#### Why not Swagger Codegen? ####
-tldr: Swagger codegen allows for more flexibility in how you implement your API, while mechanic allows for rapid development of a constantly changing API.
+##### APP_NAME
+**Required**: No  
+**Default value**: "app"  
+Option to name your application, this value is used for defining the default logger (among others)
 
-Swagger codegen appears to only generate starter code. It creates an API and validates input, but it stops after that. If the API changed, one would need to regenerate code, which would potentially overwrite code you had been developing over some time. From my understanding, swagger codegen is helpful for getting up and running in a new project, but it is not useful if your API is constantly changing and/or you need business logic to stay the same. There is also no integration with databases. Because Swagger codegen focuses on getting the base of an API working, you have more flexibility in how you implement your API. On the other hand, mechanic is very opinionated, but it allows you to go from zero-to-fully functioning API very quickly. 
+##### OPENAPI
+**Required**: Yes  
+**Default value**: None  
+Path to the OpenAPI 3.0 file to generate from. Example "v100.yaml" or "~/v100.yaml"
 
-#### Who may find mechanic useful ####
-1) Teams starting a brand new project with only a OpenAPI 3.0 specification file.
-2) Developers who don't like copy and pasting code every time they have to create a new API endpoint.
-3) You want to get up and running with working API code, but don't want to spend the time/effort of writing boilerplate code and selecting frameworks.
-4) You have a constantly evolving API and don't want to consistently rewrite code to, for example, change or remove a single attribute on a resource.
+##### MICROSERVICE_ROOT_DIR
 
-#### Who may not find mechanic useful ####
-1) mechanic makes a lot of assumptions on frameworks and structuring things, so, for example, if you don't want to use sqlalchemy and marshmallow, this tool may not be for you.
-2) If you are specific in how things are implemented, this tool may not be for you.
-3) mechanic enforces some REST API 'best practices' in order to generate meaningful code. If you have an API that doesn't follow the enforced best practices outline below, this tool may not be for you.
+##### MODELS_PATH 
+**Required**: No  
+**Default value**: models/{{namespace}}.py   
+Defines the path in which to generate SQLAlchemy models. Optional variables are:
+- {{namespace}} --> The namespace associated with the model. See [namespaces](#namespaces) for more details.  
+- {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
+will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
 
-### Getting started
-#### Install with pip
-- (Optional) Create a virtualenv for your project
-```bash
-virtualenv -p python3.6 path/to/virtualenv
-source path/to/virtualenv/bin/activate
-```
-- Install mechanic
-```bash
-pip3 install mechanic-gen
+##### MODELS_NAME_PATTERN
+**Required**: No  
+**Default value**: {{resource}}Model  
+Defines how model classes should be named. Optional variables are:
+- {{resource}} --> The resource defined in the OpenAPI 3.0 file.
+- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
 
-# converts OpenAPI 3.0 spec file into mechanic format
-mechanic generate ~/my-oapi.yaml ~/my-proj
+##### SCHEMAS_NAME_PATTERN
+**Required**: No  
+**Default value**: {{resource}}Schema  
+Defines how schema classes should be named. Optional variables are:
+- {{resource}} --> The resource defined in the OpenAPI 3.0 file.
+- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
 
-# IMPORTANT: Make sure your database has a schema defined called 'default' (or for each unique usage of **x-mechanic-namespace**). 
-```
-- See [here](#database-configuration) for more details on defining database schemas. 
-- Set the necessary environment variables (Note that <db-type> can theoretically work with any SQL db that SQLAlchemy 
-supports, but mechanic has only been tested with 'postgresql'):
-```bash
-export FLASK_CONFIG=development
-export MECHANIC_DEV_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
-export MECHANIC_TEST_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:5432/DB_NAME
-export MECHANIC_BASE_API_PATH=/v1
-```
-- Install pip requirements and run the app
-```bash
-cd ~/my-proj
-pip3 install -r requirements.txt
-python run.py
-```
-- Go to http://127.0.0.1:5000
-- Execute some REST calls to test it out. For example, if you have an endpoint defined as **/cars** with a GET method, 
-do a GET /v1/cars request using your favorite REST client.
+##### CONTROLLERS_NAME_PATTERN
+**Required**: No  
+**Default value**: {{resource}}{{controller_type}}Controller  
+Defines how controller classes should be named. Optional variables are:
+- {{resource}} --> The resource defined in the OpenAPI 3.0 file.
+- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
+- {{controller_type}} --> For more details about different controller types, see [controllers](#controllers).
 
-#### Starting from source code
-- Clone the mechanic repo first
-- (Optional) Create a virtualenv for your project
-```bash
-virtualenv -p python3.6 path/to/virtualenv
-source path/to/virtualenv/bin/activate
-cd path/to/cloned/repo/mechanic/
+##### SCHEMAS_PATH 
+**Required**: No  
+**Default value**: schemas/{{namespace}}.py   
+Defines the path in which to generate Marshmallow schemas. Optional variables are:
+- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
+will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
 
-# this installs mechanic-gen in development mode
-pip3 install -e .
-```
-- Make sure your database has a schema defined called 'default'. See [here](#database-configuration) for more details.
-- Set the necessary environment variables (Note that <db-type> can theoretically work with any SQL db that SQLAlchemy 
-supports, but mechanic has only been tested with 'postgresql'):
-```bash
-export FLASK_CONFIG=development
-export MECHANIC_DEV_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:PORT/DB_NAME
-export MECHANIC_TEST_DATABASE=<db-type>://USERNAME:PASSWORD@HOSTNAME:PORT/DB_NAME
-export MECHANIC_BASE_API_PATH=/v1
+##### CONTROLLERS_PATH 
+**Required**: No  
+**Default value**: controllers/{{namespace}}.py   
+Defines the path in which to generate controllers. Optional variables are:
+- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
+will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
 
-mechanic generate ~/my-openapi-spec.yaml ~/my-proj
-```
+##### BASE_API_PATH
+**Required**: No  
+**Default value**: /api  
+Allows you to define the base api path for your REST API.
 
-- Install pip requirements and run the app
-```bash
-cd ~/my-proj
-pip3 install -r requirements.txt
-python run.py
-```
-- Go to http://127.0.0.1:5000
-- Execute some REST calls to test it out. For example, if you have an endpoint defined as **/cars** with a GET method, 
-do a GET /v1/cars request using your favorite REST client.
+##### BASE_ITEM_CONTROLLER
+**Required**: No  
+**Default value**: "mechanic.base.controllers.BaseItemController"  
+Allows you to define your own base item controller instead of the one generated by mechanic. For more 
+details about different controller types, see [controllers](#controllers).
 
-#### Database configuration
-This assumes you already have a sql database created, and you have already set up the correct environment variables
-mentioned in the [Getting started](#getting-started) section.   
+##### BASE_COLLECTION_CONTROLLER
+**Required**: No  
+**Default value**: "mechanic.base.controllers.BaseCollectionController"  
+Allows you to define your own base collection controller instead of the one generated by mechanic. For more 
+details about different controller types, see [controllers](#controllers).
 
-If you use the [x-mechanic-namespace](#mechanic-openapi-extensions-and-additional-syntax-requirements) extension, create
-a schema named the same as each usage [x-mechanic-namespace](#mechanic-openapi-extensions-and-additional-syntax-requirements).
-For example, let's say in your spec you have something like this:
-```yaml
-paths:
-    /airplanes:
-      x-mechanic-namespace: sky
-      get: ...
-      post: ...
-    /cars: 
-      get: ...
-      post: ...
-    /boats:
-      x-mechanic-namespace: water
-      get: ...
-      post: ...
-```
-In this scenario, you need to define schemas "sky", "water", and "default". "default" is the schema name used when no
-[x-mechanic-namespace](#mechanic-openapi-extensions-and-additional-syntax-requirements) definition is used to define either
-an operation or a OpenAPI schema object.  
+##### BASE_CONTROLLER
+**Required**: No  
+**Default value**: "mechanic.base.controllers.BaseController"    
+Allows you to define your own base controller instead of the one generated by mechanic. For more 
+details about different controller types, see [controllers](#controllers).
 
-If you do not define these schemas, you will see a database error when attempting to run your application.
+##### DEFAULT_NAMESPACE
+**Required**: No  
+**Default value**: "default"  
+Allows you to define the default namespace if the "x-mechanic-namespace" extension is not used. For more details about
+extensions, see [here](#extensions) for more details.
 
-#### Common errors during setup
-- Make sure your database has the schemas created for each namespace that is defined. If you did not define any 
-namespaces for your resources, create a schema named "default".
-- mechanic should provide informative error messages if something has gone wrong. If it does not and you think it 
-should, submit an issue or pull request.
-- First place your OpenAPI 3.0 spec file in the Swagger Editor online and make sure it is a valid specification. If it
-is not working with mechanic, double check you have a valid OpenAPI 3.0 spec to begin with.
+##### INCLUDE
+**Required**: No  
+**Default value**: None
+Allows you to customize which additional pieces of code to generate. Options are:    
 
-### REST API best practices enforced by mechanic
-#### mechanic types of APIs
-mechanic supports 2 types of APIs - Collection, and Item. If the endpoint uri does not match one of these patterns, there
-will be no base implementation for the controller. If there is more than one controller for a certain resource that 
-does not match one of these API patterns, then starting with the second controller, an incrementing number will be 
-appended to the end of the controller name. For example, let's say you have 4 endpoints defined like this:
-
-1) /cars/wheels
-2) /cars/wheels/{id}
-3) /cars/wheels/{id}/rotate/{direction}
-4) /cars/wheels/{id}/replace
-
-\#1 will be mapped as an Item controller, \#2 will be mapped as a Collection controller, \#3 and \#4 do not match an Item
-or Collection pattern, so they will be named WheelRotatedirectionController and WheelReplaceController. Because these
-controllers are non-Item and non-Collection, they have to be extended to be of any use. See
-[here](#what-if-i-want-to-change-the-behavior-of-a-generated-controller) for more details on extending controllers.
-
-#### Endpoint definitions 
-An API that represents a resource should have 2 endpoints, 1) an endpoint to the collection of these resources and 2) an 
-endpoint to access/update a single item of this resource.  Examples: let's say you have an endpoint to represent dogs, 
-you might have these 2 endpoints: 
-- /cars/wheels/ - this represents a collection of all of the resource wheels 
-- /cars/wheels/{id} - where {id} is the identifier of the wheel
-
-Assumptions:
-The last part of the path segment before '{id}' is always the resource name, or the last part of the uri segments. In 
-both of the examples below, "Wheel" is the resource.
-- /cars/wheels/{id} - The controller will be named "WheelItemController"
-- /cars/wheels - The controller will be named "WheelCollectionController"
-
-Let's say you have an endpoint definition that looks like this: **/cars/{id}/wheels/{wheel_id}**  
-  
-This is allowed, but mechanic will just not provide base functionality in a controller for you. The 
-generated controller will extend BaseController, and then in order to add functionality you need to extend that 
-generated class. See [here](#what-if-i-want-to-change-the-behavior-of-a-generated-controller) for more details on 
-extending controllers.
-
-#### Model definitions
-- mechanic automatically uses the field "identifier" as the primary key of the resource, which is also the id to use in 
-the url when retrieving an object. DO NOT define an "id" or "identifier" field in your schema properties in the 
-specification file.
-- mechanic automatically defines foreign key relationships whenever a schema of type "array" with a reference to another
-schema is used.
-
-#### mechanic OpenAPI extensions and additional syntax requirements
-| extension                 | description |
-| ---------                 | ----------- |
-| x-mechanic-namespace      | A way to separate categories of APIs. This is used to determine which packages to separate code into. This can also be placed on a schema object, although it is only needed if a schema is referenced by another schema outside of it's namespace. |
-| x-mechanic-plural         | mechanic uses a library called 'inflect' to automatically determine plural and singular forms of words. However it doesn't always work as needed, so you can use this attribute to override the plural form of the schema name. |
-| x-mechanic-embeddable     | Set to 'true' if this attribute can either be represented as a uri or as a nested object. If set to true, it is required that the attribute is defined as 'oneOf', with one item being a $ref to a schema, and the other item being a 'string'. |
-
-- In order to name a model/schema differently from it's key in the OpenAPI schema, simply define the 'title' attribute.
-- 'openapi' version MUST be '3' or greater
-- Each path method MUST have a '200', '201', '202', or '204' response object defined.
-- The path uri MUST be of one of these formats: /uri/to/resource/, /uri/to/resource/{id}, or 
-/uri/to/resource/{id}/<command>
-- mechanic currently only supports the following HTTP methods:
-    - get
-    - put
-    - post
-    - delete
-
-#### mechanic environment variables
-| extension                                 | description |
-| ---------                                 | ----------- |
-| FLASK_CONFIG                              | Must be set to either 'development', 'testing', or 'production' |
-| FLASK_PORT                                | Defaults to 5000 if not set |
-| FLASK_SECRET_KEY                          | Used for Flask-Admin, no need to set this if not using Flask-Admin |
-| MECHANIC_BASE_API_PATH                    | Defaults to "/api" if not set |
-| MECHANIC_DEV_DATABASE                     | Url of the development db, used when FLASK_CONFIG is set to 'development' |
-| MECHANIC_TEST_DATABASE                    | Url of the test db, used when FLASK_CONFIG is set to 'testing' |
-| MECHANIC_PRO_DATABASE                     | Url of the production db, used when FLASK_CONFIG is set to 'production' |
-| MECHANIC_CUSTOM_CONTROLLER                | Full module path for a custom base controller. For example: 'base.custom.controllers.CustomBaseController'. All generated controllers that would normally inherit from BaseController will instead inherit from this controller. |
-| MECHANIC_CUSTOM_ITEM_CONTROLLER           | Full module path for a custom base item controller. For example: 'base.custom.controllers.CustomBaseItemController'. All generated controllers that would normally inherit from BaseItemController will instead inherit from this controller. |
-| MECHANIC_CUSTOM_COLLECTION_CONTROLLER     | Full module path for a custom base collection controller. For example: 'base.custom.controllers.CustomBaseCollectionController'. All generated controllers that would normally inherit from BaseCollectionController will instead inherit from this controller. |
-
-#### mechanic does NOT support
-- mechanic does not run from the servers url(s), however it does use them as the base resource url for command APIs.
-- less than Python 3.6, generated code is Python 3.6
-- security definitions
-- Query parameters are not supported except for GET on collection resources.
-- consumes/produces, assumes only json
-
-### FAQ
-#### What if my OpenAPI file is split across many files?
-mechanic automatically merges your OpenAPI file if it is split in a particular way. External references much be relative
-to the OpenAPI main file, and mechanic currently does not support external references that are located on a different 
-filesystem. For example, let's say your directory structure looks like this:
-```bash
-~/oapi/
-    master-oapi.yaml
-    transportation/
-        car.yaml
-        airplane.yaml
-        pilot.yaml
-```
-In master-oapi.yaml, the reference to airplane.yaml must look like this:
-```yaml
-$ref: transportation/airplane.yaml#/Airplane
-```
-And the contents of airplane.yaml might look like this:
-```yaml
-Airplane:
-    type: object
-    properties:
-      name:
-        type: string
-      airline:
-        type: string
-      pilot:
-        $ref: transportation/pilot.yaml#/Pilot
-```
-**Important**: notice that in airplane.yaml, the reference to pilot is still relative to master-oapi.yaml, NOT relative 
-to airplane.yaml.
-
-#### What if I want to change the behavior of a generated controller?
-mechanic was designed (or at least attempted) in such a way to allow you to customize behavior to suit your needs. 
-Let's say mechanic generated a controller called AirplaneController that maps to endpoint /api/airplanes/{id}. Add a new 
-file (it can be named anything you want) within the same directory as where AirplaneController is defined (NOT the same 
-file! This would get overwritten). The directory structure would look like this:
-```bash
-~/my-proj/
-    app/..
-    base/..
-    controllers/
-        default/
-            controllers.py
-            my_custom_controllers.py
-```
-And then within my_custom_controllers.py, you can declare your controller class and extend AirplaneController. Take a 
-look at the base/controllers.py class to determine how you might want to extend the controller and customize the 
-behavior. mechanic will look through the inheritance hierarchy to find the leaf class (the class that has no 
-subclasses), and then map the endpoint to that class instead of the auto-generated class.
-
-Let's say my_custom_controllers.py has this code:
-```python
-from .controllers import AirplaneController
-
-
-class MyCustomAirplaneController(AirplaneController):
-    def get(self, resource_id):
-        return "airplane taking off"
-```
-If you execute a GET /api/airplanes/{id} request, you will get the response "airplane taking off" instead of the
-generated response in AirplaneController. You might want to take a look at base/controllers.py and see what methods are
-defined and in what order they are executed. Then you can override the methods that will fit your needs the best.
-
-**Important**: After you have created a new file (in this case my_custom_controllers.py), you MUST regenerate your code. 
-This is so that mechanic can pick up the new file and add the imports appropriately. But if you are defining a new class 
-within the file and it already exists, there is no need to regenerate the code.
-
-#### What if I want to customize my own base controllers instead of the mechanic default ones?
-You can do this by defining one or more of the following environment variables:
-- MECHANIC_CUSTOM_CONTROLLER
-- MECHANIC_CUSTOM_ITEM_CONTROLLER
-- MECHANIC_CUSTOM_COLLECTION_CONTROLLER
-See [environment variables](#mechanic-environment-variables) for more details.
+| value                     | description |
+| ---                       | --- |
+| "application run"         | generates a basic <project-root>/\_\_init\_\_.py file that has app initialization code, and a <project-root>/run.py file, for running the flask app. |
+| "controller impl"         | points each controller to the default base controller (unless overridden) and adds the fields needed for the default implementation. |
+| "version scheme"          | assumes you want to use the mechanic default versioning scheme. See [versioning](#versioning) for more details. |
  
-For example, let's say you define MECHANIC_CUSTOM_ITEM_CONTROLLER=base.mycustom.controllers.MyItemController, and you want
-to print a message to stdout after an object is updated. You could override the method "_put_item_db_update"
-```python
-from base.controllers import BaseItemController
+##### OVERRIDE_BASE_CONTROLLER
+**Required**: No  
+**Default value**: None  
+Allows finer grained control over which controllers inherit from which class. For example, let's say you've defined 
+BASE_CONTROLLER as "controllers.base.MyCustomBaseController", but you want only a specific file to inherit instead from 
+"controllers.base.MySpecificBaseController". You would use this attribute to define that. Here are some examples:
+```text
+# This means that "HouseController" will have "MyCustomBaseController" as it's super class, 
+# instead of the value defined by BASE_CONTROLLER
+OVERRIDE_BASE_CONTROLLER    with    "controllers.base.MyCustomBaseController"
+                            for     "controllers.default.HouseController"
 
-class MyItemController(BaseItemController):
-    def _put_item_db_update(self, deserialized_request, existing_model, caching_headers=None):
-        ret_val = super(MyItemController, self)._put_item_db_update(deserialized_request, existing_model, caching_headers=caching_headers)
-        print("Object with identifier %s just updated." % (existing_model.identifier))
-        return ret_val
-```
-Now, every generated controller that would, by default, inherit from BaseItemController now will inherit from MyItemController
-instead. If you are only interested in customizing the behavior of a single controller, see 
-[here](#what-if-i-want-to-change-the-behavior-of-a-generated-controller) for more details.
+# This example means that all Controllers will inherit from "MyCustomBaseController".
+OVERRIDE_BASE_CONTROLLER    with    "controllers.base.MyCustomBaseController"
+                            for     "all"
 
-#### What if I want an attribute to be represented as a uri instead of a nested object?
-Let's say you have a schema, House, defined as such:
-```yaml
-House:
-    type: object
-    properties:
-      bedrooms:
-        type: integer
-      bathrooms:
-        type: integer
-```
-And then in person.yaml, you have:
-```yaml
-Person:
-    type: object
-    properties:
-      name:
-        type: string
-      house:
-        $ref: house.yaml#House
+# This example means that all Controllers except "HouseController" and "ParkController" will inherit from "MyCustomBaseController".
+OVERRIDE_BASE_CONTROLLER    with    "controllers.base.MyCustomBaseController"
+                            for     "all"
+                            except  "controllers.default.HouseController, controllers.default.ParkController"
 ```
 
-Assuming you've set up your API paths in the OpenAPI file, doing a GET on a Person will return something like this:
-```json
-{
-  "identifier": "...",
-  "uri": "...",
-  "name": "Taylor Swift",
-  "house": {
-    "identifier": "123-456-789-458",
-    "uri": "/api/houses/123-456-789-458",
-    "bedrooms": 2,
-    "bathrooms": 2
-  }
-}
-```
-For a simple example like this, having the object embedded is not a big deal. But if you have an object that has 10 or 
-20 nested objects, it could get annoying. mechanic allows you to define a nested object as 'embeddable', meaning that it
-be represented as a uri instead of the entire object. In the example above, you would change your Person object to be
-this:
+##### OVERRIDE_BASE_MODEL
+**Required**: No  
+**Default value**: None  
+Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for models
 
-```yaml
-Person:
-    type: object
-    properties:
-      name:
-        type: string
-      house:
-        x-mechanic-embeddable: true
-        oneOf:
-          - $ref: house.yaml#House
-          - type: string
-```
+##### OVERRIDE_BASE_SCHEMA
+**Required**: No  
+**Default value**: None  
+Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for schemas
 
-Then doing a GET on that Person again will return this instead:
-```json
-{
-  "identifier": "...",
-  "uri": "...",
-  "name": "Taylor Swift",
-  "house": "/api/houses/123-456-789-458"
-}
-```
-**Important:** marking an attribute as 'embeddable' means that oneOf MUST contain both a $ref and a string.
-
-#### What if I want to add support for query parameters?
-mechanic automatically parses query parameters for you in the base controllers' attributes. To handle query parameters,
- extend the appropriate controller and add your logic for handling the query parameters. See 
- [here](#what-if-i-want-to-customize-my-own-base-controllers-instead-of-the-mechanic-default-ones?) for details on
- creating custom base controllers.
+##### OVERRIDE_TABLE_NAME
+##### OVERRIDE_DB_SCHEMA_NAME
