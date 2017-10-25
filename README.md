@@ -198,6 +198,8 @@ schema is used.
 | MECHANIC_CUSTOM_CONTROLLER                | Full module path for a custom base controller. For example: 'base.custom.controllers.CustomBaseController'. All generated controllers that would normally inherit from BaseController will instead inherit from this controller. |
 | MECHANIC_CUSTOM_ITEM_CONTROLLER           | Full module path for a custom base item controller. For example: 'base.custom.controllers.CustomBaseItemController'. All generated controllers that would normally inherit from BaseItemController will instead inherit from this controller. |
 | MECHANIC_CUSTOM_COLLECTION_CONTROLLER     | Full module path for a custom base collection controller. For example: 'base.custom.controllers.CustomBaseCollectionController'. All generated controllers that would normally inherit from BaseCollectionController will instead inherit from this controller. |
+| MECHANIC_CUSTOM_BASE_MODEL_SCHEMA         | Full module path for a custom base model schema. |
+| MECHANIC_APPEND_TO_SCHEMA_NAMES           | String to append to schema names. Examples: "V100", $version, "MyApp" |
 
 #### mechanic does NOT support
 - mechanic does not run from the servers url(s), however it does use them as the base resource url for command APIs.

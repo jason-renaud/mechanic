@@ -7,7 +7,9 @@ from marshmallow_sqlalchemy import field_for
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from app import db
-from base.schemas import BaseSchema, BaseModelSchema
+{% for package, modules in imports.base_schema_imports.items() %}
+from {{ package }} import ({% for mod in modules %}{{ mod }},{% endfor %})
+{% endfor %}
 from base.fields import OneOf
 {% if data.items() -%}
 from models import ({% for schema_name, schema in data.items() %}{% if schema.model %}{{ schema.model }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %})
@@ -15,7 +17,7 @@ from models import ({% for schema_name, schema in data.items() %}{% if schema.mo
 {% for schema_name, schema in data.items() %}
     {%- if schema.model %}
 {# #}
-class {{ schema_name }}(BaseModelSchema):
+class {{ schema_name }}({{ schema.base_schema }}):
         {%- for prop_name, prop in schema.properties.items() %}
             {%- if prop.embeddable %}
     {{ prop_name }} = fields.Nested("{{ prop.oneOf[1].nested }}", exclude=({%- for exc in prop.oneOf[1].exclude %}"{{ exc }}",{%- endfor %}), dump_only=True, load_only=True)
@@ -64,7 +66,7 @@ class {{ schema_name }}(BaseModelSchema):
             {%- if prop.embeddable %}
         if self.context.get("{{ prop_name }}_uri"):
             try:
-                obj = {{ prop.oneOf[1].nested.replace("Schema", "Model") }}.query.filter_by(uri=self.context["{{ prop_name }}_uri"]).one()
+                obj = {{ prop.oneOf[1].nested.split("Schema", 1)[0] }}Model.query.filter_by(uri=self.context["{{ prop_name }}_uri"]).one()
                 value.{{ prop.oneOf[1].attr_name }} = obj
             except (NoResultFound, MultipleResultsFound) as e:
                 raise ValidationError("Resource with given uri not found.", field_names=["{{ prop_name }}"])
@@ -103,12 +105,12 @@ class {{ schema_name }}(BaseModelSchema):
         {%- endfor %}
         return value
 
-    class Meta(BaseModelSchema.Meta):
+    class Meta({{ schema.base_schema }}.Meta):
         model = {{ schema.model }}
     {%- else %}
 {# #}
 {# #}
-class {{ schema_name }}(BaseSchema):
+class {{ schema_name }}({{ schema.base_schema }}):
         {%- for prop_name, prop in schema.properties.items() %}
             {%- if prop.references %}
                 {%- if prop.oneOf %}
@@ -134,7 +136,7 @@ class {{ schema_name }}(BaseSchema):
             {%- endif %}
         {%- endfor %}
 
-    class Meta:
+    class Meta({{ schema.base_schema }}.Meta):
         strict = True
     {%- endif %}
 {% endfor %}
