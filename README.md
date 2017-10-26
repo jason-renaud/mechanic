@@ -1,3 +1,12 @@
+The ultimate API toolkit for Python developers.
+- Generate SQLAlchemy Models and Marshmallow schemas
+- Generate API endpoint controllers with the option to include default implementations based on your models/schemas.
+- Customize how the files are generated (naming, location)
+- Define
+
+The goal is for anyone to be able to go from OpenAPI 3.0 spec --> working API immediately.  
+Include your mechanic.json/.yaml file in your Git repo, and incorporate it into your build process.
+
 # mechanicfile reference
 
 ##### APP_NAME
@@ -106,21 +115,32 @@ Allows you to customize which additional pieces of code to generate. Options are
 **Default value**: None  
 Allows finer grained control over which controllers inherit from which class. For example, let's say you've defined 
 BASE_CONTROLLER as "controllers.base.MyCustomBaseController", but you want only a specific file to inherit instead from 
-"controllers.base.MySpecificBaseController". You would use this attribute to define that. Here are some examples:
-```text
-# This means that "HouseController" will have "MyCustomBaseController" as it's super class, 
-# instead of the value defined by BASE_CONTROLLER
-OVERRIDE_BASE_CONTROLLER    with    "controllers.base.MyCustomBaseController"
-                            for     "controllers.default.HouseController"
+"controllers.base.MySpecificBaseController". You would use this attribute to define that. Here are some examples:  
 
-# This example means that all Controllers will inherit from "MyCustomBaseController".
-OVERRIDE_BASE_CONTROLLER    with    "controllers.base.MyCustomBaseController"
-                            for     "all"
+This means that "HouseController" will have "MyCustomBaseController" as it's super class, 
+instead of the value defined by BASE_CONTROLLER
+```json
+"OVERRIDE_BASE_CONTROLLER": {
+    "with": "controllers.base.MyCustomBaseController",
+    "for": "controllers.default.HouseController"
+}
+```
 
-# This example means that all Controllers except "HouseController" and "ParkController" will inherit from "MyCustomBaseController".
-OVERRIDE_BASE_CONTROLLER    with    "controllers.base.MyCustomBaseController"
-                            for     "all"
-                            except  "controllers.default.HouseController, controllers.default.ParkController"
+This example means that all Controllers will inherit from "MyCustomBaseController".
+```json
+"OVERRIDE_BASE_CONTROLLER": {
+    "with": "controllers.base.MyCustomBaseController",
+    "for": "all"
+}
+```
+
+This example means that all Controllers except "HouseController" and "ParkController" will inherit from "MyCustomBaseController".
+```json
+"OVERRIDE_BASE_CONTROLLER": {
+    "with": "controllers.base.MyCustomBaseController",
+    "for": "all",
+    "except": ["controllers.default.HouseController", "controllers.default.ParkController"]
+}
 ```
 
 ##### OVERRIDE_BASE_MODEL

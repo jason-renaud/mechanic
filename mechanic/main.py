@@ -23,11 +23,8 @@ from docopt import docopt
 # project
 from mechanic.src.generator import Generator
 
+
 def main():
-    """
-    ABC
-    :return:
-    """
     with open(pkg_resources.resource_filename(__name__, "VERSION")) as version_file:
         current_version = version_file.read().strip()
 
@@ -35,7 +32,7 @@ def main():
 
     print("@@@@", args)
     # generator = Generator("gen")
-    # with open(os.path.expanduser(args["<directory>"]) + "/mechanicfile") as f:
+    # with open(os.path.expanduser(args["<directory>"]) + "/mechanic.json") as f:
     #     print(f.read())
     #
     # os.makedirs(args["<directory>"] + "/controllers/__init__.py")

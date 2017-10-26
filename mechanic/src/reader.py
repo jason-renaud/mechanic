@@ -1,4 +1,8 @@
 import os
+import copy
+import json
+
+import yaml
 
 default_options = {
     "APP_NAME": "app",
@@ -6,7 +10,7 @@ default_options = {
     "MODELS_PATH": "models/{{namespace}}.py",
     "SCHEMAS_PATH": "schemas/{{namespace}}.py",
     "CONTROLLERS_PATH": "controllers/{{namespace}}.py",
-    "MODELS_NAME_PATTERN": "{{resource}}Model",
+    "MODELS_NAME_PATTERN": "{{resource}}",
     "SCHEMAS_NAME_PATTERN": "{{resource}}Schema",
     "CONTROLLERS_NAME_PATTERN": "{{resource}}{{controller_type}}Controller",
     "BASE_API_PATH": "/api",
@@ -25,15 +29,18 @@ default_options = {
 
 def read_mechanicfile(file_path):
     path = os.path.expanduser(file_path)
+    custom_options = dict()
 
     with open(path, "r") as f:
-        content = f.readlines()
+        if file_path.endswith(".json"):
+            custom_options = json.load(f)
+        elif file_path.endswith(".yaml") or file_path.endswith(".yml"):
+            custom_options = yaml.load(f)
+        else:
+            raise SyntaxError("mechanic file is not of correct format. Must either be json or yaml")
 
-    options = dict()
-    for line in content:
-        if line.split():
-            options[line.split()[0]] = "".join(line.split(maxsplit=1)[1].strip())
+    options = copy.deepcopy(default_options)
+    for key, val in custom_options.items():
+        options[key] = val
 
-    print()
-    print(options)
     return options

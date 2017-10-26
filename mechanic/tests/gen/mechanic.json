@@ -1,0 +1,8 @@
+{
+  "APP_NAME": "petstore",
+  "OVERRIDE_BASE_CONTROLLER": {
+    "with": "controllers.base.MyController",
+    "for": "controllers.default.ABCController"
+  },
+  "MODELS_PATH": "models/myspecialfolder/namespace.py"
+}

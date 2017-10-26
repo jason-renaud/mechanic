@@ -1,0 +1,125 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Grocery Store
+  license:
+    name: MIT
+servers:
+  - url: http://abc.com
+paths:
+  /groceries:
+    get:
+      summary: List all groceries
+      operationId: listGroceries
+      tags:
+        - groceries
+      parameters:
+        - name: limit
+          in: query
+          description: How many items to return at one time (max 100)
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: An paged array of groceries
+          headers:
+            x-next:
+              description: A link to the next page of responses
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroceryItem"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create a grocery item
+      operationId: createGroceryItem
+      tags:
+        - groceries
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /groceries/{gId}:
+    get:
+      summary: Info for a specific grocery
+      operationId: showGroceryById
+      tags:
+        - groceries
+      parameters:
+        - name: gId
+          in: path
+          required: true
+          description: The id of the grocery to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Groceries"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    GroceryItem:
+      required:
+        - id
+        - name
+      properties:
+        name:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+    Wallet:
+      required:
+        - owner
+        - cash
+      properties:
+        owner:
+          type: string
+        cash:
+          type: number
+    Groceries:
+      type: array
+      items:
+        $ref: "#/components/schemas/GroceryItem"
+    Cart:
+      type: array
+      items:
+        oneOf:
+          - type: string
+          - $ref: "#/components/schemas/GroceryItem"
+          - $ref: "#/components/schemas/Wallet"
+
+    Error:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
