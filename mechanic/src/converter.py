@@ -280,6 +280,9 @@ class Converter:
         if self.paths is None:
             raise SyntaxError("paths object is required")
 
+        self.info = self.oapi_obj.get("info", {})
+        self.api_version = self.info.get("version")
+
     def _init_microservices(self):
         """
         Looks through oapi object and finds all server arrays. Each server array is considered a microservice if it has
@@ -474,6 +477,7 @@ class Converter:
             "many_to_many_models": self.many_to_many_models,
             "controllers": self.controllers,
             "fkeys": self.fkeys,
+            "api_version": self.api_version,
         }
 
         with open(self.output_file, "w") as f:
@@ -560,9 +564,13 @@ class Converter:
         :param model: model object itself.
         :param namespace: namespace to place the mschema in.
         """
-        schema_key = model_key.replace("Model", "Schema")
+        schema_key = model_key.replace("Model", "Schema" + self._get_schema_name_append())
+        base_schema = os.getenv("MECHANIC_CUSTOM_BASE_MODEL_SCHEMA", "base.schemas.BaseModelSchema") if model_key else os.getenv("MECHANIC_CUSTOM_BASE_SCHEMA", "base.schemas.BaseSchema")
+
         schema = dict()
         schema["model"] = model_key
+        schema["base_schema"] = base_schema.split(".")[-1]
+        schema["base_schema_package"] = base_schema.rsplit(".", 1)[0]
         schema["resource"] = model_key.replace("Model", "")
         schema["namespace"] = namespace
         model_copy = copy.deepcopy(model)
@@ -573,7 +581,7 @@ class Converter:
                 if not schema["properties"].get(prop_name):
                     schema["properties"][prop_name] = dict()
 
-                referenced_schema_name = prop.get("reference").get("model").replace("Model", "Schema")
+                referenced_schema_name = prop.get("reference").get("model").replace("Model", "Schema" + self._get_schema_name_append())
                 nested = "self" if referenced_schema_name == schema_key else referenced_schema_name
                 schema["properties"][prop_name]["nested"] = nested
                 schema["properties"][prop_name]["many"] = prop.get("reference").get("uselist", False)
@@ -603,7 +611,7 @@ class Converter:
 
                         exclude = ["EXCLUDE:" + item.get("reference").get("model") + ":" + model_key]
                         schema["properties"][prop_name]["oneOf"].append({
-                            "nested": item.get("reference").get("model").replace("Model", "Schema"),
+                            "nested": item.get("reference").get("model").replace("Model", "Schema" + self._get_schema_name_append()),
                             "exclude": exclude,
                             "attr_name": item.get("attr_name")
                         })
@@ -1215,7 +1223,15 @@ class Converter:
             schema, schema_name = self._follow_reference_link(schema_obj.get("items", {}).get("$ref"))
         else:
             schema_name = self._get_name_from_schema(schema_obj, schema_key=schema_obj.get("title", schema_key))
-        return schema_name + "Schema"
+
+        return schema_name + "Schema" + self._get_schema_name_append()
+
+    def _get_schema_name_append(self):
+        name_append = os.getenv("MECHANIC_APPEND_TO_SCHEMA_NAMES", "")
+        if "{{version}}" in name_append:
+            ver = self.api_version.replace(".", "").replace("-", "")
+            name_append = name_append.replace("{{version}}", ver)
+        return name_append
 
     def _get_schema_reference_type(self, schema_obj):
         if schema_obj.get("$ref"):

@@ -77,7 +77,7 @@ def main():
                                                      starter=starter,
                                                      exclude=exclude,
                                                      admin=admin)
-    os.remove(filename)
+    # os.remove(filename)
 
 if __name__ == "__main__":
     main()

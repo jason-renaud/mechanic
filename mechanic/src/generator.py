@@ -151,25 +151,37 @@ class Generator:
         import_modules = ""
         for namespace, namespace_obj in self.mechanic_obj["namespaces"].items():
             data = dict()
+            imports = dict()
+            imports["base_schema_imports"] = dict()
 
             for schema_key in namespace_obj["mschemas"]:
+                base_schema_package = self.mechanic_obj["mschemas"][schema_key]["base_schema_package"]
+                base_schema_name = self.mechanic_obj["mschemas"][schema_key]["base_schema"]
+
+                if not imports["base_schema_imports"].get(base_schema_package):
+                    imports["base_schema_imports"][base_schema_package] = []
+                    imports["base_schema_imports"][base_schema_package].append(base_schema_name)
+
                 data[schema_key] = self.mechanic_obj["mschemas"][schema_key]
 
             schemas_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "schemas.tpl"),
                                         {
                                             "data": data,
+                                            "imports": imports,
                                             "timestamp": datetime.datetime.utcnow()
                                         })
 
-            schemas_output = self.API_SCHEMAS_PATH + namespace
+            api_version = "v" + self.mechanic_obj["api_version"].replace("-", "").replace(".", "")
+            schemas_output = self.API_SCHEMAS_PATH + api_version
+
             if not os.path.exists(schemas_output):
                 os.makedirs(schemas_output)
 
-            import_modules = import_modules + "from schemas." + namespace + ".schemas import *\n"
+            import_modules = import_modules + "from ." + api_version + "." + namespace + " import *\n"
             with open(schemas_output + "/__init__.py", "w"):
                 pass
 
-            with open(schemas_output + "/schemas.py", "w") as f:
+            with open(schemas_output + "/" + namespace + ".py", "w") as f:
                 f.write(schemas_result)
 
         with open(self.API_SCHEMAS_PATH + "/__init__.py", "w") as f:
