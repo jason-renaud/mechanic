@@ -94,24 +94,43 @@ components:
           type: integer
     Wallet:
       required:
-        - owner
         - cash
       properties:
-        owner:
-          type: string
         cash:
           type: number
+    Shopper:
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+        wallet:
+          oneOf:
+            - type: string
+            - $ref: "#/components/schemas/Wallet"
+    Steak:
+      allOf:
+        - type: object
+          properties:
+            steakType:
+              type: string
+            weight:
+              type: number
+        - $ref: "#/components/schemas/GroceryItem"
     Groceries:
       type: array
       items:
         $ref: "#/components/schemas/GroceryItem"
     Cart:
-      type: array
-      items:
-        oneOf:
-          - type: string
-          - $ref: "#/components/schemas/GroceryItem"
-          - $ref: "#/components/schemas/Wallet"
+      type: object
+      properties:
+        cartItems:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - $ref: "#/components/schemas/GroceryItem"
+              - $ref: "#/components/schemas/Wallet"
 
     Error:
       required:

@@ -18,3 +18,4 @@ def deserialize_file(file_path):
         raise SyntaxError("File is not of correct format. Must be either json or yaml (and filename extension must "
                           "be one of those too).")
     return mechanic_obj
+
