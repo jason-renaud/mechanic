@@ -401,15 +401,15 @@ class BaseCollectionController(BaseController):
         """
         Retrieve all objects of the model defined in the controller's responses.get attribute.
 
-        :return: A list of SQLAlchemy models.
+        :return: A list of SQLAlchemy macros.
         """
         return self.responses["get"]["model"].query.all()
 
     def _get_collection_serialize_models(self, models):
         """
-        Serialize a collection of SQLAlchemy models into a python list of dictionaries.
+        Serialize a collection of SQLAlchemy macros into a python list of dictionaries.
 
-        :param models: List of SQLAlchemy models.
+        :param models: List of SQLAlchemy macros.
         :return: List of python dictionaries.
         """
         schema = self.responses["get"]["schema"](many=True)

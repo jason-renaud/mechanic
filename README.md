@@ -155,3 +155,53 @@ Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for schemas
 
 ##### OVERRIDE_TABLE_NAME
 ##### OVERRIDE_DB_SCHEMA_NAME
+##### EXCLUDE_MODEL_GENERATION
+**Required**: No  
+**Default value**: []  
+A list of resources that should NOT be generated as models. Use the schema name associated with the object in the OpenAPI 3.0 file. 
+```json
+"EXCLUDE_MODEL_GENERATION": ["Pet", "DogToy"]
+```
+To not generate any models:
+```json
+"EXCLUDE_MODEL_GENERATION": "all"
+```
+##### EXCLUDE_SCHEMA_GENERATION
+**Required**: No  
+**Default value**: []  
+Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for schemas
+
+##### REPLACE_CONTROLLERS
+**Required**: No  
+**Default value**: None
+Specify your own custom controllers to replace with the generated ones. Let's say you want to customize the behavior of 
+a controller for a specific resource (or entirely replace it). You can tell mechanic to point to your specfied controller 
+instead of the generated one.
+ 
+ ```json
+"REPLACE_CONTROLLERS": [
+    {
+      "with": "mycustom.package.MyController",
+      "for": "controllers.default.GeneratedController"
+    },
+    {
+      "with": "mycustom2.package.MyController2",
+      "for": "controllers.abc.GeneratedABCController"
+    }
+]
+ ```
+ 
+##### REPLACE_MODELS
+**Required**: No  
+**Default value**: None
+Specify your own models to replace with the generated ones. For example if you have some models that have relationships
+that you want to manually configure, you can place them here instead of using the generated ones.
+
+##### DATABASE_URL
+**Required**: No  
+**Default value**: "sqlite:///:memory:"
+
+##### mechanic OpenAPI 3.0 extensions
+- x-mechanic-namespace
+- x-mechanic-uri-link --> only URI link, not embeddable
+- x-mechanic-embeddable --> either URI link, or embeds object

@@ -4,26 +4,48 @@ import json
 
 import yaml
 
+OPENAPI3_FILE_KEY = "OPENAPI"
+APP_NAME_KEY = "APP_NAME"
+MODELS_PATH_KEY = "MODELS_PATH"
+SCHEMAS_PATH_KEY = "SCHEMAS_PATH"
+CONTROLLERS_PATH_KEY = "CONTROLLERS_PATH"
+MODELS_NAME_PATTERN_KEY = "MODELS_NAME_PATTERN"
+SCHEMAS_NAME_PATTERN_KEY = "SCHEMAS_NAME_PATTERN"
+CONTROLLERS_NAME_PATTERN_KEY = "CONTROLLERS_NAME_PATTERN"
+BASE_API_PATH_KEY = "BASE_API_PATH"
+BASE_ITEM_CONTROLLER_KEY = "BASE_ITEM_CONTROLLER"
+BASE_COLLECTION_CONTROLLER_KEY = "BASE_COLLECTION_CONTROLLER"
+BASE_CONTROLLER_KEY = "BASE_CONTROLLER"
+DEFAULT_NAMESPACE_KEY = "DEFAULT_NAMESPACE"
+INCLUDE_KEY = "INCLUDE"
+OVERRIDE_BASE_CONTROLLER_KEY = "OVERRIDE_BASE_CONTROLLER"
+OVERRIDE_BASE_MODEL_KEY = "OVERRIDE_BASE_MODEL"
+OVERRIDE_BASE_SCHEMA_KEY = "OVERRIDE_BASE_SCHEMA"
+OVERRIDE_TABLE_NAMES_KEY = "OVERRIDE_TABLE_NAMES"
+OVERRIDE_DB_SCHEMA_NAMES_KEY = "OVERRIDE_DB_SCHEMA_NAMES"
+DEFAULT_BASE_MODEL_KEY = "DEFAULT_BASE_MODEL"
+
 default_options = {
-    "APP_NAME": "app",
-    "OPENAPI": None,
-    "MODELS_PATH": "models/{{namespace}}.py",
-    "SCHEMAS_PATH": "schemas/{{namespace}}.py",
-    "CONTROLLERS_PATH": "controllers/{{namespace}}.py",
-    "MODELS_NAME_PATTERN": "{{resource}}",
-    "SCHEMAS_NAME_PATTERN": "{{resource}}Schema",
-    "CONTROLLERS_NAME_PATTERN": "{{resource}}{{controller_type}}Controller",
-    "BASE_API_PATH": "/api",
-    "BASE_ITEM_CONTROLLER": "mechanic.base.controllers.BaseItemController",
-    "BASE_COLLECTION_CONTROLLER": "mechanic.base.controllers.BaseCollectionController",
-    "BASE_CONTROLLER": "mechanic.base.controllers.BaseController",
-    "DEFAULT_NAMESPACE": "default",
-    "INCLUDE": None,
-    "OVERRIDE_BASE_CONTROLLER": None,
-    "OVERRIDE_BASE_MODEL": None,
-    "OVERRIDE_BASE_SCHEMA": None,
-    "OVERRIDE_TABLE_NAME": None,
-    "OVERRIDE_DB_SCHEMA_NAME": None
+    APP_NAME_KEY: "app",
+    OPENAPI3_FILE_KEY: None,
+    MODELS_PATH_KEY: "models/{{namespace}}.py",
+    SCHEMAS_PATH_KEY: "schemas/{{namespace}}.py",
+    CONTROLLERS_PATH_KEY: "controllers/{{namespace}}.py",
+    MODELS_NAME_PATTERN_KEY: "{{resource}}",
+    SCHEMAS_NAME_PATTERN_KEY: "{{resource}}Schema",
+    CONTROLLERS_NAME_PATTERN_KEY: "{{resource}}{{controller_type}}Controller",
+    BASE_API_PATH_KEY: "/api",
+    BASE_ITEM_CONTROLLER_KEY: "mechanic.base.controllers.BaseItemController",
+    BASE_COLLECTION_CONTROLLER_KEY: "mechanic.base.controllers.BaseCollectionController",
+    BASE_CONTROLLER_KEY: "mechanic.base.controllers.BaseController",
+    DEFAULT_NAMESPACE_KEY: "default",
+    INCLUDE_KEY: [],
+    OVERRIDE_BASE_CONTROLLER_KEY: {},
+    OVERRIDE_BASE_MODEL_KEY: {},
+    OVERRIDE_BASE_SCHEMA_KEY: {},
+    OVERRIDE_TABLE_NAMES_KEY: [],
+    OVERRIDE_DB_SCHEMA_NAMES_KEY: [],
+    DEFAULT_BASE_MODEL_KEY: "mechanic.base.models.MechanicBaseModelMixin"
 }
 
 

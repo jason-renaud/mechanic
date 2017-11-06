@@ -1,6 +1,10 @@
 import json
-import yaml
+import re
 
+import yaml
+import jinja2
+
+SUPPORTED_VARS = ["version", "namespace"]
 
 def deserialize_file(file_path):
     """
@@ -19,3 +23,6 @@ def deserialize_file(file_path):
                           "be one of those too).")
     return mechanic_obj
 
+
+def replace_template_var(s, **kwargs):
+    return jinja2.Template(s).render(**kwargs)

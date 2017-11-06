@@ -1,0 +1,31 @@
+{
+  "OPENAPI": "../specs/grocery.yaml",
+  "APP_NAME": "grocery",
+  "MODELS_NAME_PATTERN": "{{resource}}",
+  "OVERRIDE_BASE_MODEL": {
+    "with": "models.cmdb.MyBaseModel",
+    "for": "none",
+    "except": ["models.default.Wallet"]
+  },
+  "OVERRIDE_BASE_CONTROLLER": {
+    "with": "controllers.base.MyController",
+    "for": "controllers.default.ABCController"
+  },
+  "MODELS_PATH": "models/{{namespace}}.py",
+  "OVERRIDE_TABLE_NAMES": [
+    {
+      "with": "my_wallet_tablename",
+      "for": "models.default.Wallet"
+    },
+    {
+      "with": "groceries",
+      "for": "models.default.Groceries"
+    }
+  ],
+  "OVERRIDE_DB_SCHEMA_NAMES": [
+    {
+      "with": "my_custom_schema",
+      "for": "models.default.Wallet"
+    }
+  ]
+}

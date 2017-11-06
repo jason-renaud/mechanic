@@ -1,0 +1,194 @@
+{
+   "models": {
+      "GroceryItem": {
+         "columns": {
+            "name": {
+               "type": "string",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "price": {
+               "type": "number",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "quantity": {
+               "type": "integer",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {},
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      },
+      "Wallet": {
+         "columns": {
+            "cash": {
+               "type": "number",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {},
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      },
+      "Shopper": {
+         "columns": {
+            "name": {
+               "type": "string",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "age": {
+               "type": "integer",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "wallet_string": {
+               "type": "string",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {
+            "wallet_wallet": {
+               "model": "Wallet",
+               "back_populates": null,
+               "uselist": false,
+               "foreign_keys": [],
+               "comment": null
+            }
+         },
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      },
+      "Steak": {
+         "columns": {
+            "steakType": {
+               "type": "string",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "weight": {
+               "type": "number",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "name": {
+               "type": "string",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "price": {
+               "type": "number",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "quantity": {
+               "type": "integer",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {},
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      },
+      "Groceries": {
+         "columns": {},
+         "relationships": {},
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      },
+      "Cart": {
+         "columns": {
+            "cartitems_array_string": {
+               "type": "string",
+               "nullable": false,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {
+            "cartitems_groceryitem": {
+               "model": "GroceryItem",
+               "back_populates": null,
+               "uselist": true,
+               "foreign_keys": [],
+               "comment": null
+            },
+            "cartitems_wallet": {
+               "model": "Wallet",
+               "back_populates": null,
+               "uselist": true,
+               "foreign_keys": [],
+               "comment": null
+            }
+         },
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      },
+      "Error": {
+         "columns": {
+            "code": {
+               "type": "integer",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "message": {
+               "type": "string",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {},
+         "tablename": "default",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": null
+      }
+   }
+}

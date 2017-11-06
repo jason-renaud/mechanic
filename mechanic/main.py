@@ -32,11 +32,11 @@ def main():
 
     print("@@@@", args)
     # generator = Generator("gen")
-    # with open(os.path.expanduser(args["<directory>"]) + "/mechanic.json") as f:
+    # with open(os.path.expanduser(args["<directory>"]) + "/mechanic-grocery.json") as f:
     #     print(f.read())
     #
     # os.makedirs(args["<directory>"] + "/controllers/__init__.py")
-    # os.makedirs(args["<directory>"] + "/models/__init__.py")
+    # os.makedirs(args["<directory>"] + "/macros/__init__.py")
     # os.makedirs(args["<directory>"] + "/schemas/__init__.py")
 
 if __name__ == "__main__":

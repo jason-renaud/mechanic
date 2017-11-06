@@ -2,34 +2,45 @@ import os
 from unittest import TestCase
 
 from mechanic.src.compiler import Compiler
+from mechanic.src.reader import read_mechanicfile
 from mechanic.src.utils import deserialize_file
 
+
 class TestCompiler(TestCase):
+    PETSTORE_SPEC = os.path.dirname(__file__) + "/specs/petstore.yaml"
+    PETSTORE_TMP = os.path.dirname(__file__) + "/tmp-petstore.json"
+    GROCERY_SPEC = os.path.dirname(__file__) + "/specs/grocery.yaml"
+    GROCERY_TMP = os.path.dirname(__file__) + "/tmp-grocery.json"
+    MECHANIC_BUILD_FILE_GROCERY = os.path.dirname(__file__) + "/gen/mechanic-grocery.json"
+    MECHANIC_BUILD_FILE_PETSTORE = os.path.dirname(__file__) + "/gen/mechanic-petstore.json"
+
     def setUp(self):
         pass
 
     def tearDown(self):
         try:
-            os.remove("tmp-grocery.json")
-            os.remove("tmp-petstore.json")
+            # os.remove(self.GROCERY_TMP)
+            os.remove(self.PETSTORE_TMP)
         except Exception:
             pass
 
     def test_compile(self):
-        compiler = Compiler("specs/petstore.yaml", output="tmp-petstore.json")
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_PETSTORE)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_PETSTORE, output=self.PETSTORE_TMP)
         compiler.compile()
 
-        obj = deserialize_file("tmp-petstore.json")
+        obj = deserialize_file(self.PETSTORE_TMP)
         columns = obj["models"]["Pet"]["columns"]
         self.assertTrue("id" in columns.keys())
         self.assertTrue("name" in columns.keys())
         self.assertTrue("tag" in columns.keys())
 
     def test_compile_grocery_allof(self):
-        compiler = Compiler("specs/grocery.yaml", output="tmp-grocery.json")
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
         compiler.compile()
 
-        obj = deserialize_file("tmp-grocery.json")
+        obj = deserialize_file(self.GROCERY_TMP)
         gi_columns = obj["models"]["GroceryItem"]["columns"]
         self.assertTrue("name" in gi_columns.keys())
         self.assertTrue("price" in gi_columns.keys())
@@ -43,10 +54,11 @@ class TestCompiler(TestCase):
         self.assertTrue("weight" in steak_columns.keys())
 
     def test_compile_grocery_oneof(self):
-        compiler = Compiler("specs/grocery.yaml", output="tmp-grocery.json")
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
         compiler.compile()
 
-        obj = deserialize_file("tmp-grocery.json")
+        obj = deserialize_file(self.GROCERY_TMP)
         columns = obj["models"]["Shopper"]["columns"]
         rels = obj["models"]["Shopper"]["relationships"]
         self.assertTrue("wallet_string" in columns.keys())
@@ -57,3 +69,27 @@ class TestCompiler(TestCase):
         self.assertTrue("cartitems_array_string" in columns.keys())
         self.assertTrue("cartitems_groceryitem" in rels.keys())
         self.assertTrue("cartitems_wallet" in rels.keys())
+
+    def test_compile_grocery_verify_foreign_keys(self):
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
+        compiler.compile()
+
+        # one-to-many
+        obj = deserialize_file(self.GROCERY_TMP)
+        columns = obj["models"]["GroceryItem"]["columns"]
+        rels = obj["models"]["Groceries"]["relationships"]
+        self.assertTrue("groceries_id" in columns.keys())
+        self.assertTrue("groceries" in rels.keys())
+
+        # one-to-many w/ oneOf
+        columns = obj["models"]["GroceryItem"]["columns"]
+        rels = obj["models"]["Cart"]["relationships"]
+        self.assertTrue("cart_id" in columns.keys())
+        self.assertTrue("cartitems_groceryitem" in rels.keys())
+
+        # one-to-one
+        columns = obj["models"]["Wallet"]["columns"]
+        rels = obj["models"]["Shopper"]["relationships"]
+        self.assertTrue("shopper_id" in columns.keys())
+        self.assertTrue("wallet_wallet" in rels.keys())

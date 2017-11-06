@@ -1,4 +1,5 @@
 {
+  "OPENAPI": "../specs/petstore.yaml",
   "APP_NAME": "petstore",
   "OVERRIDE_BASE_CONTROLLER": {
     "with": "controllers.base.MyController",

@@ -79,13 +79,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /shoppers/{shopper-id}:
+    get:
+      tags:
+        - groceries
+      parameters:
+        - name: shopper-id
+          in: path
+          required: true
+          description: The id of the shopper to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shopper"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     GroceryItem:
+      type: object
       required:
         - id
         - name
       properties:
+        cart:
+          x-mechanic-uri-link:
+            $ref: "#/components/schemas/Cart"
+          readOnly: true
+          type: string
         name:
           type: string
         price:
@@ -93,12 +123,19 @@ components:
         quantity:
           type: integer
     Wallet:
+      type: object
       required:
         - cash
       properties:
         cash:
           type: number
+        owner:
+          x-mechanic-uri-link:
+            $ref: "#/components/schemas/Shopper"
+          readOnly: true
+          type: string
     Shopper:
+      type: object
       properties:
         name:
           type: string
@@ -108,6 +145,45 @@ components:
           oneOf:
             - type: string
             - $ref: "#/components/schemas/Wallet"
+    Fruit:
+      x-mechanic-embeddable: true
+      oneOf:
+        - $ref: "#/components/schemas/Apple"
+        - $ref: "#/components/schemas/Banana"
+        - type: string
+    Apple:
+      type: object
+      properties:
+        kind:
+          type: string
+    Banana:
+      type: object
+      properties:
+        brand:
+          type: string
+    Store:
+      type: object
+      properties:
+        name:
+          type: string
+        employees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Employee"
+    Employee:
+      type: object
+      properties:
+        name:
+          type: string
+        employeeid:
+          type: string
+        age:
+          type: integer
+        store:
+          type: string
+          x-mechanic-uri-link:
+            $ref: "#/components/schemas/Store"
+          readOnly: true
     Steak:
       allOf:
         - type: object
