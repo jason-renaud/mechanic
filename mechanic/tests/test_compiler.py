@@ -47,9 +47,8 @@ class TestCompiler(TestCase):
         self.assertTrue("quantity" in gi_columns.keys())
 
         steak_columns = obj["models"]["Steak"]["columns"]
-        self.assertTrue("name" in steak_columns.keys())
-        self.assertTrue("price" in steak_columns.keys())
-        self.assertTrue("quantity" in steak_columns.keys())
+        self.assertTrue("type" in steak_columns.keys())
+        self.assertTrue("animal" in steak_columns.keys())
         self.assertTrue("steakType" in steak_columns.keys())
         self.assertTrue("weight" in steak_columns.keys())
 
@@ -59,16 +58,11 @@ class TestCompiler(TestCase):
         compiler.compile()
 
         obj = deserialize_file(self.GROCERY_TMP)
-        columns = obj["models"]["Shopper"]["columns"]
         rels = obj["models"]["Shopper"]["relationships"]
-        self.assertTrue("wallet_string" in columns.keys())
-        self.assertTrue("wallet_wallet" in rels.keys())
+        self.assertTrue("wallet" in rels.keys())
 
-        columns = obj["models"]["Cart"]["columns"]
         rels = obj["models"]["Cart"]["relationships"]
-        self.assertTrue("cartitems_array_string" in columns.keys())
-        self.assertTrue("cartitems_groceryitem" in rels.keys())
-        self.assertTrue("cartitems_wallet" in rels.keys())
+        self.assertTrue("cartitems" in rels.keys())
 
     def test_compile_grocery_verify_foreign_keys(self):
         options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
@@ -86,10 +80,33 @@ class TestCompiler(TestCase):
         columns = obj["models"]["GroceryItem"]["columns"]
         rels = obj["models"]["Cart"]["relationships"]
         self.assertTrue("cart_id" in columns.keys())
-        self.assertTrue("cartitems_groceryitem" in rels.keys())
+        self.assertTrue("cartitems" in rels.keys())
 
         # one-to-one
         columns = obj["models"]["Wallet"]["columns"]
         rels = obj["models"]["Shopper"]["relationships"]
         self.assertTrue("shopper_id" in columns.keys())
-        self.assertTrue("wallet_wallet" in rels.keys())
+        self.assertTrue("wallet" in rels.keys())
+
+    def test_compile_verify_excluded_models_and_schemas(self):
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
+        compiler.compile()
+
+        obj = deserialize_file(self.GROCERY_TMP)
+        # self.assertFalse(obj["models"].get("Error"))
+        self.assertFalse(obj["schemas"].get("Error"))
+        self.assertFalse(obj["resources"].get("Error").get("model"))
+
+    def test_compile_verify_base_controllers(self):
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
+        compiler.compile()
+
+        obj = deserialize_file(self.GROCERY_TMP)
+
+        self.assertEqual(obj["controllers"]["GroceriesItemController"]["base_controller_name"], "MyController")
+        self.assertEqual(obj["controllers"]["GroceriesItemController"]["base_controller_path"], "abc.mypackage.hello")
+
+        self.assertEqual(obj["controllers"]["ShopperItemController"]["base_controller_name"], "MechanicBaseItemController")
+        self.assertEqual(obj["controllers"]["ShopperItemController"]["base_controller_path"], "mechanic.base.controllers")

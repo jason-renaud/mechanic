@@ -1,0 +1,410 @@
+{
+   "openapi": "3.0.0",
+   "info": {
+      "version": "1.0.0",
+      "title": "Grocery Store",
+      "license": {
+         "name": "MIT"
+      }
+   },
+   "servers": [
+      {
+         "url": "http://abc.com"
+      }
+   ],
+   "paths": {
+      "/groceries": {
+         "get": {
+            "summary": "List all groceries",
+            "operationId": "listGroceries",
+            "tags": [
+               "groceries"
+            ],
+            "parameters": [
+               {
+                  "name": "limit",
+                  "in": "query",
+                  "description": "How many items to return at one time (max 100)",
+                  "required": false,
+                  "schema": {
+                     "type": "integer",
+                     "format": "int32"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "An paged array of groceries",
+                  "headers": {
+                     "x-next": {
+                        "description": "A link to the next page of responses",
+                        "schema": {
+                           "type": "string"
+                        }
+                     }
+                  },
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/GroceryItem"
+                        }
+                     }
+                  }
+               },
+               "default": {
+                  "description": "unexpected error",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/Error"
+                        }
+                     }
+                  }
+               }
+            }
+         },
+         "post": {
+            "summary": "Create a grocery item",
+            "operationId": "createGroceryItem",
+            "tags": [
+               "groceries"
+            ],
+            "requestBody": {
+               "description": "Pet to add to the store",
+               "required": true,
+               "content": {
+                  "application/json": {
+                     "schema": {
+                        "$ref": "#/components/schemas/GroceryItem"
+                     }
+                  }
+               }
+            },
+            "responses": {
+               "201": {
+                  "description": "Null response"
+               },
+               "default": {
+                  "description": "unexpected error",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/Error"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/groceries/{gId}": {
+         "get": {
+            "summary": "Info for a specific grocery",
+            "operationId": "showGroceryById",
+            "tags": [
+               "groceries"
+            ],
+            "parameters": [
+               {
+                  "name": "gId",
+                  "in": "path",
+                  "required": true,
+                  "description": "The id of the grocery to retrieve",
+                  "schema": {
+                     "type": "string"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Expected response to a valid request",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/Groceries"
+                        }
+                     }
+                  }
+               },
+               "default": {
+                  "description": "unexpected error",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/Error"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      },
+      "/shoppers/{shopper-id}": {
+         "get": {
+            "tags": [
+               "groceries"
+            ],
+            "parameters": [
+               {
+                  "name": "shopper-id",
+                  "in": "path",
+                  "required": true,
+                  "description": "The id of the shopper to retrieve",
+                  "schema": {
+                     "type": "string"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Expected response to a valid request",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/Shopper"
+                        }
+                     }
+                  }
+               },
+               "default": {
+                  "description": "unexpected error",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "$ref": "#/components/schemas/Error"
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   },
+   "components": {
+      "schemas": {
+         "GroceryItem": {
+            "type": "object",
+            "required": [
+               "id",
+               "name"
+            ],
+            "properties": {
+               "cart": {
+                  "x-mechanic-embeddable": true,
+                  "oneOf": [
+                     {
+                        "$ref": "#/components/schemas/Cart"
+                     },
+                     {
+                        "type": "string"
+                     }
+                  ],
+                  "readOnly": true
+               },
+               "name": {
+                  "type": "string"
+               },
+               "price": {
+                  "type": "number"
+               },
+               "quantity": {
+                  "type": "integer"
+               }
+            }
+         },
+         "Wallet": {
+            "type": "object",
+            "required": [
+               "cash"
+            ],
+            "properties": {
+               "cash": {
+                  "type": "number"
+               },
+               "owner": {
+                  "x-mechanic-embeddable": true,
+                  "oneOf": [
+                     {
+                        "$ref": "#/components/schemas/Shopper"
+                     },
+                     {
+                        "type": "string"
+                     }
+                  ],
+                  "readOnly": true
+               }
+            }
+         },
+         "Shopper": {
+            "type": "object",
+            "properties": {
+               "name": {
+                  "type": "string"
+               },
+               "age": {
+                  "type": "integer"
+               },
+               "wallet": {
+                  "x-mechanic-embeddable": true,
+                  "oneOf": [
+                     {
+                        "type": "string"
+                     },
+                     {
+                        "$ref": "#/components/schemas/Wallet"
+                     }
+                  ]
+               }
+            }
+         },
+         "Fruit": {
+            "x-mechanic-embeddable": true,
+            "oneOf": [
+               {
+                  "$ref": "#/components/schemas/Apple"
+               },
+               {
+                  "type": "string"
+               }
+            ]
+         },
+         "Apple": {
+            "type": "object",
+            "properties": {
+               "kind": {
+                  "type": "string"
+               }
+            }
+         },
+         "Banana": {
+            "type": "object",
+            "properties": {
+               "brand": {
+                  "type": "string"
+               }
+            }
+         },
+         "Store": {
+            "type": "object",
+            "properties": {
+               "name": {
+                  "type": "string"
+               },
+               "employees": {
+                  "type": "array",
+                  "items": {
+                     "$ref": "#/components/schemas/Employee"
+                  }
+               }
+            }
+         },
+         "Employee": {
+            "description": "Some description for an Employee object blah blah blah",
+            "type": "object",
+            "properties": {
+               "name": {
+                  "type": "string"
+               },
+               "eid": {
+                  "type": "string"
+               },
+               "age": {
+                  "type": "integer"
+               },
+               "subordinate": {
+                  "x-mechanic-embeddable": true,
+                  "oneOf": [
+                     {
+                        "type": "string"
+                     },
+                     {
+                        "$ref": "#/components/schemas/Employee"
+                     }
+                  ]
+               },
+               "store": {
+                  "x-mechanic-embeddable": true,
+                  "oneOf": [
+                     {
+                        "type": "string"
+                     },
+                     {
+                        "$ref": "#/components/schemas/Store"
+                     }
+                  ],
+                  "readOnly": true
+               }
+            }
+         },
+         "Meat": {
+            "type": null,
+            "properties": {
+               "type": {
+                  "type": "string"
+               },
+               "animal": {
+                  "type": "string"
+               }
+            }
+         },
+         "Steak": {
+            "allOf": [
+               {
+                  "type": "object",
+                  "properties": {
+                     "steakType": {
+                        "type": "string"
+                     },
+                     "weight": {
+                        "type": "number"
+                     }
+                  }
+               },
+               {
+                  "$ref": "#/components/schemas/Meat"
+               }
+            ]
+         },
+         "Groceries": {
+            "type": "array",
+            "items": {
+               "$ref": "#/components/schemas/GroceryItem"
+            }
+         },
+         "Cart": {
+            "type": "object",
+            "properties": {
+               "cartItems": {
+                  "type": "array",
+                  "items": {
+                     "x-mechanic-embeddable": true,
+                     "oneOf": [
+                        {
+                           "type": "string"
+                        },
+                        {
+                           "$ref": "#/components/schemas/GroceryItem"
+                        }
+                     ]
+                  }
+               }
+            }
+         },
+         "Error": {
+            "required": [
+               "code",
+               "message"
+            ],
+            "properties": {
+               "code": {
+                  "type": "integer",
+                  "format": "int32"
+               },
+               "message": {
+                  "type": "string"
+               }
+            }
+         }
+      }
+   }
+}

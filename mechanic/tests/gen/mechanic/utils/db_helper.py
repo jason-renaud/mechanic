@@ -1,16 +1,19 @@
 import uuid
 from datetime import datetime
 import logging
-import app
+import grocery
 
-from base.exceptions import MechanicResourceAlreadyExistsException, MechanicNotFoundException, \
+from mechanic.base.exceptions import MechanicResourceAlreadyExistsException, MechanicNotFoundException, \
     MechanicResourceLockedException, MechanicPreconditionFailedException, MechanicException, \
     MechanicInvalidETagException, MechanicNotModifiedException
-from app import db
+from grocery import db
 
-logger = logging.getLogger(app.config["DEFAULT_LOG_NAME"])
+logger = logging.getLogger(grocery.config["DEFAULT_LOG_NAME"])
 logger.setLevel("DEBUG")
 
+
+def close_session():
+    db.session.close()
 
 def read(identifier, model_class, if_modified_since=None, if_unmodified_since=None, if_match=[], if_none_match=[]):
     """

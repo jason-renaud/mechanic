@@ -10,5 +10,5 @@ class TestFileParsing(TestCase):
     def test_reader(self):
         options = read_mechanicfile(self.MECHANIC_BUILD_FILE)
         self.assertEqual(options.get("APP_NAME"), "grocery")
-        self.assertEqual(options.get("OVERRIDE_BASE_CONTROLLER").get("with"), "controllers.base.MyController")
-        self.assertEqual(options.get("OVERRIDE_BASE_CONTROLLER").get("for"), "controllers.default.ABCController")
+        self.assertEqual(options.get("OVERRIDE_BASE_CONTROLLER").get("with"), "abc.mypackage.hello.MyController")
+        self.assertEqual(options.get("OVERRIDE_BASE_CONTROLLER").get("for")[0], "controllers.default.GroceriesItemController")

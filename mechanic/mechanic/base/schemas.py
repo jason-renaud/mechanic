@@ -1,11 +1,9 @@
-import uuid
+from marshmallow import fields
 
-from marshmallow import fields, pre_load, post_dump
-
-from app import ma, db
+from {{ app_name}} import ma, db
 
 
-class BaseModelSchema(ma.ModelSchema):
+class MechanicBaseModelSchema(ma.ModelSchema):
     created = fields.DateTime(load_only=True, dump_only=True)
     last_modified = fields.DateTime(load_only=True, dump_only=True)
     locked = fields.Boolean(load_only=True, dump_only=True)
@@ -19,7 +17,7 @@ class BaseModelSchema(ma.ModelSchema):
         sqla_session = db.session
 
 
-class BaseSchema(ma.Schema):
+class MechanicBaseSchema(ma.Schema):
     created = fields.DateTime(load_only=True, dump_only=True)
     last_modified = fields.DateTime(load_only=True, dump_only=True)
     locked = fields.Boolean(load_only=True, dump_only=True)

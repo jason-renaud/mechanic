@@ -44,6 +44,13 @@ paths:
       operationId: createGroceryItem
       tags:
         - groceries
+      requestBody:
+        description: Pet to add to the store
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroceryItem'
       responses:
         '201':
           description: Null response
@@ -112,10 +119,11 @@ components:
         - name
       properties:
         cart:
-          x-mechanic-uri-link:
-            $ref: "#/components/schemas/Cart"
+          x-mechanic-embeddable: true
+          oneOf:
+            - $ref: "#/components/schemas/Cart"
+            - type: string
           readOnly: true
-          type: string
         name:
           type: string
         price:
@@ -130,10 +138,11 @@ components:
         cash:
           type: number
         owner:
-          x-mechanic-uri-link:
-            $ref: "#/components/schemas/Shopper"
+          x-mechanic-embeddable: true
+          oneOf:
+            - $ref: "#/components/schemas/Shopper"
+            - type: string
           readOnly: true
-          type: string
     Shopper:
       type: object
       properties:
@@ -142,6 +151,7 @@ components:
         age:
           type: integer
         wallet:
+          x-mechanic-embeddable: true
           oneOf:
             - type: string
             - $ref: "#/components/schemas/Wallet"
@@ -149,7 +159,6 @@ components:
       x-mechanic-embeddable: true
       oneOf:
         - $ref: "#/components/schemas/Apple"
-        - $ref: "#/components/schemas/Banana"
         - type: string
     Apple:
       type: object
@@ -171,19 +180,58 @@ components:
           items:
             $ref: "#/components/schemas/Employee"
     Employee:
+      description: "Some description for an Employee object blah blah blah"
       type: object
       properties:
         name:
           type: string
-        employeeid:
+        eid:
           type: string
         age:
           type: integer
+        subordinate:
+          x-mechanic-embeddable: true
+          oneOf:
+            - type: string
+            - $ref: "#/components/schemas/Employee"
         store:
-          type: string
-          x-mechanic-uri-link:
-            $ref: "#/components/schemas/Store"
+          x-mechanic-embeddable: true
+          oneOf:
+            - type: string
+            - $ref: "#/components/schemas/Store"
           readOnly: true
+#    User:
+#      type: object
+#      properties:
+#        username:
+#          type: string
+#        roles:
+#          type: array
+#          items:
+#            x-mechanic-embeddable: true
+#            oneOf:
+#              - type: string
+#              - $ref: "#/components/schemas/Role"
+#    Role:
+#      type: object
+#      properties:
+#        rolename:
+#          type: string
+#        users:
+#          type: array
+#          items:
+#            x-mechanic-embeddable: true
+#            oneOf:
+#              - type: string
+#              - $ref: "#/components/schemas/User"
+    Meat:
+      type: object
+      properties:
+        type:
+          type: string
+        animal:
+          type: string
+      type:
     Steak:
       allOf:
         - type: object
@@ -192,7 +240,7 @@ components:
               type: string
             weight:
               type: number
-        - $ref: "#/components/schemas/GroceryItem"
+        - $ref: "#/components/schemas/Meat"
     Groceries:
       type: array
       items:
@@ -203,10 +251,10 @@ components:
         cartItems:
           type: array
           items:
+            x-mechanic-embeddable: true
             oneOf:
               - type: string
               - $ref: "#/components/schemas/GroceryItem"
-              - $ref: "#/components/schemas/Wallet"
 
     Error:
       required:

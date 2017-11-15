@@ -1,32 +1,11 @@
-# do not modify - generated code at UTC 2017-11-03 20:55:37.452313
-"""
+# do not modify - generated code at UTC 2017-11-15 05:11:25.121782
 import uuid
 import datetime
 
 from flask import url_for
-from sqlalchemy.ext.hybrid import hybrid_property
 
-from mechanic import utils
 from grocery import db
-
 from mechanic.base.models import MechanicBaseModelMixin
-"""
-
-import datetime
-
-from flask import url_for
-from sqlalchemy import Column, String, Integer, ForeignKey, Float, DateTime, create_engine, MetaData
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.ext.declarative import declarative_base
-
-from mechanic.starter.base import utils
-
-engine = create_engine("sqlite:///:memory:", echo=False)
-metadata = MetaData()
-
-Base = declarative_base()
-Session = sessionmaker(bind=engine)
-session = Session()
 
 
 def get_uri(context):
@@ -36,178 +15,167 @@ def get_uri(context):
         return None
 
 
-class MechanicBaseModelMixin(object):
-    identifier = Column(String(36), primary_key=True, nullable=False, default=utils.random_uuid)
-    created = Column(DateTime, default=datetime.datetime.utcnow)
-    last_modified = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-    etag = Column(String(36), default=utils.random_uuid, onupdate=utils.random_uuid)
-    controller = Column(String, default="orgcontactitemcontroller")
-    uri = Column(String, default=get_uri)
-
-"""
-
-
-
-def get_uri(context):
-    try:
-        return str(url_for(context.current_parameters["controller"], resource_id=context.current_parameters["identifier"]))
-    except Exception:
-        return None
-"""
-
-
-class GroceryItem(MechanicBaseModelMixin, Base):
+class GroceryItem(MechanicBaseModelMixin, db.Model):
     """
     GroceryItem
     """
     __tablename__ = "groceryitems"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    cart = Column(String(), nullable=False,)
-    name = Column(String(), nullable=True,)
-    price = Column(Float(), nullable=False,)
-    quantity = Column(Integer(), nullable=False,)
-    cart_id = Column(String(), ForeignKey("carts.identifier"), nullable=True,)
-    groceries_id = Column(String(), ForeignKey("groceries.identifier"), nullable=True,)
+    controller = db.Column(db.String(), default="groceryitemcollectioncontroller")
+    uri = db.Column(db.String, default=get_uri)
+    name = db.Column(db.String(), nullable=False,)
+    price = db.Column(db.Float(), nullable=True,)
+    quantity = db.Column(db.Integer(), nullable=True,)
+    cart_id = db.Column(db.String(), db.ForeignKey("default.carts.identifier"), nullable=True,)
+    groceries_id = db.Column(db.String(), db.ForeignKey("default.groceries.identifier"), nullable=True,)
+    cart = db.relationship("Cart",  uselist=False,)
 
-    
-class Wallet(MechanicBaseModelMixin, Base):
+
+class Wallet(MechanicBaseModelMixin, db.Model):
     """
     Wallet
     """
     __tablename__ = "my_wallet_tablename"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    cash = Column(Float(), nullable=True,)
-    owner = Column(String(), nullable=False,)
-    shopper_id = Column(String(), ForeignKey("shoppers.identifier"), nullable=True,)
-    cart_id = Column(String(), ForeignKey("carts.identifier"), nullable=True,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    cash = db.Column(db.Float(), nullable=False,)
+    shopper_id = db.Column(db.String(), db.ForeignKey("default.shoppers.identifier"), nullable=True,)
+    owner = db.relationship("Shopper",  uselist=False,)
 
-    
-class Shopper(MechanicBaseModelMixin, Base):
+
+class Shopper(MechanicBaseModelMixin, db.Model):
     """
     Shopper
     """
     __tablename__ = "shoppers"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    name = Column(String(), nullable=False,)
-    age = Column(Integer(), nullable=False,)
-    wallet_string = Column(String(), nullable=False,)
-    wallet_wallet = relationship("Wallet",  uselist=False,)
+    controller = db.Column(db.String(), default="shopperitemcontroller")
+    uri = db.Column(db.String, default=get_uri)
+    name = db.Column(db.String(), nullable=True,)
+    age = db.Column(db.Integer(), nullable=True,)
+    wallet = db.relationship("Wallet",  uselist=False,)
 
-    
-class Fruit(MechanicBaseModelMixin, Base):
+
+class Fruit(MechanicBaseModelMixin, db.Model):
     """
     Fruit
     """
     __tablename__ = "fruits"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    fruit_string = Column(String(), nullable=False,)
-    fruit_apple = relationship("Apple",  uselist=False,)
-    fruit_banana = relationship("Banana",  uselist=False,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    fruit = db.relationship("Apple",  uselist=False,)
 
-    
-class Apple(MechanicBaseModelMixin, Base):
+
+class Apple(MechanicBaseModelMixin, db.Model):
     """
     Apple
     """
     __tablename__ = "apples"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    kind = Column(String(), nullable=False,)
-    fruit_id = Column(String(), ForeignKey("fruits.identifier"), nullable=True,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    kind = db.Column(db.String(), nullable=True,)
+    fruit_id = db.Column(db.String(), db.ForeignKey("default.fruits.identifier"), nullable=True,)
 
-    
-class Banana(MechanicBaseModelMixin, Base):
+
+class Banana(MechanicBaseModelMixin, db.Model):
     """
     Banana
     """
     __tablename__ = "bananas"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    brand = Column(String(), nullable=False,)
-    fruit_id = Column(String(), ForeignKey("fruits.identifier"), nullable=True,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    brand = db.Column(db.String(), nullable=True,)
 
-    
-class Store(MechanicBaseModelMixin, Base):
+
+class Store(MechanicBaseModelMixin, db.Model):
     """
     Store
     """
     __tablename__ = "stores"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    name = Column(String(), nullable=False,)
-    employees = relationship("Employee", backref="store", uselist=True,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    name = db.Column(db.String(), nullable=True,)
+    employees = db.relationship("Employee",  uselist=True,)
 
-    
-class Employee(MechanicBaseModelMixin, Base):
+
+class Employee(MechanicBaseModelMixin, db.Model):
     """
     Employee
     """
     __tablename__ = "employees"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    name = Column(String(), nullable=False,)
-    employeeid = Column(String(), nullable=False,)
-    age = Column(Integer(), nullable=False,)
-    store_id = Column(String(), ForeignKey("stores.identifier"), nullable=True,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    name = db.Column(db.String(), nullable=True,)
+    eid = db.Column(db.String(), nullable=True,)
+    age = db.Column(db.Integer(), nullable=True,)
+    employee_id = db.Column(db.String(), db.ForeignKey("default.employees.identifier"), nullable=True,)
+    store_id = db.Column(db.String(), db.ForeignKey("default.stores.identifier"), nullable=True,)
+    subordinate = db.relationship("Employee",  uselist=False,)
+    store = db.relationship("Store",  uselist=False,)
 
+
+class Meat(MechanicBaseModelMixin, db.Model):
+    """
+    Meat
+    """
+    __tablename__ = "meats"
+    __table_args__ = {"schema": "default"}
     
-class Steak(MechanicBaseModelMixin, Base):
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    type = db.Column(db.String(), nullable=True,)
+    animal = db.Column(db.String(), nullable=True,)
+
+
+class Steak(MechanicBaseModelMixin, db.Model):
     """
     Steak
     """
     __tablename__ = "steaks"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    steakType = Column(String(), nullable=False,)
-    weight = Column(Float(), nullable=False,)
-    cart = Column(String(), nullable=False,)
-    name = Column(String(), nullable=True,)
-    price = Column(Float(), nullable=False,)
-    quantity = Column(Integer(), nullable=False,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    steakType = db.Column(db.String(), nullable=True,)
+    weight = db.Column(db.Float(), nullable=True,)
+    type = db.Column(db.String(), nullable=True,)
+    animal = db.Column(db.String(), nullable=True,)
 
-    
-class Groceries(MechanicBaseModelMixin, Base):
+
+class Groceries(MechanicBaseModelMixin, db.Model):
     """
     Groceries
     """
     __tablename__ = "groceries"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    groceries = relationship("GroceryItem", backref="groceries", uselist=True,)
+    controller = db.Column(db.String(), default="groceriesitemcontroller")
+    uri = db.Column(db.String, default=get_uri)
+    groceries = db.relationship("GroceryItem",  uselist=True,)
 
-    
-class Cart(MechanicBaseModelMixin, Base):
+
+class Cart(MechanicBaseModelMixin, db.Model):
     """
     Cart
     """
     __tablename__ = "carts"
-    #__table_args__ = {"schema": "default"}
+    __table_args__ = {"schema": "default"}
     
-    cartitems_array_string = Column(String(), nullable=False,)
-    cartitems_groceryitem = relationship("GroceryItem",  uselist=True,)
-    cartitems_wallet = relationship("Wallet",  uselist=True,)
+    controller = db.Column(db.String(), default="")
+    uri = db.Column(db.String, default=get_uri)
+    cartitems = db.relationship("GroceryItem",  uselist=True,)
 
-    
-class Error(MechanicBaseModelMixin, Base):
-    """
-    Error
-    """
-    __tablename__ = "errors"
-    #__table_args__ = {"schema": "default"}
-    
-    code = Column(Integer(), nullable=True,)
-    message = Column(String(), nullable=True,)
-
-    
-
-Base.metadata.create_all(engine)
-e1 = Employee(name="John", employeeid="123", age=32)
-print(e1.name, e1.employeeid, e1.age, e1.store)
-s = Store(name="ab", employees=[e1])
-print(s.name)
-print(s.employees)
-print(e1.store)

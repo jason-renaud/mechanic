@@ -1,32 +1,78 @@
 {
-   "version": "1.0.0",
+   "version": "100",
+   "resources": {
+      "GroceryItem": {
+         "model": "GroceryItem",
+         "schema": "GroceryItemSchema"
+      },
+      "Wallet": {
+         "model": "Wallet",
+         "schema": "WalletSchema"
+      },
+      "Shopper": {
+         "model": "Shopper",
+         "schema": "ShopperSchema"
+      },
+      "Fruit": {
+         "model": "Fruit",
+         "schema": "FruitSchema"
+      },
+      "Apple": {
+         "model": "Apple",
+         "schema": "AppleSchema"
+      },
+      "Banana": {
+         "model": "Banana",
+         "schema": "BananaSchema"
+      },
+      "Store": {
+         "model": "Store",
+         "schema": "StoreSchema"
+      },
+      "Employee": {
+         "model": "Employee",
+         "schema": "EmployeeSchema"
+      },
+      "Meat": {
+         "model": "Meat",
+         "schema": "MeatSchema"
+      },
+      "Steak": {
+         "model": "Steak",
+         "schema": "SteakSchema"
+      },
+      "Groceries": {
+         "model": "Groceries",
+         "schema": "GroceriesSchema"
+      },
+      "Cart": {
+         "model": "Cart",
+         "schema": "CartSchema"
+      },
+      "Error": {
+         "schema": "ErrorSchema"
+      }
+   },
    "models": {
       "GroceryItem": {
          "columns": {
-            "cart": {
-               "type": "String",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            },
             "name": {
                "type": "String",
-               "nullable": true,
+               "nullable": false,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
             "price": {
                "type": "Float",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
             "quantity": {
                "type": "Integer",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
@@ -35,35 +81,40 @@
                "type": "String",
                "nullable": true,
                "length": 36,
-               "foreign_key": "carts.identifier"
+               "foreign_key": "default.carts.identifier"
             },
             "groceries_id": {
                "type": "String",
                "nullable": true,
                "length": 36,
-               "foreign_key": "groceries.identifier"
+               "foreign_key": "default.groceries.identifier"
             }
          },
-         "relationships": {},
+         "relationships": {
+            "cart": {
+               "model": "Cart",
+               "backref": null,
+               "back_populates": null,
+               "uselist": false,
+               "foreign_keys": [],
+               "embeddable": true,
+               "secondary": null
+            }
+         },
          "db_tablename": "groceryitems",
          "db_schema": "default",
          "namespace": "default",
          "comment": "GroceryItem",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
-         "primary_key": "identifier"
+         "module_path": "models.default",
+         "primary_key": "identifier",
+         "controller": "groceryitemcollectioncontroller"
       },
       "Wallet": {
          "columns": {
             "cash": {
                "type": "Float",
-               "nullable": true,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            },
-            "owner": {
-               "type": "String",
                "nullable": false,
                "length": "2000",
                "foreign_key": null,
@@ -73,56 +124,55 @@
                "type": "String",
                "nullable": true,
                "length": 36,
-               "foreign_key": "shoppers.identifier"
-            },
-            "cart_id": {
-               "type": "String",
-               "nullable": true,
-               "length": 36,
-               "foreign_key": "carts.identifier"
+               "foreign_key": "default.shoppers.identifier"
             }
          },
-         "relationships": {},
+         "relationships": {
+            "owner": {
+               "model": "Shopper",
+               "backref": null,
+               "back_populates": null,
+               "uselist": false,
+               "foreign_keys": [],
+               "embeddable": true,
+               "secondary": null
+            }
+         },
          "db_tablename": "my_wallet_tablename",
          "db_schema": "default",
          "namespace": "default",
          "comment": "Wallet",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
       "Shopper": {
          "columns": {
             "name": {
                "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
             "age": {
                "type": "Integer",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            },
-            "wallet_string": {
-               "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             }
          },
          "relationships": {
-            "wallet_wallet": {
+            "wallet": {
                "model": "Wallet",
                "backref": null,
                "back_populates": null,
                "uselist": false,
                "foreign_keys": [],
-               "comment": null
+               "embeddable": true,
+               "secondary": null
             }
          },
          "db_tablename": "shoppers",
@@ -131,34 +181,21 @@
          "comment": "Shopper",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
-         "primary_key": "identifier"
+         "module_path": "models.default",
+         "primary_key": "identifier",
+         "controller": "shopperitemcontroller"
       },
       "Fruit": {
-         "columns": {
-            "fruit_string": {
-               "type": "String",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            }
-         },
+         "columns": {},
          "relationships": {
-            "fruit_apple": {
+            "fruit": {
                "model": "Apple",
                "backref": null,
                "back_populates": null,
                "uselist": false,
                "foreign_keys": [],
-               "comment": null
-            },
-            "fruit_banana": {
-               "model": "Banana",
-               "backref": null,
-               "back_populates": null,
-               "uselist": false,
-               "foreign_keys": [],
-               "comment": null
+               "embeddable": true,
+               "secondary": null
             }
          },
          "db_tablename": "fruits",
@@ -167,13 +204,14 @@
          "comment": "Fruit",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
       "Apple": {
          "columns": {
             "kind": {
                "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
@@ -182,7 +220,7 @@
                "type": "String",
                "nullable": true,
                "length": 36,
-               "foreign_key": "fruits.identifier"
+               "foreign_key": "default.fruits.identifier"
             }
          },
          "relationships": {},
@@ -192,22 +230,17 @@
          "comment": "Apple",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
       "Banana": {
          "columns": {
             "brand": {
                "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
-            },
-            "fruit_id": {
-               "type": "String",
-               "nullable": true,
-               "length": 36,
-               "foreign_key": "fruits.identifier"
             }
          },
          "relationships": {},
@@ -217,13 +250,14 @@
          "comment": "Banana",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
       "Store": {
          "columns": {
             "name": {
                "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
@@ -232,10 +266,12 @@
          "relationships": {
             "employees": {
                "model": "Employee",
-               "backref": "store",
+               "backref": null,
                "back_populates": null,
                "uselist": true,
-               "foreign_keys": []
+               "foreign_keys": [],
+               "embeddable": false,
+               "secondary": null
             }
          },
          "db_tablename": "stores",
@@ -244,87 +280,127 @@
          "comment": "Store",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
       "Employee": {
          "columns": {
             "name": {
                "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
-            "employeeid": {
+            "eid": {
                "type": "String",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
             "age": {
                "type": "Integer",
-               "nullable": false,
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
+            },
+            "employee_id": {
+               "type": "String",
+               "nullable": true,
+               "length": 36,
+               "foreign_key": "default.employees.identifier"
             },
             "store_id": {
                "type": "String",
                "nullable": true,
                "length": 36,
-               "foreign_key": "stores.identifier"
+               "foreign_key": "default.stores.identifier"
             }
          },
-         "relationships": {},
+         "relationships": {
+            "subordinate": {
+               "model": "Employee",
+               "backref": null,
+               "back_populates": null,
+               "uselist": false,
+               "foreign_keys": [],
+               "embeddable": true,
+               "secondary": null
+            },
+            "store": {
+               "model": "Store",
+               "backref": null,
+               "back_populates": null,
+               "uselist": false,
+               "foreign_keys": [],
+               "embeddable": true,
+               "secondary": null
+            }
+         },
          "db_tablename": "employees",
          "db_schema": "default",
          "namespace": "default",
          "comment": "Employee",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
-      "Steak": {
+      "Meat": {
          "columns": {
-            "steakType": {
-               "type": "String",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            },
-            "weight": {
-               "type": "Float",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            },
-            "cart": {
-               "type": "String",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            },
-            "name": {
+            "type": {
                "type": "String",
                "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
-            "price": {
-               "type": "Float",
-               "nullable": false,
+            "animal": {
+               "type": "String",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            }
+         },
+         "relationships": {},
+         "db_tablename": "meats",
+         "db_schema": "default",
+         "namespace": "default",
+         "comment": "Meat",
+         "base_model_path": "mechanic.base.models",
+         "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
+         "primary_key": "identifier"
+      },
+      "Steak": {
+         "columns": {
+            "steakType": {
+               "type": "String",
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
             },
-            "quantity": {
-               "type": "Integer",
-               "nullable": false,
+            "weight": {
+               "type": "Float",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "type": {
+               "type": "String",
+               "nullable": true,
+               "length": "2000",
+               "foreign_key": null,
+               "comment": null
+            },
+            "animal": {
+               "type": "String",
+               "nullable": true,
                "length": "2000",
                "foreign_key": null,
                "comment": null
@@ -337,6 +413,7 @@
          "comment": "Steak",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
       },
       "Groceries": {
@@ -344,10 +421,12 @@
          "relationships": {
             "groceries": {
                "model": "GroceryItem",
-               "backref": "groceries",
+               "backref": null,
                "back_populates": null,
                "uselist": true,
-               "foreign_keys": []
+               "foreign_keys": [],
+               "embeddable": false,
+               "secondary": null
             }
          },
          "db_tablename": "groceries",
@@ -356,34 +435,21 @@
          "comment": "Groceries",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
-         "primary_key": "identifier"
+         "module_path": "models.default",
+         "primary_key": "identifier",
+         "controller": "groceriesitemcontroller"
       },
       "Cart": {
-         "columns": {
-            "cartitems_array_string": {
-               "type": "String",
-               "nullable": false,
-               "length": "2000",
-               "foreign_key": null,
-               "comment": null
-            }
-         },
+         "columns": {},
          "relationships": {
-            "cartitems_groceryitem": {
+            "cartitems": {
                "model": "GroceryItem",
                "backref": null,
                "back_populates": null,
                "uselist": true,
                "foreign_keys": [],
-               "comment": null
-            },
-            "cartitems_wallet": {
-               "model": "Wallet",
-               "backref": null,
-               "back_populates": null,
-               "uselist": true,
-               "foreign_keys": [],
-               "comment": null
+               "embeddable": true,
+               "secondary": null
             }
          },
          "db_tablename": "carts",
@@ -392,33 +458,331 @@
          "comment": "Cart",
          "base_model_path": "mechanic.base.models",
          "base_model_name": "MechanicBaseModelMixin",
+         "module_path": "models.default",
          "primary_key": "identifier"
+      }
+   },
+   "schemas": {
+      "GroceryItemSchema": {
+         "model": "GroceryItem",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {
+            "cart": "CartSchema"
+         }
       },
-      "Error": {
-         "columns": {
+      "WalletSchema": {
+         "model": "Wallet",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {
+            "owner": "ShopperSchema"
+         }
+      },
+      "ShopperSchema": {
+         "model": "Shopper",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {
+            "wallet": "WalletSchema"
+         }
+      },
+      "FruitSchema": {
+         "model": "Fruit",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {
+            "fruit": "AppleSchema"
+         }
+      },
+      "AppleSchema": {
+         "model": "Apple",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {}
+      },
+      "BananaSchema": {
+         "model": "Banana",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {}
+      },
+      "StoreSchema": {
+         "model": "Store",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {}
+      },
+      "EmployeeSchema": {
+         "model": "Employee",
+         "strict": true,
+         "namespace": "default",
+         "comment": "Some description for an Employee object blah blah blah",
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {
+            "subordinate": "EmployeeSchema",
+            "store": "StoreSchema"
+         }
+      },
+      "MeatSchema": {
+         "model": "Meat",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {}
+      },
+      "SteakSchema": {
+         "model": "Steak",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {}
+      },
+      "GroceriesSchema": {
+         "model": "Groceries",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {}
+      },
+      "CartSchema": {
+         "model": "Cart",
+         "strict": true,
+         "namespace": "default",
+         "comment": null,
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {},
+         "embeddable": {
+            "cartitems": "GroceryItemSchema"
+         }
+      },
+      "ErrorSchema": {
+         "model": null,
+         "strict": true,
+         "namespace": "default",
+         "comment": "ErrorSchema",
+         "base_schema_path": "schemas.cmdb",
+         "base_schema_name": "MyBaseSchema",
+         "module_path": "schemas.v100.default",
+         "fields": {
             "code": {
                "type": "Integer",
-               "nullable": true,
-               "length": "2000",
-               "foreign_key": null,
+               "load_only": false,
+               "dump_only": false,
+               "maxLength": "2000",
+               "required": true,
                "comment": null
             },
             "message": {
                "type": "String",
-               "nullable": true,
-               "length": "2000",
-               "foreign_key": null,
+               "load_only": false,
+               "dump_only": false,
+               "maxLength": "2000",
+               "required": true,
                "comment": null
             }
          },
-         "relationships": {},
-         "db_tablename": "errors",
+         "embeddable": {}
+      }
+   },
+   "foreign_keys": {
+      "Shopper.Wallet": {
+         "on_model": "Wallet",
          "db_schema": "default",
+         "rel": "o2o",
+         "key": "default.shoppers.identifier",
+         "name": "shopper_id",
+         "secondary_key": null,
+         "secondary_name": null
+      },
+      "Fruit.Apple": {
+         "on_model": "Apple",
+         "db_schema": "default",
+         "rel": "o2o",
+         "key": "default.fruits.identifier",
+         "name": "fruit_id",
+         "secondary_key": null,
+         "secondary_name": null
+      },
+      "Employee.Employee": {
+         "on_model": "Employee",
+         "db_schema": "default",
+         "rel": "o2o",
+         "key": "default.employees.identifier",
+         "name": "employee_id",
+         "secondary_key": null,
+         "secondary_name": null
+      },
+      "Cart.GroceryItem": {
+         "on_model": "GroceryItem",
+         "db_schema": "default",
+         "rel": "o2m",
+         "key": "default.carts.identifier",
+         "name": "cart_id",
+         "secondary_key": null,
+         "secondary_name": null
+      },
+      "Store.Employee": {
+         "on_model": "Employee",
+         "db_schema": "default",
+         "rel": "o2m",
+         "key": "default.stores.identifier",
+         "name": "store_id",
+         "secondary_key": null,
+         "secondary_name": null
+      },
+      "Groceries.GroceryItem": {
+         "on_model": "GroceryItem",
+         "db_schema": "default",
+         "rel": "o2m",
+         "key": "default.groceries.identifier",
+         "name": "groceries_id",
+         "secondary_key": null,
+         "secondary_name": null
+      }
+   },
+   "controllers": {
+      "GroceryItemCollectionController": {
+         "responses": {
+            "get": {
+               "code": "200",
+               "model": "GroceryItem",
+               "schema": "GroceryItemSchema",
+               "comment": "List all groceries"
+            },
+            "post": {
+               "code": "201",
+               "model": null,
+               "schema": null,
+               "comment": "Create a grocery item"
+            }
+         },
+         "requests": {
+            "get": {
+               "model": null,
+               "schema": null,
+               "comment": "List all groceries",
+               "query_params": []
+            },
+            "post": {
+               "model": "GroceryItem",
+               "schema": "GroceryItemSchema",
+               "comment": "Create a grocery item",
+               "query_params": []
+            }
+         },
+         "comment": null,
+         "base_controller_path": "mechanic.base.controllers",
+         "base_controller_name": "MechanicBaseCollectionController",
+         "module_path": "controllers.default",
          "namespace": "default",
-         "comment": "Error",
-         "base_model_path": "mechanic.base.models",
-         "base_model_name": "MechanicBaseModelMixin",
-         "primary_key": "identifier"
+         "resource": "GroceryItem",
+         "uri": "/groceries",
+         "change": false
+      },
+      "GroceriesItemController": {
+         "responses": {
+            "get": {
+               "code": "200",
+               "model": "Groceries",
+               "schema": "GroceriesSchema",
+               "comment": "Info for a specific grocery"
+            }
+         },
+         "requests": {
+            "get": {
+               "model": null,
+               "schema": null,
+               "comment": "Info for a specific grocery",
+               "query_params": []
+            }
+         },
+         "comment": null,
+         "base_controller_path": "abc.mypackage.hello",
+         "base_controller_name": "MyController",
+         "module_path": "controllers.default",
+         "namespace": "default",
+         "resource": "Groceries",
+         "uri": "/groceries/<string:resource_id>",
+         "change": false
+      },
+      "ShopperItemController": {
+         "responses": {
+            "get": {
+               "code": "200",
+               "model": "Shopper",
+               "schema": "ShopperSchema",
+               "comment": null
+            }
+         },
+         "requests": {
+            "get": {
+               "model": null,
+               "schema": null,
+               "comment": null,
+               "query_params": []
+            }
+         },
+         "comment": null,
+         "base_controller_path": "mechanic.base.controllers",
+         "base_controller_name": "MechanicBaseItemController",
+         "module_path": "controllers.default",
+         "namespace": "default",
+         "resource": "Shopper",
+         "uri": "/shoppers/<string:resource_id>",
+         "change": false
       }
    },
    "namespaces": {
@@ -432,10 +796,30 @@
             "Banana",
             "Store",
             "Employee",
+            "Meat",
             "Steak",
             "Groceries",
-            "Cart",
-            "Error"
+            "Cart"
+         ],
+         "schemas": [
+            "GroceryItemSchema",
+            "WalletSchema",
+            "ShopperSchema",
+            "FruitSchema",
+            "AppleSchema",
+            "BananaSchema",
+            "StoreSchema",
+            "EmployeeSchema",
+            "MeatSchema",
+            "SteakSchema",
+            "GroceriesSchema",
+            "CartSchema",
+            "ErrorSchema"
+         ],
+         "controllers": [
+            "GroceryItemCollectionController",
+            "GroceriesItemController",
+            "ShopperItemController"
          ]
       }
    }

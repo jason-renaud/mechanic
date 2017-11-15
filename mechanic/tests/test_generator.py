@@ -39,9 +39,10 @@ class TestPetstore(TestCase):
         compiler.compile()
 
         gen = Generator(self.CURRENT_DIR + "/gen", compiler.mech_obj, options=options)
-        gen.create_dir_structure()
+        gen.generate()
 
-        # self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/" + options[MODELS_PATH_KEY]))
+        self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/models/default.py")) # + options[MODELS_PATH_KEY]))
+        self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/schemas/v100/default.py"))
         # self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/" + options[SCHEMAS_PATH_KEY]))
         # self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/" + options[CONTROLLERS_PATH_KEY]))
 

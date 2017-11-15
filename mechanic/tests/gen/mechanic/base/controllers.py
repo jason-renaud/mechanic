@@ -8,10 +8,9 @@ from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import DatabaseError
 
 # project imports
-import app
-from app import db
-import base.db_helper as db_helper
-from base.exceptions import MechanicException, MechanicNotFoundException, MechanicNotSupportedException, \
+import grocery
+import mechanic.utils.db_helper as db_helper
+from mechanic.base.exceptions import MechanicException, MechanicNotFoundException, MechanicNotSupportedException, \
     MechanicBadRequestException
 
 IF_MATCH = "If-Match"
@@ -20,10 +19,10 @@ IF_MODIFIED_SINCE = "If-Modified-Since"
 IF_UNMODIFIED_SINCE = "If-Unmodified-Since"
 ETAG_HEADER = "ETag"
 
-logger = logging.getLogger(app.config["DEFAULT_LOG_NAME"])
+logger = logging.getLogger(grocery.config["DEFAULT_LOG_NAME"])
 
 
-class BaseController(Resource):
+class MechanicBaseController(Resource):
     """
     BaseController to define base functionilty/methods for concrete controllers.
     """
@@ -69,7 +68,7 @@ class BaseController(Resource):
             error_response["message"] = exc.messages
             error_response["resolution"] = "Retry the operation with a valid object."
         elif isinstance(exc, DatabaseError):
-            db.session.close()
+            db_helper.close_session()
             logger.error(exc.orig)
             error_response["message"] = "The given object is not valid."
             error_response["resolution"] = "Retry the operation with a valid object."
@@ -156,7 +155,7 @@ class BaseController(Resource):
         self.query_params = params
 
 
-class BaseItemController(BaseController):
+class MechanicBaseItemController(MechanicBaseController):
     """
     Base class that handles API endpoints that map to a specific resource. I.e., endpoints that end with a resource id.
     Example endpoints that match this could be:
@@ -241,7 +240,7 @@ class BaseItemController(BaseController):
         return serialized_model.data
 
     def _put_item_verify_request(self):
-        super(BaseItemController, self)._verify_request()
+        super(MechanicBaseItemController, self)._verify_request()
 
     def _put_item_deserialize_request(self):
         """
@@ -356,7 +355,7 @@ class BaseItemController(BaseController):
                                      if_none_match=caching_headers[IF_NONE_MATCH])
 
 
-class BaseCollectionController(BaseController):
+class MechanicBaseCollectionController(MechanicBaseController):
     """
     Base class that handles API endpoints that map to a collection of resources.
     Example endpoints that match this could be:
@@ -417,7 +416,7 @@ class BaseCollectionController(BaseController):
         return serialized_models.data
 
     def _post_collection_verify_request(self):
-        super(BaseCollectionController, self)._verify_request()
+        super(MechanicBaseCollectionController, self)._verify_request()
 
     def _post_collection_deserialize_request(self):
         """

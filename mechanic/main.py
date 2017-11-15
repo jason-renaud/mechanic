@@ -2,6 +2,7 @@
 
 Usage:
     mechanic build <directory>
+    mechanic merge <master> <files>...
 
 Arguments:
     directory                           Directory that has the mechanicfile
@@ -21,7 +22,10 @@ import pkg_resources
 from docopt import docopt
 
 # project
+from mechanic.src.compiler import Compiler
 from mechanic.src.generator import Generator
+from mechanic.src.merger import SpecMerger
+from mechanic.src.reader import read_mechanicfile
 
 
 def main():
@@ -31,13 +35,22 @@ def main():
     args = docopt(__doc__, version=current_version)
 
     print("@@@@", args)
-    # generator = Generator("gen")
-    # with open(os.path.expanduser(args["<directory>"]) + "/mechanic-grocery.json") as f:
-    #     print(f.read())
-    #
-    # os.makedirs(args["<directory>"] + "/controllers/__init__.py")
-    # os.makedirs(args["<directory>"] + "/macros/__init__.py")
-    # os.makedirs(args["<directory>"] + "/schemas/__init__.py")
+    if args["build"]:
+        directory = os.path.expanduser(args["<directory>"])
+        filepath = directory + "/mechanic.json"
+        try:
+            mechanic_options = read_mechanicfile(filepath)
+        except FileNotFoundError:
+            filepath = directory + "/mechanic.yaml"
+            mechanic_options = read_mechanicfile(filepath)
+        compiler = Compiler(mechanic_options, mechanic_file_path=filepath)
+        compiler.compile()
+        Generator(directory, compiler.mech_obj, options=mechanic_options).generate()
+    elif args["merge"]:
+        files_to_merge = args["<files>"]
+        spec_merger = SpecMerger(files_to_merge, args["<master>"])
+        spec_merger.merge()
+        # Merger(files_to_merge, output_file="docs.yaml").merge()
 
 if __name__ == "__main__":
     main()

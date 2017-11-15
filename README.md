@@ -109,6 +109,7 @@ Allows you to customize which additional pieces of code to generate. Options are
 | "application run"         | generates a basic <project-root>/\_\_init\_\_.py file that has app initialization code, and a <project-root>/run.py file, for running the flask app. |
 | "controller impl"         | points each controller to the default base controller (unless overridden) and adds the fields needed for the default implementation. |
 | "version scheme"          | assumes you want to use the mechanic default versioning scheme. See [versioning](#versioning) for more details. |
+| "swagger ui"              | adds Swagger UI page to your Flask app |
  
 ##### OVERRIDE_BASE_CONTROLLER
 **Required**: No  
@@ -153,6 +154,15 @@ Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for models
 **Default value**: None  
 Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for schemas
 
+##### OVERRIDE_CONTROLLER_TYPE
+**Required**: No  
+**Default value**: None  
+```json
+"OVERRIDE_CONTROLLER_TYPE": {
+  "/uri/as/defined/in/oapi/spec": "Collection"
+}
+```
+
 ##### OVERRIDE_TABLE_NAME
 ##### OVERRIDE_DB_SCHEMA_NAME
 ##### EXCLUDE_MODEL_GENERATION
@@ -169,7 +179,12 @@ To not generate any models:
 ##### EXCLUDE_SCHEMA_GENERATION
 **Required**: No  
 **Default value**: []  
-Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for schemas
+Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for schemas.
+
+##### EXCLUDE_CONTROLLER_GENERATION
+**Required**: No  
+**Default value**: []  
+Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for controllers.
 
 ##### REPLACE_CONTROLLERS
 **Required**: No  

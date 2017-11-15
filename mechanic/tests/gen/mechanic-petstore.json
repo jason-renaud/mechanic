@@ -5,5 +5,5 @@
     "with": "controllers.base.MyController",
     "for": "controllers.default.ABCController"
   },
-  "MODELS_PATH": "models/myspecialfolder/namespace.py"
+  "MODELS_PATH": "models/myspecialfolder/{{namespace}}.py"
 }
