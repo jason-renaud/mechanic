@@ -15,7 +15,7 @@ config file.
 **Required**: No  
 **Default value**: models/{{namespace}}.py   
 Defines the path in which to generate SQLAlchemy models. Optional variables are:
-- {{namespace}} --> The namespace associated with the model. See [namespaces](#namespaces) for more details.  
+- {{namespace}} --> The namespace associated with the model. See [extensions](mechanic-extensions.md) for more details.  
 - {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
 will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
 
@@ -23,7 +23,7 @@ will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0"
 **Required**: No  
 **Default value**: schemas/{{namespace}}.py   
 Defines the path in which to generate Marshmallow schemas. Optional variables are:
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{namespace}} --> The namespace associated with the schema. See [extensions](mechanic-extensions.md) for more details.   
 - {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
 will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
 
@@ -31,7 +31,7 @@ will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0"
 **Required**: No  
 **Default value**: controllers/{{namespace}}.py   
 Defines the path in which to generate controllers. Optional variables are:
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{namespace}} --> The namespace associated with the schema. See [extensions](mechanic-extensions.md) for more details.   
 - {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
 will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
 
@@ -40,7 +40,7 @@ will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0"
 **Default value**: {{resource}}Model  
 Defines how model classes should be named. Optional variables are:
 - {{resource}} --> The resource defined in the OpenAPI 3.0 file.
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{namespace}} --> The namespace associated with the schema. See [extensions](mechanic-extensions.md) for more details.   
 - {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
 
 ##### SCHEMAS_NAME_PATTERN
@@ -48,7 +48,7 @@ Defines how model classes should be named. Optional variables are:
 **Default value**: {{resource}}Schema  
 Defines how schema classes should be named. Optional variables are:
 - {{resource}} --> The resource defined in the OpenAPI 3.0 file.
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{namespace}} --> The namespace associated with the schema. See [extensions](mechanic-extensions.md) for more details.   
 - {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
 
 ##### CONTROLLERS_NAME_PATTERN
@@ -56,9 +56,9 @@ Defines how schema classes should be named. Optional variables are:
 **Default value**: {{resource}}{{controller_type}}Controller  
 Defines how controller classes should be named. Optional variables are:
 - {{resource}} --> The resource defined in the OpenAPI 3.0 file.
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
+- {{namespace}} --> The namespace associated with the schema. See [extensions](mechanic-extensions.md) for more details.   
 - {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
-- {{controller_type}} --> For more details about different controller types, see [controllers](#controllers).
+- {{controller_type}} --> For more details about different controller types, see [faq](mechanic-faq.md).
 
 ##### BASE_API_PATH
 **Required**: No  
@@ -69,7 +69,7 @@ Allows you to define the base api path for your REST API.
 **Required**: No  
 **Default value**: "default"  
 Allows you to define the default namespace if the "x-mechanic-namespace" extension is not used. For more details about
-extensions, see [here](#extensions) for more details.
+extensions, see [here](mechanic-extensions.md) for more details.
 
 ##### EXCLUDE
 **Required**: No  
@@ -84,11 +84,11 @@ EXCLUDE: ["run.py", "myappname/__init__.py", "schemas/v100/abc.py"]
 **Required**: No  
 **Default value**: None  
 Allows finer grained control over which controllers inherit from which class. For example, let's say you've defined 
-BASE_CONTROLLER as "controllers.base.MyCustomBaseController", but you want only a specific file to inherit instead from 
+DEFAULT_BASE_CONTROLLER as "controllers.base.MyCustomBaseController", but you want only a specific file to inherit instead from 
 "controllers.base.MySpecificBaseController". You would use this attribute to define that. Here are some examples:  
 
 This means that "HouseController" will have "MyCustomBaseController" as it's super class, 
-instead of the value defined by BASE_CONTROLLER
+instead of the value defined by DEFAULT_BASE_CONTROLLER
 ```yaml
 OVERRIDE_BASE_CONTROLLER: 
     - with: "controllers.base.MyCustomBaseController",
@@ -115,12 +115,12 @@ OVERRIDE_BASE_CONTROLLER:
 ##### OVERRIDE_BASE_MODEL
 **Required**: No  
 **Default value**: None  
-Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for models
+Same as [OVERRIDE_BASE_CONTROLLER](#override_base_controller) except for models
 
 ##### OVERRIDE_BASE_SCHEMA
 **Required**: No  
 **Default value**: None  
-Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for schemas
+Same as [OVERRIDE_BASE_CONTROLLER](#override_base_controller) except for schemas
 
 ##### OVERRIDE_CONTROLLER_TYPE
 **Required**: No  
@@ -146,7 +146,7 @@ OVERRIDE_TABLE_NAMES:
 ##### OVERRIDE_DB_SCHEMA_NAMES
 **Required**: No  
 **Default value**: None  
-Same as [OVERRIDE_TABLE_NAMES](#override-table-names) except for db schema names.
+Same as [OVERRIDE_TABLE_NAMES](#override_table_names) except for db schema names.
 
 ##### DEFAULT_BASE_MODEL
 **Required**: No  
@@ -192,12 +192,12 @@ EXCLUDE_MODEL_GENERATION: "all"
 ##### EXCLUDE_SCHEMA_GENERATION
 **Required**: No  
 **Default value**: []  
-Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for schemas.
+Same as [EXCLUDE_MODEL_GENERATION](#exclude_model_generation) except for schemas.
 
 ##### EXCLUDE_CONTROLLER_GENERATION
 **Required**: No  
 **Default value**: []  
-Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for controllers.
+Same as [EXCLUDE_MODEL_GENERATION](#exclude_model_generation) except for controllers.
 
 ##### OVERRIDE_CONTROLLER_FOR_URI
 **Required**: No  
@@ -216,4 +216,4 @@ OVERRIDE_CONTROLLER_FOR_URI:
 ##### DATABASE_URL
 **Required**: Yes  
 **Default value**: None
-Should be of the format <db-type>://<username>:<password>@<hostname>:<port>/<db_name>
+Should be of the format \<db-type>://\<username>:\<password>@\<hostname>:\<port>/\<db_name>
