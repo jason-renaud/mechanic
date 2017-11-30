@@ -1,0 +1,55 @@
+{
+  "OPENAPI": "../specs/grocery.yaml",
+  "APP_NAME": "grocery",
+  "MODELS_NAME_PATTERN": "{{resource}}",
+  "SCHEMAS_NAME_PATTERN": "{{resource}}Schema",
+  "CONTROLLER_NAME_PATTERN": "{{resource}}{{controller_type}}Controller",
+  "OVERRIDE_BASE_MODEL": [{
+    "with": "models.cmdb.MyBaseModel",
+    "for": "all",
+    "except": ["models.default.Wallet"]
+  }],
+  "OVERRIDE_BASE_SCHEMA": [{
+    "with": "schemas.cmdb.MyBaseSchema",
+    "for": "all",
+    "except": ["schemas.v100.default.WalletSchema"]
+  }],
+  "OVERRIDE_BASE_CONTROLLER": [{
+    "with": "abc.mypackage.hello.MyController",
+    "for": ["controllers.default.GroceriesItemController"]
+  }],
+  "MODELS_PATH": "models/{{namespace}}.py",
+  "SCHEMAS_PATH": "schemas/v{{version}}/{{namespace}}.py",
+  "OVERRIDE_TABLE_NAMES": [
+    {
+      "with": "my_wallet_tablename",
+      "for": "models.default.Wallet"
+    },
+    {
+      "with": "groceries",
+      "for": "models.default.Groceries"
+    }
+  ],
+  "OVERRIDE_DB_SCHEMA_NAMES": [
+    {
+      "with": "my_custom_schema",
+      "for": "models.default.Wallet"
+    }
+  ],
+  "OVERRIDE_CONTROLLER_TYPE": {
+    "/groceries": "Collection",
+    "/groceries/{gId}": "Item"
+  },
+  "OVERRIDE_MANY_TO_MANY": [{
+    "type": "many_to_many",
+    "model1": "User",
+    "model2": "Role"
+  }],
+  "EXCLUDE_MODEL_GENERATION": ["Error"],
+  "EXCLUDE_SCHEMA_GENERATION": [],
+  "DATABASE_URL": "postgresql://postgres:postgres@cmdb-postgres:5432/sample",
+  "EXCLUDE": [],
+  "OVERRIDE_CONTROLLER_FOR_URI": {
+    "/shoppers/{shopper-id}": "path.to.my.CustomShopperController"
+  }
+}
