@@ -189,6 +189,12 @@ components:
           type: string
         age:
           type: integer
+        favBanana:
+          $ref: "#/components/Banana"
+        favApples:
+          type: array
+          items:
+            $ref: "#/components/Apple"
         subordinate:
           x-mechanic-embeddable: true
           oneOf:
@@ -200,23 +206,23 @@ components:
             - type: string
             - $ref: "#/components/schemas/Store"
           readOnly: true
-#    User:
-#      type: object
-#      properties:
-#        username:
-#          type: string
-#        roles:
-#          type: array
-#          items:
-#            x-mechanic-embeddable: true
-#            oneOf:
-#              - type: string
-#              - $ref: "#/components/schemas/Role"
-#    Role:
-#      type: object
-#      properties:
-#        rolename:
-#          type: string
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+        roles:
+          type: array
+          items:
+            x-mechanic-embeddable: true
+            oneOf:
+              - type: string
+              - $ref: "#/components/schemas/Role"
+    Role:
+      type: object
+      properties:
+        rolename:
+          type: string
 #        users:
 #          type: array
 #          items:

@@ -34,7 +34,6 @@ def main():
 
     args = docopt(__doc__, version=current_version)
 
-    print("@@@@", args)
     if args["build"]:
         directory = os.path.expanduser(args["<directory>"])
         filepath = directory + "/mechanic.json"
@@ -50,7 +49,6 @@ def main():
         files_to_merge = args["<files>"]
         spec_merger = SpecMerger(files_to_merge, args["<master>"])
         spec_merger.merge()
-        # Merger(files_to_merge, output_file="docs.yaml").merge()
 
 if __name__ == "__main__":
     main()

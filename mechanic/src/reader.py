@@ -34,6 +34,9 @@ EXCLUDE_MODEL_GENERATION_KEY = "EXCLUDE_MODEL_GENERATION"
 EXCLUDE_SCHEMA_GENERATION_KEY = "EXCLUDE_SCHEMA_GENERATION"
 EXCLUDE_CONTROLLER_GENERATION_KEY = "EXCLUDE_CONTROLLER_GENERATION"
 DATABASE_URL_KEY = "DATABASE_URL"
+OVERRIDE_MANY_TO_MANY_KEY = "OVERRIDE_MANY_TO_MANY"
+OVERRIDE_CONTROLLER_FOR_URI_KEY = "OVERRIDE_CONTROLLER_FOR_URI"
+EXCLUDE_KEY = "EXCLUDE"
 
 default_options = {
     APP_NAME_KEY: "app",
@@ -45,15 +48,11 @@ default_options = {
     SCHEMAS_NAME_PATTERN_KEY: "{{resource}}Schema",
     CONTROLLERS_NAME_PATTERN_KEY: "{{resource}}{{controller_type}}Controller",
     BASE_API_PATH_KEY: "/api",
-    BASE_ITEM_CONTROLLER_KEY: "mechanic.base.controllers.BaseItemController",
-    BASE_COLLECTION_CONTROLLER_KEY: "mechanic.base.controllers.BaseCollectionController",
-    BASE_CONTROLLER_KEY: "mechanic.base.controllers.BaseController",
     DEFAULT_NAMESPACE_KEY: "default",
-    INCLUDE_KEY: [],
-    OVERRIDE_BASE_CONTROLLER_KEY: {},
+    OVERRIDE_BASE_CONTROLLER_KEY: [],
     OVERRIDE_CONTROLLER_TYPE_KEY: {},
-    OVERRIDE_BASE_MODEL_KEY: {},
-    OVERRIDE_BASE_SCHEMA_KEY: {},
+    OVERRIDE_BASE_MODEL_KEY: [],
+    OVERRIDE_BASE_SCHEMA_KEY: [],
     OVERRIDE_TABLE_NAMES_KEY: [],
     OVERRIDE_DB_SCHEMA_NAMES_KEY: [],
     DEFAULT_BASE_MODEL_KEY: "mechanic.base.models.MechanicBaseModelMixin",
@@ -65,7 +64,10 @@ default_options = {
     DEFAULT_BASE_CONTROLLER_KEY: "mechanic.base.controllers.MechanicBaseController",
     DEFAULT_BASE_ITEM_CONTROLLER_KEY: "mechanic.base.controllers.MechanicBaseItemController",
     DEFAULT_BASE_COLLECTION_CONTROLLER_KEY: "mechanic.base.controllers.MechanicBaseCollectionController",
-    DATABASE_URL_KEY: ""
+    DATABASE_URL_KEY: None,
+    OVERRIDE_MANY_TO_MANY_KEY: [],
+    OVERRIDE_CONTROLLER_FOR_URI_KEY: {},
+    EXCLUDE_KEY: []
 }
 
 

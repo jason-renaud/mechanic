@@ -23,14 +23,16 @@ class TestPetstore(TestCase):
 
     def tearDown(self):
         try:
-            # os.remove(self.GROCERY_TMP)
+            os.remove(self.GROCERY_TMP)
             os.remove(self.PETSTORE_TMP)
         except Exception:
             pass
 
-        # for item in os.listdir(os.path.dirname(__file__) + "/gen"):
-        #     if os.path.isdir(os.path.realpath("gen/" + item)):
-        #         shutil.rmtree(os.path.realpath("gen/" + item))
+        for item in os.listdir(os.path.dirname(__file__) + "/gen"):
+            if os.path.isdir(os.path.realpath("gen/" + item)):
+                shutil.rmtree(os.path.realpath("gen/" + item))
+            elif item == "run.py" or item == "requirements.txt":
+                os.remove(os.path.realpath("gen/" + item))
 
     def test_directory_structure(self):
         options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
@@ -41,15 +43,5 @@ class TestPetstore(TestCase):
         gen = Generator(self.CURRENT_DIR + "/gen", compiler.mech_obj, options=options)
         gen.generate()
 
-        self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/models/default.py")) # + options[MODELS_PATH_KEY]))
+        self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/models/default.py"))
         self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/schemas/v100/default.py"))
-        # self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/" + options[SCHEMAS_PATH_KEY]))
-        # self.assertTrue(os.path.exists(self.CURRENT_DIR + "/gen/" + options[CONTROLLERS_PATH_KEY]))
-
-    def test_get_pets_petid_200_response_valid_Pet_schema(self): pass
-    def test_get_pets_petid_not_found_response_valid_Error_schema(self): pass
-    def test_get_pets_200_response_valid_array_of_Pets(self): pass
-    def test_get_pets_error_response_valid_Error_schema(self): pass
-    def test_post_pets_201_response_null(self): pass
-    def test_post_pets_bad_request_valid_Error_schema(self): pass
-    def test_post_pets_missing_required_attr_valid_Error_schema(self): pass

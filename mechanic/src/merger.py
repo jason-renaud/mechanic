@@ -9,6 +9,9 @@ import yamlordereddictloader
 from yamlordereddictloader import OrderedDict
 
 
+EXTENSION_PUBLIC = "x-mechanic-public"
+
+
 class Merger:
     """
     Provides an API to merge an OpenAPI spec that is split into multiple files. For example, if you have a reference
@@ -132,6 +135,8 @@ class Merger:
             # references as well, which would required several iterations of the while loop.
             matches = re.findall(self.EXTERNAL_SCHEMA_REGEX, oapi_str)
 
+def abc(x,y,z):
+    pass
 
 class SpecMerger:
     def __init__(self, files_to_merge, master):
@@ -140,7 +145,7 @@ class SpecMerger:
         self.oapis = []
         self.tmp_dir = "tmp_merged_specs"
 
-        shutil.rmtree(self.tmp_dir)
+        shutil.rmtree(self.tmp_dir, onerror=abc)
         os.makedirs(self.tmp_dir)
         for i, f in enumerate(files_to_merge):
             f_path = os.path.expanduser(f)
@@ -149,26 +154,23 @@ class SpecMerger:
             self.oapis.append(merger.oapi_obj)
 
     def merge(self):
+        self.main_oapi["paths"] = dict()
+        self.main_oapi["components"] = dict()
+        self.main_oapi["components"]["schemas"] = dict()
+        self.main_oapi["components"]["responses"] = dict()
+        self.main_oapi["components"]["parameters"] = dict()
+        self.main_oapi["components"]["examples"] = dict()
+        self.main_oapi["components"]["requestBodies"] = dict()
+        self.main_oapi["components"]["securitySchemes"] = dict()
+        self.main_oapi["components"]["headers"] = dict()
+
         for obj in self.oapis:
-            import pprint
-            pp = pprint.PrettyPrinter(indent=2)
-
-            if not self.main_oapi.get("paths"):
-                self.main_oapi["paths"] = dict()
-            if not self.main_oapi.get("components"):
-                self.main_oapi["components"] = dict()
-                self.main_oapi["components"]["schemas"] = dict()
-                self.main_oapi["components"]["responses"] = dict()
-                self.main_oapi["components"]["parameters"] = dict()
-                self.main_oapi["components"]["examples"] = dict()
-                self.main_oapi["components"]["requestBodies"] = dict()
-                self.main_oapi["components"]["securitySchemes"] = dict()
-                self.main_oapi["components"]["headers"] = dict()
-
             for name, val in obj["paths"].items():
-                self.main_oapi["paths"][name] = val
+                if val.get(EXTENSION_PUBLIC):
+                    self.main_oapi["paths"][name] = val
             for name, val in obj["components"]["schemas"].items():
-                self.main_oapi["components"]["schemas"][name] = val
+                if val.get(EXTENSION_PUBLIC):
+                    self.main_oapi["components"]["schemas"][name] = val
             for name, val in obj["components"]["responses"].items():
                 self.main_oapi["components"]["responses"][name] = val
             for name, val in obj["components"]["parameters"].items():

@@ -8,8 +8,8 @@ from mechanic.base.exceptions import MechanicResourceAlreadyExistsException, Mec
     MechanicInvalidETagException, MechanicNotModifiedException
 from {{ app_name }} import db
 
-logger = logging.getLogger({{ app_name }}.config["DEFAULT_LOG_NAME"])
-logger.setLevel("DEBUG")
+logger = logging.getLogger(__name__)
+logger.setLevel("INFO")
 
 
 def close_session():

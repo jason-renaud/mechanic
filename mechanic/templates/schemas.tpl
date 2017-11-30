@@ -26,7 +26,10 @@ class {{ schema_name }}({{ schema.base_schema_name }}):
         {%- for prop_name, embed_schema in schema.embeddable.items() %}
     {{ prop_name }} = MechanicEmbeddable("{{ embed_schema }}", column="uri")
         {%- endfor %}
-
+        {%- for prop_name, nested_schema in schema.nested.items() %}
+    {{ prop_name }} = fields.Nested("{{ nested_schema.schema }}", many={{ nested_schema.many }})
+        {%- endfor %}
+{# #}
     class Meta:
         model = {{ schema.model }}
         strict = {{ schema.strict }}

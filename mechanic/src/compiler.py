@@ -27,7 +27,6 @@ data_map = {
 
 NAMESPACE_EXT = "x-mechanic-namespace"
 EMBEDDABLE_EXT = "x-mechanic-embeddable"
-URI_LINK_EXT = "x-mechanic-uri-link"
 VAR_PATTERN = r'{([\w_-]*)}'
 
 SUPPORTED_CONTENT_TYPE = "application/json"
@@ -48,20 +47,22 @@ class RelationshipType(enum.IntEnum):
     o2m = 50
     o2o = 10
 
+
 class Compiler(object):
-    def __init__(self, options, mechanic_file_path="", output="mech-compiled.json"):
+    def __init__(self, options, mechanic_file_path="", output="mech-compiled.yaml"):
         self.options = options
         self.oapi_file = os.path.abspath(
             os.path.realpath(os.path.join(os.path.dirname(mechanic_file_path), options[reader.OPENAPI3_FILE_KEY])))
-        self.merger = Merger(self.oapi_file, "temp.json")
+        self.merger = Merger(self.oapi_file, os.path.dirname(mechanic_file_path) + "/temp.yaml")
         self.merger.merge()
-        self.oapi_obj = self.merger.oapi_obj #utils.deserialize_file(self.oapi_file)
+        self.oapi_obj = self.merger.oapi_obj
         self.models = dict()
         self.schemas = dict()
         self.controllers = dict()
         self.resources = dict()
         self.namespaces = dict()
         self.foreign_keys = dict()
+        self.many_to_many = dict()
         self.version = self.oapi_obj.get("info", {}).get("version", "0.0.1").replace(".", "").replace("-", "").replace("_", "")
         self.output = output
 
@@ -82,11 +83,13 @@ class Compiler(object):
 
     def write_to_file(self):
         self.mech_obj = {
+            "openapi_file_location": self.oapi_file,
             "version": self.version,
             "resources": self.resources,
             "models": self.models,
             "schemas": self.schemas,
             "foreign_keys": self.foreign_keys,
+            "many_to_many": self.many_to_many,
             "controllers": self.controllers,
             "namespaces": self.namespaces
         }
@@ -125,7 +128,10 @@ class Compiler(object):
             model["module_path"] = path
             model["base_model_path"] = base_model.rsplit(".", 1)[0]
             model["base_model_name"] = base_model.rsplit(".", 1)[1]
-            model["db_schema"] = namespace
+            model["db_schema"] = self._get_db_schema_name_from_options(model_name,
+                                                                       model["namespace"],
+                                                                       namespace=model["namespace"],
+                                                                       version=self.version)
             model["db_tablename"] = self._get_tablename_from_options(model_name,
                                                                      model["db_tablename"],
                                                                      namespace=model["namespace"],
@@ -206,7 +212,7 @@ class Compiler(object):
                     self._add_regular_relationship(existing_model,
                                                    model_name,
                                                    oneof_item.get("$ref"),
-                                                   schema_name,
+                                                   schema_name.lower(),
                                                    embeddable=True)
 
             # Handle oneOf properties
@@ -258,7 +264,13 @@ class Compiler(object):
                         "attribute as a '$ref' to another schema. Consider changing items object to reference a "
                         "schema. Object in error: %s" % (schema_name))
 
-                self._add_regular_relationship(existing_model, model_name, ref, schema_name, uselist=True, backref=True)
+                self._add_regular_relationship(existing_model,
+                                               model_name,
+                                               ref,
+                                               schema_name.lower(),
+                                               uselist=True,
+                                               backref=True,
+                                               nested=True)
 
             for prop_name, prop_obj in schema_obj.get("properties", {}).items():
                 if prop_obj.get("type") == "array":
@@ -281,12 +293,21 @@ class Compiler(object):
                                           "Object in error: %s.%s" % (schema_name, prop_name))
                     elif prop_obj.get("items").get("$ref"):
                         ref = prop_obj.get("items").get("$ref")
-                        self._add_regular_relationship(existing_model, model_name, ref, prop_name, uselist=True,
-                                                       backref=schema_name.lower())
+                        self._add_regular_relationship(existing_model,
+                                                       model_name,
+                                                       ref,
+                                                       prop_name,
+                                                       uselist=True,
+                                                       backref=schema_name.lower(),
+                                                       nested=True)
                 elif prop_obj.get("$ref"):
                     ref = prop_obj.get("$ref")
-                    self._add_regular_relationship(existing_model, model_name, ref, prop_name, uselist=False,
-                                                   backref=schema_name.lower())
+                    self._add_regular_relationship(existing_model,
+                                                   model_name,
+                                                   ref, prop_name,
+                                                   uselist=False,
+                                                   backref=schema_name.lower(),
+                                                   nested=True)
 
     def build_models_pass5(self):
         """
@@ -300,6 +321,16 @@ class Compiler(object):
 
             # see if there is a foreign key for the reverse relationship
             reversed_models = model_b + "." + model_a
+
+            # see if the relationship is overridden in config file
+            overridden_rel_types = self.options[reader.OVERRIDE_MANY_TO_MANY_KEY]
+            for item in overridden_rel_types:
+                if (item["model1"] == model_a and item["model2"] == model_b) or \
+                        (item["model1"] == model_b and item["model2"] == model_a):
+                    self._add_many_to_many(model_a, model_b)
+                    self.foreign_keys.pop(fkey_models, None)
+                    self.foreign_keys.pop(reversed_models, None)
+
             reverse_fkey = self.foreign_keys.get(reversed_models)
 
             # If the reversed_models == fkey_models, that means it is a self referential foreign key, in which case no
@@ -308,13 +339,13 @@ class Compiler(object):
                 reverse_rel_type = RelationshipType[reverse_fkey["rel"]]
 
                 if rel_type == RelationshipType.o2m and reverse_rel_type == RelationshipType.o2m:
-                    raise SyntaxError("mechanic does not currently support many to many relationships: %s:%s" %
-                                      (model_a, model_b))
-                    # TODO: uncomment below when supporting many to many
-                    # rel_type = RelationshipType.m2m
-                    # reverse_rel_type = RelationshipType.m2m
-                    # self.foreign_keys[reversed_models]["rel"] = reverse_rel_type.name
-                    # self.foreign_keys[fkey_models]["rel"] = rel_type.name
+                    rel_type = RelationshipType.m2m
+                    reverse_rel_type = RelationshipType.m2m
+                    self.foreign_keys[reversed_models]["rel"] = reverse_rel_type.name
+                    self.foreign_keys[fkey_models]["rel"] = rel_type.name
+
+                    # add m2m
+                    self._add_many_to_many(model_a, model_b)
 
                 # We only want one foreign key between the 2 models, so remove one based on the rel_type
                 if rel_type > reverse_rel_type:
@@ -325,15 +356,7 @@ class Compiler(object):
                         self.foreign_keys.pop(fkey_models)
                 else:
                     if rel_type == RelationshipType.m2m and reverse_rel_type == RelationshipType.m2m:
-                        pass
-                        # TODO: uncomment and update below when supporting many to many
-                        # create new table
-                        # rev_fkey = reverse_fkey["key"]
-                        # rev_fkey_name = reverse_fkey["name"]
-                        # self.foreign_keys[fkey_models]["secondary_key"] = rev_fkey
-                        # self.foreign_keys[fkey_models]["secondary_name"] = rev_fkey_name
-                        # self.foreign_keys.pop(reversed_models)
-
+                        self._add_many_to_many(model_a, model_b)
                     else:
                         # remove one of them cause they each have the same rel
                         self.foreign_keys.pop(fkey_models)
@@ -345,10 +368,11 @@ class Compiler(object):
         for fkey_models, fkey in self.foreign_keys.items():
             # Handle many to many first
             if fkey["rel"] == RelationshipType.m2m:
-                model_a = fkey_models.split(".")[0]
-                model_b = fkey_models.split(".")[1]
-                raise SyntaxError("mechanic does not currently support many to many relationships: %s:%s" %
-                                  (model_a, model_b))
+                # model_a = fkey_models.split(".")[0]
+                # model_b = fkey_models.split(".")[1]
+                # raise SyntaxError("mechanic does not currently support many to many relationships: %s:%s" %
+                #                   (model_a, model_b))
+                pass
             else:
                 on_model = fkey["on_model"]
                 foreign_key_name = fkey["name"]
@@ -397,7 +421,7 @@ class Compiler(object):
 
     def build_mschemas_pass2(self):
         """
-        Pass 2 handles creating MechanicEmbeddable Marshmallow fields"
+        Pass 2 handles creating MechanicEmbeddable/Nested Marshmallow fields"
         """
         for schema_name, schema_obj in self.oapi_obj["components"]["schemas"].items():
             namespace = schema_obj.get(NAMESPACE_EXT, self.options[reader.DEFAULT_NAMESPACE_KEY])
@@ -418,6 +442,13 @@ class Compiler(object):
                     if rel_obj["embeddable"]:
                         rel_model = rel_obj["model"]
                         existing_mschema["embeddable"][rel_name] = self._find_schema_from_model_name(rel_model)
+                    elif rel_obj["nested"]:
+                        rel_model = rel_obj["model"]
+
+                        if not existing_mschema["nested"].get(rel_name):
+                            existing_mschema["nested"][rel_name] = dict()
+                        existing_mschema["nested"][rel_name]["schema"] = self._find_schema_from_model_name(rel_model)
+                        existing_mschema["nested"][rel_name]["many"] = rel_obj["uselist"]
 
     def build_mschemas_pass3(self):
         """
@@ -455,16 +486,12 @@ class Compiler(object):
                         self._add_field(prop_name, existing_mschema, prop_obj, prop_name, schema_obj)
 
     def build_controllers_pass1(self):
-        """
-        Pass 1 handles
-        """
         for path_uri, path_obj in self.oapi_obj["paths"].items():
             controller = self._init_controller()
 
             namespace = path_obj.get(NAMESPACE_EXT, self.options[reader.DEFAULT_NAMESPACE_KEY])
             controller["namespace"] = namespace
-            # print(re.sub(VAR_PATTERN, r'<string:\1>', path_uri))
-            # controller["uri"] = re.sub(VAR_PATTERN, r'<string:\1>', path_uri).replace("-", "_")
+            controller["oapi_uri"] = path_uri
             matches = re.findall(VAR_PATTERN, path_uri)
 
             if len(matches) > 1:
@@ -554,6 +581,46 @@ class Compiler(object):
             controller["base_controller_name"] = base_controller.rsplit(".", 1)[1]
             self._put_controller_to_mechanic(controller_name, controller)
 
+    def _add_many_to_many(self, model1_name, model2_name):
+        model1 = self.models[model1_name]
+        model2 = self.models[model2_name]
+
+        sorted_names = [model1["db_tablename"], model2["db_tablename"]]
+        sorted_names.sort()
+        table_name = "_".join(sorted_names)
+
+        # verify namespace and db_schema match
+        if model1["namespace"] != model2["namespace"]:
+            raise SyntaxError("namespace attributes do not match for models %s and %s" % (model1_name, model2_name))
+        if model1["db_schema"] != model2["db_schema"]:
+            raise SyntaxError("db_schema attributes do not match for models %s and %s" % (model1_name, model2_name))
+
+        m2m = {
+            "namespace": model1["namespace"],
+            "db_tablename": table_name,
+            "db_schema": model1["db_schema"],
+            "fkeys": {
+                model1_name.lower() + "_id": model1["db_schema"] + "." +
+                                             model1["db_tablename"] + "." +
+                                             model1["primary_key"],
+                model2_name.lower() + "_id": model2["db_schema"] + "." +
+                                             model2["db_tablename"] + "." +
+                                             model2["primary_key"],
+            }
+        }
+
+        # If there is a relationship defined on either model, add the secondary option to point at the association
+        # table.
+        for rel_name, rel in model1.get("relationships", {}).items():
+            if rel["model"] == model2_name:
+                rel["secondary"] = table_name
+
+        for rel_name, rel in model2.get("relationships", {}).items():
+            if rel["model"] == model1_name:
+                rel["secondary"] = table_name
+
+        self.many_to_many[table_name] = m2m
+
     def _init_namespace(self, namespace):
         if not self.namespaces.get(namespace):
             self.namespaces[namespace] = dict()
@@ -591,8 +658,6 @@ class Compiler(object):
         ctype = override.get(path_uri, ctype)
         return ctype
 
-    def _determine_base_controller(self, controller_type): pass
-
     def _find_schema_from_model_name(self, model_name):
         for res, res_obj in self.resources.items():
             if res_obj.get("model") == model_name:
@@ -607,8 +672,9 @@ class Compiler(object):
             "base_schema_path": None,
             "base_schema_name": None,
             "module_path": None,
-            "fields": {},
-            "embeddable": dict()
+            "fields": dict(),
+            "embeddable": dict(),
+            "nested": dict()
         }
 
     def _init_controller(self, controller_name=None):
@@ -688,11 +754,12 @@ class Compiler(object):
                                   prop_name,
                                   uselist=False,
                                   embeddable=False,
+                                  nested=False,
                                   backref=None,
                                   back_populates=None):
         rel = self._init_rel()
         ref_name = ref.split("/")[-1]
-        rel_name = prop_name.lower()
+        rel_name = prop_name
         rel["model"] = self._get_model_name_from_pattern(ref_name, namespace=existing_model["namespace"],
                                                          version=self.version)
         """
@@ -713,6 +780,7 @@ class Compiler(object):
         rel["back_populates"] = back_populates
         rel["uselist"] = uselist
         rel["embeddable"] = embeddable
+        rel["nested"] = nested
         existing_model["relationships"][rel_name] = rel
         self._add_foreign_key(existing_model, model_name, rel, is_list=uselist)
 
@@ -769,9 +837,6 @@ class Compiler(object):
         # relationship["foreign_keys"].append(foreign_key_name)
         # relationship["foreign_keys"].append(foreign_key)
 
-    def _determine_rel_type(self):
-        return "one-to-many"
-
     def _map_openapi_type_to_sqlalchemy_type(self, oapi_type):
         oapi_to_sql_alchemy_map = {
             "integer": "Integer",
@@ -809,6 +874,28 @@ class Compiler(object):
         controller_name = controller_name.replace(".", "").replace("-", "").replace("_", "")
         return controller_name
 
+    def _get_db_schema_name_from_options(self, model_name, default_schemaname, namespace=None, version=None):
+        models_path_key = utils.replace_template_var(self.options[reader.MODELS_PATH_KEY],
+                                                     namespace=namespace,
+                                                     version=version)
+        model_path = models_path_key.replace("/", ".").replace(".py", "") + "." + model_name
+        overridden_schemanames = self.options[reader.OVERRIDE_DB_SCHEMA_NAMES_KEY]
+        schemaname = default_schemaname
+
+        if not isinstance(overridden_schemanames, list):
+            raise SyntaxError("'" + reader.OVERRIDE_DB_SCHEMA_NAMES_KEY + "' must be a list." )
+
+        for item in overridden_schemanames:
+            table_for = item.get("for")
+            if table_for:
+                if model_path == table_for:
+                    schemaname = item.get("with")
+            else:
+                raise SyntaxError("The 'for' attribute is required in the '" +
+                                  reader.OVERRIDE_DB_SCHEMA_NAMES_KEY +
+                                  "' option.")
+        return schemaname
+
     def _get_tablename_from_options(self, model_name, default_tablename, namespace=None, version=None):
         models_path_key = utils.replace_template_var(self.options[reader.MODELS_PATH_KEY],
                                                      namespace=namespace,
@@ -837,23 +924,27 @@ class Compiler(object):
                                                      version=version)
         model_path = models_path_key.replace("/", ".").replace(".py", "") + "." + model_name
         base_model = self.options[reader.DEFAULT_BASE_MODEL_KEY]
-        bm = self.options[reader.OVERRIDE_BASE_MODEL_KEY]
+        overridden_base_models = self.options[reader.OVERRIDE_BASE_MODEL_KEY]
 
-        if bm:
-            bm_for = bm.get("for")
-            if bm_for:
-                if isinstance(bm_for, str):
-                    if bm_for.lower().strip() == "all" and model_path not in bm.get("except", []):
-                        base_model = bm.get("with")
-                elif isinstance(bm_for, list):
-                    if model_path in bm_for:
-                        base_model = bm.get("with")
+        if not isinstance(overridden_base_models, list):
+            raise SyntaxError("'" + reader.OVERRIDE_BASE_MODEL_KEY + "' must be a list." )
+
+        for bm in overridden_base_models:
+            if bm:
+                bm_for = bm.get("for")
+                if bm_for:
+                    if isinstance(bm_for, str):
+                        if bm_for.lower().strip() == "all" and model_path not in bm.get("except", []):
+                            base_model = bm.get("with")
+                    elif isinstance(bm_for, list):
+                        if model_path in bm_for:
+                            base_model = bm.get("with")
+                    else:
+                        raise SyntaxError("'" + reader.OVERRIDE_BASE_MODEL_KEY + "' is not formatted properly.")
                 else:
-                    raise SyntaxError("'" + reader.OVERRIDE_BASE_MODEL_KEY + "' is not formatted properly.")
-            else:
-                raise SyntaxError("The 'for' attribute is required in the '" +
-                                  reader.OVERRIDE_BASE_MODEL_KEY +
-                                  "'option.")
+                    raise SyntaxError("The 'for' attribute is required in the '" +
+                                      reader.OVERRIDE_BASE_MODEL_KEY +
+                                      "'option.")
         return base_model
 
     def _get_base_mschema_from_options(self, mschema_name, model_schema=True, namespace=None, version=None):
@@ -862,23 +953,24 @@ class Compiler(object):
                                                       version=version)
         schema_path = schemas_path_key.replace("/", ".").replace(".py", "") + "." + mschema_name
         base_mschema = self.options[reader.DEFAULT_BASE_MODEL_SCHEMA_KEY] if model_schema else self.options[reader.DEFAULT_BASE_SCHEMA_KEY]
-        bm = self.options[reader.OVERRIDE_BASE_SCHEMA_KEY]
+        overridden_base_schemas = self.options[reader.OVERRIDE_BASE_SCHEMA_KEY]
 
-        if bm:
-            bm_for = bm.get("for")
-            if bm_for:
-                if isinstance(bm_for, str):
-                    if bm_for.lower().strip() == "all" and schema_path not in bm.get("except", []):
-                        base_mschema = bm.get("with")
-                elif isinstance(bm_for, list):
-                    if schema_path in bm_for:
-                        base_mschema = bm.get("with")
+        for bs in overridden_base_schemas:
+            if bs:
+                bs_for = bs.get("for")
+                if bs_for:
+                    if isinstance(bs_for, str):
+                        if bs_for.lower().strip() == "all" and schema_path not in bs.get("except", []):
+                            base_mschema = bs.get("with")
+                    elif isinstance(bs_for, list):
+                        if schema_path in bs_for:
+                            base_mschema = bs.get("with")
+                    else:
+                        raise SyntaxError("'" + reader.OVERRIDE_BASE_SCHEMA_KEY + "' is not formatted properly.")
                 else:
-                    raise SyntaxError("'" + reader.OVERRIDE_BASE_SCHEMA_KEY + "' is not formatted properly.")
-            else:
-                raise SyntaxError("The 'for' attribute is required in the '" +
-                                  reader.OVERRIDE_BASE_SCHEMA_KEY +
-                                  "'option.")
+                    raise SyntaxError("The 'for' attribute is required in the '" +
+                                      reader.OVERRIDE_BASE_SCHEMA_KEY +
+                                      "'option.")
         return base_mschema
 
     def _get_base_controller_from_options(self, controller_name, controller_type=None, namespace=None, version=None):
@@ -894,23 +986,24 @@ class Compiler(object):
         else:
             base_controller = self.options[reader.DEFAULT_BASE_CONTROLLER_KEY]
 
-        bc = self.options[reader.OVERRIDE_BASE_CONTROLLER_KEY]
+        overridden_base_controllers = self.options[reader.OVERRIDE_BASE_CONTROLLER_KEY]
 
-        if bc:
-            bc_for = bc.get("for")
-            if bc_for:
-                if isinstance(bc_for, str):
-                    if bc_for.lower().strip() == "all" and controller_path not in bc.get("except", []):
-                        base_controller = bc.get("with")
-                elif isinstance(bc_for, list):
-                    if controller_path in bc_for:
-                        base_controller = bc.get("with")
+        for bc in overridden_base_controllers:
+            if bc:
+                bc_for = bc.get("for")
+                if bc_for:
+                    if isinstance(bc_for, str):
+                        if bc_for.lower().strip() == "all" and controller_path not in bc.get("except", []):
+                            base_controller = bc.get("with")
+                    elif isinstance(bc_for, list):
+                        if controller_path in bc_for:
+                            base_controller = bc.get("with")
+                    else:
+                        raise SyntaxError("'" + reader.OVERRIDE_BASE_CONTROLLER_KEY + "' is not formatted properly.")
                 else:
-                    raise SyntaxError("'" + reader.OVERRIDE_BASE_CONTROLLER_KEY + "' is not formatted properly.")
-            else:
-                raise SyntaxError("The 'for' attribute is required in the '" +
-                                  reader.OVERRIDE_BASE_CONTROLLER_KEY +
-                                  "'option.")
+                    raise SyntaxError("The 'for' attribute is required in the '" +
+                                      reader.OVERRIDE_BASE_CONTROLLER_KEY +
+                                      "'option.")
         return base_controller
 
     def _get_model_path_from_options(self, namespace=None, version=None):
@@ -930,9 +1023,6 @@ class Compiler(object):
                                                           namespace=namespace,
                                                           version=version)
         return controllers_path_key.strip(".py").replace("/", ".")
-
-    def _convert_model_name(self, name):
-        pass
 
     def _init_model(self, model_name):
         return {
@@ -973,6 +1063,7 @@ class Compiler(object):
             "uselist": False,
             "foreign_keys": [],
             "embeddable": False,
+            "nested": False,
             "secondary": None
         }
 
@@ -980,7 +1071,6 @@ class Compiler(object):
         """
         Gets a referenced object.
         :param ref: reference link, example: #/components/schemas/Pet
-        :param current_dir: current directory of looking for file
         :return: dictionary representation of the referenced object
         """
         is_link_in_current_file = True if ref.startswith("#/") else False
@@ -990,5 +1080,3 @@ class Compiler(object):
             object_type = ref.split("/")[-2]
             resource_name = ref.split("/")[-1]
             return self.oapi_obj[section][object_type][resource_name]
-
-    def build_controllers(self): pass

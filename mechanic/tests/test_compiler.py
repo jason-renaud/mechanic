@@ -19,7 +19,7 @@ class TestCompiler(TestCase):
 
     def tearDown(self):
         try:
-            # os.remove(self.GROCERY_TMP)
+            os.remove(self.GROCERY_TMP)
             os.remove(self.PETSTORE_TMP)
         except Exception:
             pass
@@ -62,7 +62,7 @@ class TestCompiler(TestCase):
         self.assertTrue("wallet" in rels.keys())
 
         rels = obj["models"]["Cart"]["relationships"]
-        self.assertTrue("cartitems" in rels.keys())
+        self.assertTrue("cartItems" in rels.keys())
 
     def test_compile_grocery_verify_foreign_keys(self):
         options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
@@ -80,7 +80,7 @@ class TestCompiler(TestCase):
         columns = obj["models"]["GroceryItem"]["columns"]
         rels = obj["models"]["Cart"]["relationships"]
         self.assertTrue("cart_id" in columns.keys())
-        self.assertTrue("cartitems" in rels.keys())
+        self.assertTrue("cartItems" in rels.keys())
 
         # one-to-one
         columns = obj["models"]["Wallet"]["columns"]
@@ -110,3 +110,15 @@ class TestCompiler(TestCase):
 
         self.assertEqual(obj["controllers"]["ShopperItemController"]["base_controller_name"], "MechanicBaseItemController")
         self.assertEqual(obj["controllers"]["ShopperItemController"]["base_controller_path"], "mechanic.base.controllers")
+
+    def test_compile_verify_nested(self):
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
+        compiler.compile()
+
+        obj = deserialize_file(self.GROCERY_TMP)
+
+        self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favBanana"]["schema"], "BananaSchema")
+        self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favBanana"]["many"], False)
+        self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favApples"]["schema"], "AppleSchema")
+        self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favApples"]["many"], True)

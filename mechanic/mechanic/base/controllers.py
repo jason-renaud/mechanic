@@ -19,7 +19,7 @@ IF_MODIFIED_SINCE = "If-Modified-Since"
 IF_UNMODIFIED_SINCE = "If-Unmodified-Since"
 ETAG_HEADER = "ETag"
 
-logger = logging.getLogger({{ app_name }}.config["DEFAULT_LOG_NAME"])
+logger = logging.getLogger(__name__)
 
 
 class MechanicBaseController(Resource):
@@ -154,6 +154,11 @@ class MechanicBaseController(Resource):
 
         self.query_params = params
 
+    def _sanitize_embed_params(self):
+        embed = self.query_params.get("embed", "")
+        embed = embed.split(",")
+        return embed
+
 
 class MechanicBaseItemController(MechanicBaseController):
     """
@@ -235,7 +240,8 @@ class MechanicBaseItemController(MechanicBaseController):
         :param model: SQLAlchemy model to serialize.
         :return: Dictionary represenation of the model.
         """
-        schema = self.responses["get"]["schema"]()
+        embed = self._sanitize_embed_params()
+        schema = self.responses["get"]["schema"](context={"embed": embed})
         serialized_model = schema.dump(model)
         return serialized_model.data
 
@@ -250,7 +256,8 @@ class MechanicBaseItemController(MechanicBaseController):
         """
         request_body = request.get_json()
         schema = self.requests.get("put", {}).get("schema") or self.responses.get("put", {}).get("schema")
-        schema = schema()
+        embed = self._sanitize_embed_params()
+        schema = schema(context={"embed": embed})
 
         try:
             # load() will raise an exception if an error occurs because all Marshmallow schemas have the Meta attribute
@@ -330,7 +337,8 @@ class MechanicBaseItemController(MechanicBaseController):
         :param updated_model: SQLAlchemy model that was just recently updated.
         :return: Python dictionary representation of the model.
         """
-        schema = self.responses["put"]["schema"]()
+        embed = self._sanitize_embed_params()
+        schema = self.responses["put"]["schema"](context={"embed": embed})
         serialized_model = schema.dump(updated_model)
         return serialized_model.data
 
@@ -411,7 +419,8 @@ class MechanicBaseCollectionController(MechanicBaseController):
         :param models: List of SQLAlchemy macros.
         :return: List of python dictionaries.
         """
-        schema = self.responses["get"]["schema"](many=True)
+        embed = self._sanitize_embed_params()
+        schema = self.responses["get"]["schema"](many=True, context={"embed": embed})
         serialized_models = schema.dump(models)
         return serialized_models.data
 
@@ -427,7 +436,8 @@ class MechanicBaseCollectionController(MechanicBaseController):
         request_body = request.get_json()
 
         schema = self.requests.get("post", {}).get("schema") or self.responses.get("post", {}).get("schema")
-        schema = schema()
+        embed = self._sanitize_embed_params()
+        schema = schema(context={"embed": embed})
 
         try:
             # load() will raise an exception if an error occurs because all Marshmallow schemas have the Meta attribute

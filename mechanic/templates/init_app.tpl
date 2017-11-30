@@ -6,10 +6,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from sqlalchemy.exc import OperationalError
 
-config = {
-    "DEFAULT_LOG_NAME": "app",
-    "BASE_API_PATH": "/api"
-}
+from .init_api import init_api
+
+BASE_API_PATH = "/api"
 
 db = SQLAlchemy()
 ma = Marshmallow()
@@ -19,17 +18,13 @@ def create_app():
     app = Flask(__name__)
     {%- if db_url %}
     app.config["SQLALCHEMY_DATABASE_URI"] = "{{ db_url }}"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     {%- endif %}
     api = Api(app)
     db.init_app(app)
     ma.init_app(app)
-    {# #}
-    {%- for controller_path, controller_names in dependent_controllers.items() %}
-    from {{ controller_path }} import ({% for name in controller_names %}{{ name}}, {% endfor %})
-    {%- endfor %}
-    {%- for controller_name, controller in controllers.items() %}
-    api.add_resource({{ controller_name }}, "{{ base_api_path }}{{ controller.uri }}")
-    {%- endfor %}
+
+    init_api(api)
 
     @app.route("/")
     @app.route("{{ base_api_path }}")

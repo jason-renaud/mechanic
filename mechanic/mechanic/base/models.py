@@ -1,27 +1,15 @@
 import datetime
 
 from flask import url_for
-from sqlalchemy import Column, String, DateTime, create_engine, MetaData
-# from sqlalchemy.orm import sessionmaker
-# from sqlalchemy.ext.declarative import declarative_base
 
 from {{ app_name }} import db
 from mechanic import utils
 
-# engine = create_engine("sqlite:///:memory:", echo=False)
-# metadata = MetaData()
-#
-# Base = declarative_base()
-# Session = sessionmaker(bind=engine)
-# session = Session()
-
 
 def get_uri(context):
     try:
-        print("####", context)
         return str(url_for(context.current_parameters["controller"], resource_id=context.current_parameters["identifier"]))
     except Exception as e:
-        print("@@@@", e)
         return None
 
 

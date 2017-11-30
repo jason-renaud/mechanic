@@ -39,14 +39,13 @@ class Generator(object):
         self.directory = directory
         self.mech_obj = mech_obj
         self.options = options
-        # self.root_dir = os.path.dirname(os.path.realpath(self.mechanic_file))
 
         self.TEMPLATE_DIR = "../templates/"
 
     def generate(self):
-        models_path = self.options["MODELS_PATH"]
-        controllers_path = self.options["CONTROLLERS_PATH"]
-        schemas_path = self.options["SCHEMAS_PATH"]
+        models_path = self.options[reader.MODELS_PATH_KEY]
+        controllers_path = self.options[reader.CONTROLLERS_PATH_KEY]
+        schemas_path = self.options[reader.SCHEMAS_PATH_KEY]
 
         for namespace, obj in self.mech_obj["namespaces"].items():
             model_filename = utils.replace_template_var(models_path,
@@ -68,16 +67,23 @@ class Generator(object):
                 self.build_controllers_file(controller_filename, namespace)
 
         # add mechanic folder
-        self.add_mechanic_base_package()
+        self._add_mechanic_base_package()
 
         # add starter app files
-        self.build_init_app_file()
-        self.add_run_file()
-        self.add_swagger_docs()
+        if self.options[reader.APP_NAME_KEY] + "/__init__.py" not in self.options[reader.EXCLUDE_KEY]:
+            self.build_init_app_file()
+        if "run.py" not in self.options[reader.EXCLUDE_KEY]:
+            self._add_run_file()
+        if "requirements.txt" not in self.options[reader.EXCLUDE_KEY]:
+            self._add_requirements_txt()
+        if self.options[reader.APP_NAME_KEY] + "/init_api.py" not in self.options[reader.EXCLUDE_KEY]:
+            self.build_init_api_file()
+        self._add_swagger_docs()
 
     def build_models_file(self, filename, namespace):
         base_models = dict()
         namespaced_models = dict()
+        namespaced_many_to_many = dict()
 
         for model_name, model in self.mech_obj["models"].items():
             if model["namespace"] == namespace:
@@ -92,12 +98,17 @@ class Generator(object):
 
                 namespaced_models[model_name] = model
 
+        for m2m_key, m2m in self.mech_obj["many_to_many"].items():
+            if m2m["namespace"] == namespace:
+                namespaced_many_to_many[m2m_key] = m2m
+
         if len(namespaced_models):
             models_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "models.tpl"), context={
                 "timestamp": dt.datetime.utcnow(),
                 "app_name": self.options[reader.APP_NAME_KEY],
                 "base_models": base_models,
-                "models": namespaced_models
+                "models": namespaced_models,
+                "many_to_many": namespaced_many_to_many
             })
 
             module_paths = dict()
@@ -105,9 +116,8 @@ class Generator(object):
                 if not module_paths.get(v["module_path"]):
                     module_paths[v["module_path"]] = []
                 module_paths[v["module_path"]].append(k)
-            self._add_package_files(filename, imports=module_paths)
-            with safe_open_w(self.directory + "/" + filename) as f:
-                f.write(models_result)
+
+            self._write_if_not_excluded(filename, models_result)
 
     def build_schemas_file(self, filename, namespace):
         base_schemas = dict()
@@ -144,9 +154,7 @@ class Generator(object):
                 "dependent_models": dependent_models
             })
 
-            self._add_package_files(filename)
-            with safe_open_w(self.directory + "/" + filename) as f:
-                f.write(schemas_result)
+            self._write_if_not_excluded(filename, schemas_result)
 
     def build_controllers_file(self, filename, namespace):
         base_controllers = dict()
@@ -210,9 +218,7 @@ class Generator(object):
                 "dependent_schemas": dependent_schemas,
             })
 
-            self._add_package_files(filename)
-            with safe_open_w(self.directory + "/" + filename) as f:
-                f.write(result)
+            self._write_if_not_excluded(filename, result)
 
     def build_init_app_file(self):
         dependent_controllers = dict()
@@ -238,11 +244,57 @@ class Generator(object):
         with safe_open_w(self.directory + "/" + app_name + "/__init__.py") as f:
             f.write(result)
 
-    def add_run_file(self):
+    def build_init_api_file(self):
+        dependent_controllers = dict()
+        api_controllers = []
+
+        for controller_name, controller in self.mech_obj["controllers"].items():
+            if controller["oapi_uri"] not in self.options[reader.OVERRIDE_CONTROLLER_FOR_URI_KEY].keys():
+                controller_path = controller["module_path"]
+            else:
+                overridden_path = self.options[reader.OVERRIDE_CONTROLLER_FOR_URI_KEY][controller["oapi_uri"]]
+                controller_path = overridden_path.rsplit(".", 1)[0]
+                controller_name = overridden_path.rsplit(".", 1)[1]
+
+            api_controllers.append({
+                "uri": controller["uri"],
+                "name": controller_name
+            })
+
+            if not dependent_controllers.get(controller_path):
+                dependent_controllers[controller_path] = []
+
+            if controller_name not in dependent_controllers[controller_path]:
+                dependent_controllers[controller_path].append(controller_name)
+
+        result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "init_api.tpl"), context={
+            "timestamp": dt.datetime.utcnow(),
+            "app_name": self.options[reader.APP_NAME_KEY],
+            "dependent_controllers": dependent_controllers,
+            "controllers": api_controllers,
+            "base_api_path": self.options[reader.BASE_API_PATH_KEY],
+            "db_url": self.options[reader.DATABASE_URL_KEY]
+        })
+
+        app_name = self.options[reader.APP_NAME_KEY]
+        with safe_open_w(self.directory + "/" + app_name + "/init_api.py") as f:
+            f.write(result)
+
+    def _write_if_not_excluded(self, filename, contents):
+        if filename not in self.options[reader.EXCLUDE_KEY]:
+            self._add_package_files(filename)
+            with safe_open_w(self.directory + "/" + filename) as f:
+                f.write(contents)
+
+    def _add_run_file(self):
         self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/run.py"),
                                        self.directory + "/run.py")
 
-    def add_mechanic_base_package(self):
+    def _add_requirements_txt(self):
+        shutil.copy(pkg_resources.resource_filename(__name__, "../mechanic/requirements.txt"),
+                    self.directory + "/requirements.txt")
+
+    def _add_mechanic_base_package(self):
         mechanic_folder = pkg_resources.resource_filename(__name__, "../mechanic/base/")
         mechanic_utils_folder = pkg_resources.resource_filename(__name__, "../mechanic/utils/")
 
@@ -267,7 +319,7 @@ class Generator(object):
         self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/utils/db_helper.py"),
                                        self.directory + "/mechanic/utils/db_helper.py")
 
-    def add_swagger_docs(self):
+    def _add_swagger_docs(self):
         static_folder = pkg_resources.resource_filename(__name__, "../mechanic/app/static")
         templates_folder = pkg_resources.resource_filename(__name__, "../mechanic/app/templates")
 
@@ -279,6 +331,12 @@ class Generator(object):
             shutil.copytree(templates_folder, self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/templates")
         except FileExistsError:
              pass
+
+        # temp.yaml is the merged specification file generated from the compiler. Copy this to the static folder and
+        # then delete the temp.yaml file
+        oapi_file_location = self.directory + "/temp.yaml"
+        shutil.copy(oapi_file_location, self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/static/docs.yaml")
+        os.remove(oapi_file_location)
 
     def _add_package_files(self, path, imports=None):
         dirs = path.split("/")

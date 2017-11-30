@@ -1,222 +1,82 @@
-The ultimate API toolkit for Python developers.
-- Generate SQLAlchemy Models and Marshmallow schemas
-- Generate API endpoint controllers with the option to include default implementations based on your models/schemas.
-- Customize how the files are generated (naming, location)
-- Define
+### Summary
+mechanic is a "toolkit" for building an API in Python from an OpenAPI 3.0 specification file. It (at least partially) 
+bridges the gap between the contract (the API spec) and the enforcement of that contract (the code). 
 
-The goal is for anyone to be able to go from OpenAPI 3.0 spec --> working API immediately.  
-Include your mechanic.json/.yaml file in your Git repo, and incorporate it into your build process.
+mechanic was created because swagger codegen did not sufficiently meet our code generation needs. Our biggest 2 
+requirements were:
+- Ability to generate server stubs without overriding existing code/business logic.
+- Generate DB models and serialization/deserialization from the OpenAPi 3.0 spec.
 
-# mechanicfile reference
+#### What does it do?
+- Generates SQLAlchemy Models and Marshmallow schemas.
+- Generates API endpoint controllers associated with the models and schemas.
+- Generates Flask starter code that gets you from zero to fully functioning API in seconds.
+- Customize how the files are generated (naming patterns, location) using a mechanic.yaml/.json file.
+- Adds some useful extensions to the OpenAPI 3.0 spec.
 
-##### APP_NAME
-**Required**: No  
-**Default value**: "app"  
-Option to name your application, this value is used for defining the default logger (among others)
+Think of the API specification file as defining the WHAT: the code to be generated. The mechanic file defines the HOW:  
+the way in which the code is generated (things that don't necessarily affect the contract being enforced).
 
-##### OPENAPI
-**Required**: Yes  
-**Default value**: None  
-Path to the OpenAPI 3.0 file to generate from. Example "v100.yaml" or "~/v100.yaml"
+#### Why not Swagger Codegen?
+tldr: Swagger codegen allows for more flexibility in how you implement your API, while mechanic allows for rapid 
+development of a constantly changing API.
 
-##### MICROSERVICE_ROOT_DIR
+1) At the time of this writing, Swagger codegen does not support OpenAPI 3.0 server stubs.
+2) From my understanding/experience with it, swagger codegen only generates starter code. I.e. it creates an API and 
+validates input, but it stops after that. If the API changed, one would need to regenerate code, which would potentially 
+overwrite code you had been developing over some time. Swagger codegen is helpful for getting up and running in a new 
+project, but it falls short if your API is constantly changing and/or you need existing business logic to not get 
+overwritten when generating new stubs. 
+3) There is no integration with databases. Again, swagger codegen's focus is generating stubs to get you started, which
+might be all you need. However, mechanic makes some assumptions (with the ability to customize) on how models will be
+related (e.g., foreign keys). 
 
-##### MODELS_PATH 
-**Required**: No  
-**Default value**: models/{{namespace}}.py   
-Defines the path in which to generate SQLAlchemy models. Optional variables are:
-- {{namespace}} --> The namespace associated with the model. See [namespaces](#namespaces) for more details.  
-- {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
-will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
+Because Swagger codegen focuses on getting the base of an API working, you have a little more flexibility in how you 
+implement your API. On the other hand, mechanic is very opinionated, but it allows you to go from zero-to-fully 
+functioning API very quickly. 
 
-##### MODELS_NAME_PATTERN
-**Required**: No  
-**Default value**: {{resource}}Model  
-Defines how model classes should be named. Optional variables are:
-- {{resource}} --> The resource defined in the OpenAPI 3.0 file.
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
-- {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
+#### Who may find mechanic useful
+1) Teams starting a brand new project with only a OpenAPI 3.0 specification file.
+2) Developers who don't like copy and pasting code every time they have to create a new API endpoint.
+3) You want to get up and running with working API code, but don't want to spend the time/effort of writing boilerplate 
+code and selecting frameworks.
+4) You have a constantly evolving API and don't want to consistently rewrite code to, for example, change or remove a 
+single attribute on a resource.
 
-##### SCHEMAS_NAME_PATTERN
-**Required**: No  
-**Default value**: {{resource}}Schema  
-Defines how schema classes should be named. Optional variables are:
-- {{resource}} --> The resource defined in the OpenAPI 3.0 file.
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
-- {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
+#### Who may not find mechanic useful
+1) mechanic makes a lot of assumptions. So, for example, if you don't want to use SQLAlchemy and Marshmallow, this tool 
+may not be for you.
+2) If you want to craft each resource representation in code, this tool may not be for you.
+3) If your API is relatively stable without much risk for changing, this tool may not be for you.
+4) If you have a lot of API endpoints that don't necessarily map directly to a resource, this tool may not be for you.
 
-##### CONTROLLERS_NAME_PATTERN
-**Required**: No  
-**Default value**: {{resource}}{{controller_type}}Controller  
-Defines how controller classes should be named. Optional variables are:
-- {{resource}} --> The resource defined in the OpenAPI 3.0 file.
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
-- {{version}} --> The OpenAPI 3.0 version defined in the "info" section (without dots or dashes)
-- {{controller_type}} --> For more details about different controller types, see [controllers](#controllers).
-
-##### SCHEMAS_PATH 
-**Required**: No  
-**Default value**: schemas/{{namespace}}.py   
-Defines the path in which to generate Marshmallow schemas. Optional variables are:
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
-- {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
-will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
-
-##### CONTROLLERS_PATH 
-**Required**: No  
-**Default value**: controllers/{{namespace}}.py   
-Defines the path in which to generate controllers. Optional variables are:
-- {{namespace}} --> The namespace associated with the schema. See [namespaces](#namespaces) for more details.   
-- {{version}} --> The OpenAPI 3.0 version defined in the "info" section. Characters not appropriate for python packages 
-will be removed, such as dots and dashes. For example, if {{version}} == "1.0.0", the folder name will be "100".
-
-##### BASE_API_PATH
-**Required**: No  
-**Default value**: /api  
-Allows you to define the base api path for your REST API.
-
-##### BASE_ITEM_CONTROLLER
-**Required**: No  
-**Default value**: "mechanic.base.controllers.BaseItemController"  
-Allows you to define your own base item controller instead of the one generated by mechanic. For more 
-details about different controller types, see [controllers](#controllers).
-
-##### BASE_COLLECTION_CONTROLLER
-**Required**: No  
-**Default value**: "mechanic.base.controllers.BaseCollectionController"  
-Allows you to define your own base collection controller instead of the one generated by mechanic. For more 
-details about different controller types, see [controllers](#controllers).
-
-##### BASE_CONTROLLER
-**Required**: No  
-**Default value**: "mechanic.base.controllers.BaseController"    
-Allows you to define your own base controller instead of the one generated by mechanic. For more 
-details about different controller types, see [controllers](#controllers).
-
-##### DEFAULT_NAMESPACE
-**Required**: No  
-**Default value**: "default"  
-Allows you to define the default namespace if the "x-mechanic-namespace" extension is not used. For more details about
-extensions, see [here](#extensions) for more details.
-
-##### INCLUDE
-**Required**: No  
-**Default value**: None
-Allows you to customize which additional pieces of code to generate. Options are:    
-
-| value                     | description |
-| ---                       | --- |
-| "application run"         | generates a basic <project-root>/\_\_init\_\_.py file that has app initialization code, and a <project-root>/run.py file, for running the flask app. |
-| "controller impl"         | points each controller to the default base controller (unless overridden) and adds the fields needed for the default implementation. |
-| "version scheme"          | assumes you want to use the mechanic default versioning scheme. See [versioning](#versioning) for more details. |
-| "swagger ui"              | adds Swagger UI page to your Flask app |
- 
-##### OVERRIDE_BASE_CONTROLLER
-**Required**: No  
-**Default value**: None  
-Allows finer grained control over which controllers inherit from which class. For example, let's say you've defined 
-BASE_CONTROLLER as "controllers.base.MyCustomBaseController", but you want only a specific file to inherit instead from 
-"controllers.base.MySpecificBaseController". You would use this attribute to define that. Here are some examples:  
-
-This means that "HouseController" will have "MyCustomBaseController" as it's super class, 
-instead of the value defined by BASE_CONTROLLER
-```json
-"OVERRIDE_BASE_CONTROLLER": {
-    "with": "controllers.base.MyCustomBaseController",
-    "for": "controllers.default.HouseController"
-}
+### Getting started
+#### Install with pip
+- (Optional) Create a virtualenv for your project
+```bash
+virtualenv -p python3.6 path/to/virtualenv
+source path/to/virtualenv/bin/activate
 ```
-
-This example means that all Controllers will inherit from "MyCustomBaseController".
-```json
-"OVERRIDE_BASE_CONTROLLER": {
-    "with": "controllers.base.MyCustomBaseController",
-    "for": "all"
-}
+- Install mechanic
+```bash
+pip install mechanic-gen
 ```
-
-This example means that all Controllers except "HouseController" and "ParkController" will inherit from "MyCustomBaseController".
-```json
-"OVERRIDE_BASE_CONTROLLER": {
-    "with": "controllers.base.MyCustomBaseController",
-    "for": "all",
-    "except": ["controllers.default.HouseController", "controllers.default.ParkController"]
-}
+- Create a mechanic.yaml in the directory you want the code to be generated in, with these contents:
+```yaml
+OPENAPI: <path>/<to>/<openapi-spec-file>.yaml # path is relative to the mechanic.yaml file. 
+APP_NAME: myappname
+DATABASE_URL: "your db url" # example: postgresql://postgres:postgres@127.0.0.1:5432/dev
 ```
-
-##### OVERRIDE_BASE_MODEL
-**Required**: No  
-**Default value**: None  
-Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for models
-
-##### OVERRIDE_BASE_SCHEMA
-**Required**: No  
-**Default value**: None  
-Same as [OVERRIDE_BASE_CONTROLLER](#override-base-controller) except for schemas
-
-##### OVERRIDE_CONTROLLER_TYPE
-**Required**: No  
-**Default value**: None  
-```json
-"OVERRIDE_CONTROLLER_TYPE": {
-  "/uri/as/defined/in/oapi/spec": "Collection"
-}
+- IMPORTANT: Make sure your database has a schema (i.e. 'schema' in the Postgres sense of the word) defined called 
+'default' (or for each unique usage of **x-mechanic-namespace**).
+- **Note**: the database url can theoretically work with any SQL db that SQLAlchemy 
+supports, but mechanic has only been tested with postgres.  
+```bash
+cd <directory with mechanic.yaml file>
+mechanic build . # this generates the code
+pip install -r requirements.txt
+python run.py
 ```
-
-##### OVERRIDE_TABLE_NAME
-##### OVERRIDE_DB_SCHEMA_NAME
-##### EXCLUDE_MODEL_GENERATION
-**Required**: No  
-**Default value**: []  
-A list of resources that should NOT be generated as models. Use the schema name associated with the object in the OpenAPI 3.0 file. 
-```json
-"EXCLUDE_MODEL_GENERATION": ["Pet", "DogToy"]
-```
-To not generate any models:
-```json
-"EXCLUDE_MODEL_GENERATION": "all"
-```
-##### EXCLUDE_SCHEMA_GENERATION
-**Required**: No  
-**Default value**: []  
-Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for schemas.
-
-##### EXCLUDE_CONTROLLER_GENERATION
-**Required**: No  
-**Default value**: []  
-Same as [EXCLUDE_MODEL_GENERATION](#exclude-model-generation) except for controllers.
-
-##### REPLACE_CONTROLLERS
-**Required**: No  
-**Default value**: None
-Specify your own custom controllers to replace with the generated ones. Let's say you want to customize the behavior of 
-a controller for a specific resource (or entirely replace it). You can tell mechanic to point to your specfied controller 
-instead of the generated one.
- 
- ```json
-"REPLACE_CONTROLLERS": [
-    {
-      "with": "mycustom.package.MyController",
-      "for": "controllers.default.GeneratedController"
-    },
-    {
-      "with": "mycustom2.package.MyController2",
-      "for": "controllers.abc.GeneratedABCController"
-    }
-]
- ```
- 
-##### REPLACE_MODELS
-**Required**: No  
-**Default value**: None
-Specify your own models to replace with the generated ones. For example if you have some models that have relationships
-that you want to manually configure, you can place them here instead of using the generated ones.
-
-##### DATABASE_URL
-**Required**: No  
-**Default value**: "sqlite:///:memory:"
-
-##### mechanic OpenAPI 3.0 extensions
-- x-mechanic-namespace
-- x-mechanic-uri-link --> only URI link, not embeddable
-- x-mechanic-embeddable --> either URI link, or embeds object
+You should now have a fully functioning API. Execute a REST call at http://127.0.0.1:5000/api/<your-resource> to see it 
+action. Next, see [mechanic file reference](docs/mechanicfile-reference.md) for details on customizing how the app is 
+generated.
