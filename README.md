@@ -77,6 +77,6 @@ mechanic build . # this generates the code
 pip install -r requirements.txt
 python run.py
 ```
-You should now have a fully functioning API. Execute a REST call at http://127.0.0.1:5000/api/<your-resource> to see it 
-action. Next, see [mechanic file reference](docs/mechanicfile-reference.md) for details on customizing how the app is 
-generated.
+You should now have a fully functioning API. Execute a REST call at http://127.0.0.1:5000/api/\<your-resource> to see it 
+action. You can also go to http://127.0.0.1:5000 to see the Swagger UI generated docs. Next, see 
+[mechanic file reference](docs/mechanicfile-reference.md) for details on customizing how the app is generated.
