@@ -31,7 +31,7 @@ setup(
         "docopt==0.6.2",
         "inflect==0.2.5",
         "itsdangerous==0.24",
-        "Jinja2==2.9.6",
+        "Jinja2==2.10",
         "PyYAML==3.12",
         "yamlordereddictloader==0.4.0"
     ],

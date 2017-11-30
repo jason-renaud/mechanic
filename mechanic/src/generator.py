@@ -4,324 +4,378 @@ import datetime
 import pkg_resources
 import shutil
 import json
+import datetime as dt
+import errno
 
 # third party
 import yaml
 import jinja2
 
+# project
+from mechanic.src import reader
+import mechanic.src.utils as utils
 
-class Generator:
-    def __init__(self, mechanic_file, output_dir):
-        self.mechanic_file = mechanic_file
-        self.mechanic_obj = self._deserialize_file()
-        self.output_dir = output_dir
 
-        # variables set for source and location of generated files.
-        self.BASE_INIT_SRC = pkg_resources.resource_filename(__name__, "../starter/base/__init__.py")
-        self.BASE_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_CONTROLLERS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/controllers.py")
-        self.BASE_CONTROLLERS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_SCHEMAS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/schemas.py")
-        self.BASE_SCHEMAS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_EXCEPTIONS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/exceptions.py")
-        self.BASE_EXCEPTIONS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_FIELDS_SRC = pkg_resources.resource_filename(__name__, "../starter/base/fields.py")
-        self.BASE_FIELDS_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.BASE_DB_HELPER_SRC = pkg_resources.resource_filename(__name__, "../starter/base/db_helper.py")
-        self.BASE_DB_HELPER_OUTPUT = os.path.expanduser(self.output_dir + "/base/")
-        self.APP_INIT_SRC = pkg_resources.resource_filename(__name__, "../starter/app/__init__.py")
-        self.APP_INIT_OUTPUT = os.path.expanduser(self.output_dir + "/app/__init__.py")
-        self.APP_RUN_SRC = pkg_resources.resource_filename(__name__, "../starter/run.py")
-        self.APP_RUN_OUTPUT = os.path.expanduser(self.output_dir + "/")
-        self.APP_DOCS_STATIC_SWAGGER_CSS_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/css/lib/swagger/")
-        self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/css/lib/swagger/")
-        self.APP_DOCS_STATIC_SWAGGER_JS_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/js/lib/swagger/")
-        self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/js/lib/swagger/")
-        self.APP_DOCS_STATIC_SPEC_SRC = pkg_resources.resource_filename(__name__, "../starter/app/static/docs.yaml")
-        self.APP_DOCS_STATIC_SPEC_OUTPUT = os.path.expanduser(self.output_dir + "/app/static/docs.yaml")
-        self.APP_DOCS_TEMPLATES_INDEX_SRC = pkg_resources.resource_filename(__name__, "../starter/app/templates/index.html")
-        self.APP_DOCS_TEMPLATES_INDEX_OUTPUT = os.path.expanduser(self.output_dir + "/app/templates/index.html")
+# Taken from https://stackoverflow.com/questions/23793987/python-write-file-to-directory-doesnt-exist
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
-        self.BASE_REQUIREMENTS_SRC = pkg_resources.resource_filename(__name__, "../starter/requirements.txt")
-        self.BASE_REQUIREMENTS_OUTPUT = os.path.expanduser(self.output_dir + "/requirements.txt")
-        self.BASE_CONFIG_SRC = pkg_resources.resource_filename(__name__, "../starter/app/config.py")
-        self.BASE_CONFIG_OUTPUT = os.path.expanduser(self.output_dir + "/app/config.py")
-        self.ADMIN_INIT_PATH = os.path.expanduser(self.output_dir + "/app/admin_init.py")
-        self.API_ENDPOINTS_PATH = os.path.expanduser(self.output_dir + "/app/api.py")
-        self.API_CONTROLLERS_PATH = os.path.expanduser(self.output_dir + "/controllers/")
-        self.API_MODELS_PATH = os.path.expanduser(self.output_dir + "/models/")
-        self.API_SCHEMAS_PATH = os.path.expanduser(self.output_dir + "/schemas/")
+
+def safe_open_w(path):
+    """ Open "path" for writing, creating any parent directories as needed.
+    """
+    mkdir_p(os.path.dirname(path))
+    return open(path, 'w')
+
+
+class Generator(object):
+    def __init__(self, directory, mech_obj, options=None):
+        self.directory = directory
+        self.mech_obj = mech_obj
+        self.options = options
+
         self.TEMPLATE_DIR = "../templates/"
 
-        self.BASE_CONTROLLER = os.getenv("MECHANIC_CUSTOM_CONTROLLER", "base.controllers.BaseController")
-        self.BASE_ITEM_CONTROLLER = os.getenv("MECHANIC_CUSTOM_ITEM_CONTROLLER", "base.controllers.BaseItemController")
-        self.BASE_COLLECTION_CONTROLLER = os.getenv("MECHANIC_CUSTOM_COLLECTION_CONTROLLER", "base.controllers.BaseCollectionController")
+    def generate(self):
+        models_path = self.options[reader.MODELS_PATH_KEY]
+        controllers_path = self.options[reader.CONTROLLERS_PATH_KEY]
+        schemas_path = self.options[reader.SCHEMAS_PATH_KEY]
 
-    def generate(self, all=False, models=False, schemas=False, controllers=False, api=False, starter=False, exclude=[],
-                 admin=False):
-        """
-        Generates code into the directory specified by self.output_dir
+        for namespace, obj in self.mech_obj["namespaces"].items():
+            model_filename = utils.replace_template_var(models_path,
+                                                        namespace=namespace,
+                                                        version=self.mech_obj["version"])
+            schema_filename = utils.replace_template_var(schemas_path,
+                                                         namespace=namespace,
+                                                         version=self.mech_obj["version"])
 
-        :param all: If True, all parameters below are set to True as well.
-        :param models: flag to signal SQLAlchemy models should be generated.
-        :param schemas: flag to signal Marshmallow schemas should be generated.
-        :param controllers: flag to signal controllers should be generated.
-        :param api: flag to signal api endpoint mapping code should be generated.
-        :param starter: flag to signal starter files should be generated.
-        :param admin: flag to signal if Flask-Admin code should be generated.
-        """
-        if all:
-            models = True
-            schemas = True
-            controllers = True
-            api = True
-            starter = True
+            controller_filename = utils.replace_template_var(controllers_path,
+                                                             namespace=namespace,
+                                                             version=self.mech_obj["version"])
 
-        if starter:
-            self.generate_starter_files(exclude=exclude)
+            if self.options[reader.EXCLUDE_MODEL_GENERATION_KEY] != "all":
+                self.build_models_file(model_filename, namespace)
+            if self.options[reader.EXCLUDE_SCHEMA_GENERATION_KEY] != "all":
+                self.build_schemas_file(schema_filename, namespace)
+            if self.options[reader.EXCLUDE_CONTROLLER_GENERATION_KEY] != "all":
+                self.build_controllers_file(controller_filename, namespace)
 
-        if models:
-            self.generate_models()
+        # add mechanic folder
+        self._add_mechanic_base_package()
 
-        if schemas:
-            self.generate_schemas()
+        # add starter app files
+        if self.options[reader.APP_NAME_KEY] + "/__init__.py" not in self.options[reader.EXCLUDE_KEY]:
+            self.build_init_app_file()
+        if "run.py" not in self.options[reader.EXCLUDE_KEY]:
+            self._add_run_file()
+        if "requirements.txt" not in self.options[reader.EXCLUDE_KEY]:
+            self._add_requirements_txt()
+        if self.options[reader.APP_NAME_KEY] + "/init_api.py" not in self.options[reader.EXCLUDE_KEY]:
+            self.build_init_api_file()
+        self._add_swagger_docs()
 
-        if controllers:
-            self.generate_controllers()
+    def build_models_file(self, filename, namespace):
+        base_models = dict()
+        namespaced_models = dict()
+        namespaced_many_to_many = dict()
 
-        if api:
-            self.generate_api_endpoints()
+        for model_name, model in self.mech_obj["models"].items():
+            if model["namespace"] == namespace:
+                base_model_path = model["base_model_path"]
+                base_model_name = model["base_model_name"]
 
-        self.generate_admin(admin=admin)
+                if not base_models.get(base_model_path):
+                    base_models[base_model_path] = []
 
+                if base_model_name not in base_models[base_model_path]:
+                    base_models[base_model_path].append(base_model_name)
 
-    def generate_models(self):
-        import_modules = ""
-        for namespace, namespace_obj in self.mechanic_obj["namespaces"].items():
-            data = dict()
-            data["models"] = dict()
-            data["many_to_many_models"] = dict()
+                namespaced_models[model_name] = model
 
-            for model_key in namespace_obj["models"]:
-                data["models"][model_key] = self.mechanic_obj["models"][model_key]
+        for m2m_key, m2m in self.mech_obj["many_to_many"].items():
+            if m2m["namespace"] == namespace:
+                namespaced_many_to_many[m2m_key] = m2m
 
-            # for many_to_many_key in namespace_obj["many_to_many"]:
-            #     data["many_to_many_models"][many_to_many_key] = self.mechanic_obj["many_to_many_models"][many_to_many_key]
+        if len(namespaced_models):
+            models_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "models.tpl"), context={
+                "timestamp": dt.datetime.utcnow(),
+                "app_name": self.options[reader.APP_NAME_KEY],
+                "base_models": base_models,
+                "models": namespaced_models,
+                "many_to_many": namespaced_many_to_many
+            })
 
-            models_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "models.tpl"),
-                                        {
-                                            "data": data,
-                                            "fkeys": self.mechanic_obj["fkeys"],
-                                            "timestamp": datetime.datetime.utcnow()
-                                        })
+            module_paths = dict()
+            for k, v in namespaced_models.items():
+                if not module_paths.get(v["module_path"]):
+                    module_paths[v["module_path"]] = []
+                module_paths[v["module_path"]].append(k)
 
-            models_output = self.API_MODELS_PATH + namespace
-            if not os.path.exists(models_output):
-                os.makedirs(models_output)
+            self._write_if_not_excluded(filename, models_result)
 
-            import_modules = import_modules + "from ." + namespace + ".models import *\n"
-            with open(models_output + "/models.py", "w") as f:
-                f.write(models_result)
+    def build_schemas_file(self, filename, namespace):
+        base_schemas = dict()
+        namespaced_schemas = dict()
+        dependent_models = dict()
 
-            with open(models_output + "/__init__.py", "w") as f:
-                models_output = self.API_MODELS_PATH + namespace
+        for schema_name, schema in self.mech_obj["schemas"].items():
+            if schema["namespace"] == namespace:
+                base_schema_path = schema["base_schema_path"]
+                base_schema_name = schema["base_schema_name"]
 
-                # custom controllers
-                for item in os.listdir(models_output):
-                    # get all files in namespace controllers directory, and import all files with that.
-                    if os.path.isfile(models_output + "/" + item) and item != "__init__.py":
-                        item = item.strip(".py")
-                        f.write("from ." + item + " import *\n")
+                schema_model = schema["model"]
+                if schema_model:
+                    path = self.mech_obj["models"][schema_model]["module_path"]
 
-            # models_output = self.API_MODELS_PATH + namespace
-            # if not os.path.exists(models_output):
-            #     os.makedirs(models_output)
-            #
-            # import_modules = import_modules + "from ." + namespace + ".models import *\n"
-            # with open(models_output + "/__init__.py", "w") as f:
-            #     pass
-            #
-            # with open(models_output + "/models.py", "w") as f:
-            #     f.write(models_result)
+                    if not dependent_models.get(path):
+                        dependent_models[path] = []
+                    dependent_models[path].append(schema_model)
 
-        with open(self.API_MODELS_PATH + "/__init__.py", "w") as f:
-            f.write(import_modules)
+                if not base_schemas.get(base_schema_path):
+                    base_schemas[base_schema_path] = []
 
-    def generate_schemas(self):
-        import_modules = ""
-        for namespace, namespace_obj in self.mechanic_obj["namespaces"].items():
-            data = dict()
-            imports = dict()
-            imports["base_schema_imports"] = dict()
+                if base_schema_name not in base_schemas[base_schema_path]:
+                    base_schemas[base_schema_path].append(base_schema_name)
 
-            for schema_key in namespace_obj["mschemas"]:
-                base_schema_package = self.mechanic_obj["mschemas"][schema_key]["base_schema_package"]
-                base_schema_name = self.mechanic_obj["mschemas"][schema_key]["base_schema"]
+                namespaced_schemas[schema_name] = schema
 
-                if not imports["base_schema_imports"].get(base_schema_package):
-                    imports["base_schema_imports"][base_schema_package] = []
-                    imports["base_schema_imports"][base_schema_package].append(base_schema_name)
+        if len(namespaced_schemas):
+            schemas_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "schemas.tpl"), context={
+                "timestamp": dt.datetime.utcnow(),
+                "app_name": self.options[reader.APP_NAME_KEY],
+                "base_schemas": base_schemas,
+                "schemas": namespaced_schemas,
+                "dependent_models": dependent_models
+            })
 
-                data[schema_key] = self.mechanic_obj["mschemas"][schema_key]
+            self._write_if_not_excluded(filename, schemas_result)
 
-            schemas_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "schemas.tpl"),
-                                        {
-                                            "data": data,
-                                            "imports": imports,
-                                            "timestamp": datetime.datetime.utcnow()
-                                        })
+    def build_controllers_file(self, filename, namespace):
+        base_controllers = dict()
+        namespaced_controllers = dict()
+        dependent_models = dict()
+        dependent_schemas = dict()
 
-            api_version = "v" + self.mechanic_obj["api_version"].replace("-", "").replace(".", "")
-            schemas_output = self.API_SCHEMAS_PATH + api_version
+        for controller_name, controller in self.mech_obj["controllers"].items():
+            if controller["namespace"] == namespace:
+                base_controller_path = controller["base_controller_path"]
+                base_controller_name = controller["base_controller_name"]
 
-            if not os.path.exists(schemas_output):
-                os.makedirs(schemas_output)
+                resource = controller["resource"]
 
-            import_modules = import_modules + "from ." + api_version + "." + namespace + " import *\n"
-            with open(schemas_output + "/__init__.py", "w"):
-                pass
+                model = self.mech_obj["resources"].get(resource, {}).get("model")
+                schema = self.mech_obj["resources"].get(resource, {}).get("schema")
+                request_schemas = [controller.get("requests", {}).get("post", {}).get("schema"),
+                                   controller.get("requests", {}).get("put", {}).get("schema"),
+                                   controller.get("requests", {}).get("delete", {}).get("schema"),
+                                   controller.get("requests", {}).get("get", {}).get("schema")]
+                request_schemas = [item for item in request_schemas if item]
 
-            with open(schemas_output + "/" + namespace + ".py", "w") as f:
-                f.write(schemas_result)
+                if model:
+                    model_path = self.mech_obj["models"][model]["module_path"]
 
-        with open(self.API_SCHEMAS_PATH + "/__init__.py", "w") as f:
-            f.write(import_modules)
+                    if not dependent_models.get(model_path):
+                        dependent_models[model_path] = []
 
-    def generate_api_endpoints(self):
-        api_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "api.tpl"),
-                                          {
-                                              "data": self.mechanic_obj["controllers"],
-                                              "timestamp": datetime.datetime.utcnow()
-                                          })
+                    if model not in dependent_models[model_path]:
+                        dependent_models[model_path].append(model)
 
-        with open(self.API_ENDPOINTS_PATH, "w") as f:
-            f.write(api_result)
+                if schema:
+                    schema_path = self.mech_obj["schemas"][schema]["module_path"]
 
-    def generate_controllers(self):
-        import_modules = ""
-        for namespace, namespace_obj in self.mechanic_obj["namespaces"].items():
-            data = dict()
-            for controller_key in namespace_obj["controllers"]:
-                data[controller_key] = self.mechanic_obj["controllers"][controller_key]
+                    if not dependent_schemas.get(schema_path):
+                        dependent_schemas[schema_path] = []
 
-            base_controllers = dict()
-            for item in [self.BASE_CONTROLLER, self.BASE_ITEM_CONTROLLER, self.BASE_COLLECTION_CONTROLLER]:
-                module_path_key = ".".join(item.split(".")[:-1])
-                controller_name = item.split(".")[-1]
+                    if schema not in dependent_schemas[schema_path]:
+                        dependent_schemas[schema_path].append(schema)
 
-                if not base_controllers.get(module_path_key):
-                    base_controllers[module_path_key] = []
+                    for item in request_schemas:
+                        request_schema_path = self.mech_obj["schemas"][schema]["module_path"]
+                        if item not in dependent_schemas[request_schema_path]:
+                            dependent_schemas[request_schema_path].append(item)
 
-                base_controllers[module_path_key].append(controller_name)
+                if not base_controllers.get(base_controller_path):
+                    base_controllers[base_controller_path] = []
 
-            controllers_result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "controllers.tpl"),
-                                              {
-                                                  "data": data,
-                                                  "base_controllers": base_controllers,
-                                                  "models": namespace_obj["models"],
-                                                  "schemas": namespace_obj["mschemas"],
-                                                  "timestamp": datetime.datetime.utcnow()
-                                              })
+                if base_controller_name not in base_controllers[base_controller_path]:
+                    base_controllers[base_controller_path].append(base_controller_name)
 
-            controllers_output = self.API_CONTROLLERS_PATH + namespace
-            if not os.path.exists(controllers_output):
-                os.makedirs(controllers_output)
+                namespaced_controllers[controller_name] = controller
 
-            import_modules = import_modules + "from ." + namespace + ".controllers import *\n"
-            with open(controllers_output + "/controllers.py", "w") as f:
-                f.write(controllers_result)
+        if len(namespaced_controllers):
+            result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "controllers.tpl"), context={
+                "timestamp": dt.datetime.utcnow(),
+                "app_name": self.options[reader.APP_NAME_KEY],
+                "base_controllers": base_controllers,
+                "controllers": namespaced_controllers,
+                "dependent_models": dependent_models,
+                "dependent_schemas": dependent_schemas,
+            })
 
-            with open(controllers_output + "/__init__.py", "w") as f:
-                controllers_output = self.API_CONTROLLERS_PATH + namespace
+            self._write_if_not_excluded(filename, result)
 
-                # custom controllers
-                for item in os.listdir(controllers_output):
-                    # get all files in namespace controllers directory, and import all files with that.
-                    if os.path.isfile(controllers_output + "/" + item) and item != "__init__.py":
-                        item = item.strip(".py")
-                        f.write("from ." + item + " import *\n")
+    def build_init_app_file(self):
+        dependent_controllers = dict()
 
-        with open(self.API_CONTROLLERS_PATH + "/__init__.py", "w") as f:
-            f.write(import_modules)
+        for controller_name, controller in self.mech_obj["controllers"].items():
+            controller_path = controller["module_path"]
+            if not dependent_controllers.get(controller_path):
+                dependent_controllers[controller_path] = []
 
-    def generate_starter_files(self, exclude=[]):
-        """
-        Only generate the absolute minimum files needed for a Flask app. At this point, no model, custom controllers, or
-        marshmallow schemas exist yet, but you can run the app successfully.
-        """
-        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/")):
-            os.makedirs(os.path.expanduser(self.output_dir + "/app/"))
+            if controller_name not in dependent_controllers[controller_path]:
+                dependent_controllers[controller_path].append(controller_name)
 
-        if "starter/run.py" not in exclude:
-            shutil.copy(self.APP_RUN_SRC, self.APP_RUN_OUTPUT)
+        result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "init_app.tpl"), context={
+            "timestamp": dt.datetime.utcnow(),
+            "app_name": self.options[reader.APP_NAME_KEY],
+            "dependent_controllers": dependent_controllers,
+            "controllers": self.mech_obj["controllers"],
+            "base_api_path": self.options[reader.BASE_API_PATH_KEY],
+            "db_url": self.options[reader.DATABASE_URL_KEY]
+        })
 
-        if "starter/app/__init__.py" not in exclude:
-            shutil.copy(self.APP_INIT_SRC, self.APP_INIT_OUTPUT)
+        app_name = self.options[reader.APP_NAME_KEY]
+        with safe_open_w(self.directory + "/" + app_name + "/__init__.py") as f:
+            f.write(result)
 
-        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/static")):
-            os.makedirs(os.path.expanduser(self.output_dir + "/app/static"))
+    def build_init_api_file(self):
+        dependent_controllers = dict()
+        api_controllers = []
 
-        if not os.path.exists(os.path.expanduser(self.output_dir + "/app/templates")):
-            os.makedirs(os.path.expanduser(self.output_dir + "/app/templates"))
+        for controller_name, controller in self.mech_obj["controllers"].items():
+            if controller["oapi_uri"] not in self.options[reader.OVERRIDE_CONTROLLER_FOR_URI_KEY].keys():
+                controller_path = controller["module_path"]
+            else:
+                overridden_path = self.options[reader.OVERRIDE_CONTROLLER_FOR_URI_KEY][controller["oapi_uri"]]
+                controller_path = overridden_path.rsplit(".", 1)[0]
+                controller_name = overridden_path.rsplit(".", 1)[1]
 
-        if not os.path.exists(self.BASE_REQUIREMENTS_OUTPUT):
-            shutil.copy(self.BASE_REQUIREMENTS_SRC, self.BASE_REQUIREMENTS_OUTPUT)
+            api_controllers.append({
+                "uri": controller["uri"],
+                "name": controller_name
+            })
 
-        if not os.path.exists(self.BASE_CONFIG_OUTPUT):
-            shutil.copy(self.BASE_CONFIG_SRC, self.BASE_CONFIG_OUTPUT)
+            if not dependent_controllers.get(controller_path):
+                dependent_controllers[controller_path] = []
 
-        if not os.path.exists(os.path.expanduser(self.output_dir + "/base/")):
-            os.makedirs(os.path.expanduser(self.output_dir + "/base/"))
+            if controller_name not in dependent_controllers[controller_path]:
+                dependent_controllers[controller_path].append(controller_name)
+
+        result = self._render(pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "init_api.tpl"), context={
+            "timestamp": dt.datetime.utcnow(),
+            "app_name": self.options[reader.APP_NAME_KEY],
+            "dependent_controllers": dependent_controllers,
+            "controllers": api_controllers,
+            "base_api_path": self.options[reader.BASE_API_PATH_KEY],
+            "db_url": self.options[reader.DATABASE_URL_KEY]
+        })
+
+        app_name = self.options[reader.APP_NAME_KEY]
+        with safe_open_w(self.directory + "/" + app_name + "/init_api.py") as f:
+            f.write(result)
+
+    def _write_if_not_excluded(self, filename, contents):
+        if filename not in self.options[reader.EXCLUDE_KEY]:
+            self._add_package_files(filename)
+            with safe_open_w(self.directory + "/" + filename) as f:
+                f.write(contents)
+
+    def _add_run_file(self):
+        self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/run.py"),
+                                       self.directory + "/run.py")
+
+    def _add_requirements_txt(self):
+        shutil.copy(pkg_resources.resource_filename(__name__, "../mechanic/requirements.txt"),
+                    self.directory + "/requirements.txt")
+
+    def _add_mechanic_base_package(self):
+        mechanic_folder = pkg_resources.resource_filename(__name__, "../mechanic/base/")
+        mechanic_utils_folder = pkg_resources.resource_filename(__name__, "../mechanic/utils/")
 
         try:
-            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_CSS_SRC, self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT)
-            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_JS_SRC, self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
+            shutil.copytree(mechanic_folder, self.directory + "/mechanic/base/")
+            self._add_package_files("mechanic/base/")
+        except FileExistsError as e:
+            pass
+
+        try:
+            shutil.copytree(mechanic_utils_folder, self.directory + "/mechanic/utils/")
+            self._add_package_files("mechanic/utils/")
+        except FileExistsError as e:
+            pass
+
+        self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/base/schemas.py"),
+                                       self.directory + "/mechanic/base/schemas.py")
+        self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/base/models.py"),
+                                       self.directory + "/mechanic/base/models.py")
+        self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/base/controllers.py"),
+                                       self.directory + "/mechanic/base/controllers.py")
+        self._replace_app_name_in_file(pkg_resources.resource_filename(__name__, "../mechanic/utils/db_helper.py"),
+                                       self.directory + "/mechanic/utils/db_helper.py")
+
+    def _add_swagger_docs(self):
+        static_folder = pkg_resources.resource_filename(__name__, "../mechanic/app/static")
+        templates_folder = pkg_resources.resource_filename(__name__, "../mechanic/app/templates")
+
+        try:
+            shutil.copytree(static_folder, self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/static")
         except FileExistsError:
-            shutil.rmtree(self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT)
-            shutil.rmtree(self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
-            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_CSS_SRC, self.APP_DOCS_STATIC_SWAGGER_CSS_OUTPUT)
-            shutil.copytree(self.APP_DOCS_STATIC_SWAGGER_JS_SRC, self.APP_DOCS_STATIC_SWAGGER_JS_OUTPUT)
+             pass
+        try:
+            shutil.copytree(templates_folder, self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/templates")
+        except FileExistsError:
+             pass
 
-        shutil.copy(self.APP_DOCS_TEMPLATES_INDEX_SRC, self.APP_DOCS_TEMPLATES_INDEX_OUTPUT)
-        shutil.copy(self.APP_DOCS_STATIC_SPEC_SRC, self.APP_DOCS_STATIC_SPEC_OUTPUT)
+        # temp.yaml is the merged specification file generated from the compiler. Copy this to the static folder and
+        # then delete the temp.yaml file
+        oapi_file_location = self.directory + "/temp.yaml"
+        shutil.copy(oapi_file_location, self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/static/docs.yaml")
+        os.remove(oapi_file_location)
 
-        shutil.copy(self.BASE_INIT_SRC, self.BASE_INIT_OUTPUT)
-        shutil.copy(self.BASE_CONTROLLERS_SRC, self.BASE_CONTROLLERS_OUTPUT)
-        shutil.copy(self.BASE_SCHEMAS_SRC, self.BASE_SCHEMAS_OUTPUT)
-        shutil.copy(self.BASE_FIELDS_SRC, self.BASE_FIELDS_OUTPUT)
-        shutil.copy(self.BASE_EXCEPTIONS_SRC, self.BASE_EXCEPTIONS_OUTPUT)
-        shutil.copy(self.BASE_DB_HELPER_SRC, self.BASE_DB_HELPER_OUTPUT)
+    def _add_package_files(self, path, imports=None):
+        dirs = path.split("/")
+        dir_path = []
+        for i, dir in enumerate(dirs):
+            dir_path.append("/".join(dirs[:(i+1)]))
 
-    def generate_admin(self, admin=False):
-        admin_result = self._render(
-            pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "admin_init.tpl"),
-            {
-                "data": self.mechanic_obj["models"],
-                "timestamp": datetime.datetime.utcnow(),
-                "admin": admin
-            })
-        with open(self.ADMIN_INIT_PATH, "w") as f:
-            f.write(admin_result)
+        for dir in dir_path:
+            if not dir.endswith(".py"):
+                import_result = imports
+                if imports:
+                    import_result = self._render(
+                        pkg_resources.resource_filename(__name__, self.TEMPLATE_DIR + "init_models.tpl"),
+                        context={
+                            "module_paths": imports
+                        })
+                if not os.path.exists(self.directory + "/" + dir + "/__init__.py"):
+                    with safe_open_w(self.directory + "/" + dir + "/__init__.py") as f:
+                        if import_result:
+                            f.write(import_result)
+                else:
+                    with open(self.directory + "/" + dir + "/__init__.py", "r") as f:
+                        current_contents = f.read()
+
+                    with open(self.directory + "/" + dir + "/__init__.py", "a") as f:
+                        if import_result and import_result not in current_contents:
+                            f.write(import_result)
+
+    def _replace_app_name_in_file(self, src_file, output_file):
+        # replace app_name var
+        result = self._render(src_file, context={
+            "timestamp": dt.datetime.utcnow(),
+            "app_name": self.options[reader.APP_NAME_KEY]
+        })
+
+        with safe_open_w(output_file) as f:
+            f.write(result)
 
     def _render(self, tpl_path, context):
         path, filename = os.path.split(tpl_path)
-        return jinja2.Environment(loader=jinja2.FileSystemLoader(path or "./")).get_template(filename).render(context)
-
-    def _deserialize_file(self):
-        """
-        Deserializes a file from either json or yaml and converts it to a dictionary structure to operate on.
-
-        :param oapi_file:
-        :return: dictionary representation of the OpenAPI file
-        """
-        if self.mechanic_file.endswith(".json"):
-            with open(self.mechanic_file) as f:
-                mechanic_obj = json.load(f)
-        elif self.mechanic_file.endswith(".yaml") or self.mechanic_file.endswith(".yml"):
-            with open(self.mechanic_file) as f:
-                mechanic_obj = yaml.load(f)
-        else:
-            raise SyntaxError("File is not of correct format. Must be either json or yaml (and filename extension must "
-                              "be one of those too).")
-        self.root_dir = os.path.dirname(os.path.realpath(self.mechanic_file))
-        return mechanic_obj
+        return jinja2.Environment(loader=jinja2.FileSystemLoader(path or "./")).get_template(filename).render(
+            context)
