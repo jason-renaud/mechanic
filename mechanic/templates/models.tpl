@@ -22,7 +22,7 @@ def get_uri(context):
 {% for m2m_key, m2m in many_to_many.items() %}
 {{ m2m_key }} = db.Table("{{ m2m_key }}",
                         {%- for k, v in m2m.fkeys.items() %}
-                       db.Column("{{ k }}", db.String(36), db.ForeignKey("{{ v }}")),
+                       db.Column("{{ k }}", db.String(36), db.ForeignKey("{{ v }}", ondelete="SET NULL")),
                         {%- endfor %}
                        schema="{{ m2m.db_schema }}"
 )

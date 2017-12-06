@@ -77,6 +77,7 @@ class Compiler(object):
         self.build_mschemas_pass1()
         self.build_mschemas_pass2()
         self.build_mschemas_pass3()
+        self.build_mschemas_pass4()
         self.build_controllers_pass1()
 
         self.write_to_file()
@@ -485,6 +486,25 @@ class Compiler(object):
                     if prop_obj.get("type") in NATIVE_TYPES:
                         self._add_field(prop_name, existing_mschema, prop_obj, prop_name, schema_obj)
 
+    def build_mschemas_pass4(self):
+        """
+        Pass 4 handles additional fields that need to be added for things such as "enum" and "pattern" validation.
+        """
+        for schema_name, schema_obj in self.oapi_obj["components"]["schemas"].items():
+            namespace = schema_obj.get(NAMESPACE_EXT, self.options[reader.DEFAULT_NAMESPACE_KEY])
+            mschema_name = self._get_mschema_name_from_pattern(schema_name,
+                                                               namespace=namespace,
+                                                               version=self.version)
+
+            existing_mschema = self.schemas.get(mschema_name)
+            if not existing_mschema:
+                # mschema has been excluded
+                continue
+
+            for prop_name, prop_obj in schema_obj.get("properties", {}).items():
+                if prop_obj.get("enum") or prop_obj.get("pattern"):
+                    self._add_field(prop_name, existing_mschema, prop_obj, prop_name, schema_obj)
+
     def build_controllers_pass1(self):
         for path_uri, path_obj in self.oapi_obj["paths"].items():
             controller = self._init_controller()
@@ -800,6 +820,8 @@ class Compiler(object):
         field["load_only"] = prop_obj.get("writeOnly", field["load_only"])
         field["dump_only"] = prop_obj.get("readOnly", field["dump_only"])
         field["comment"] = prop_obj.get("description")
+        field["enum"] = prop_obj.get("enum", field["enum"])
+        field["pattern"] = prop_obj.get("pattern", field["pattern"])
         existing_mschema["fields"][field_name] = field
 
     def _add_oneof_relationship(self, existing_model, model_name, prop_item, schema_name, uselist=False):
@@ -1053,6 +1075,8 @@ class Compiler(object):
             "dump_only": False,
             "maxLength": "2000",
             "required": False,
+            "enum": [],
+            "pattern": None
         }
 
     def _init_rel(self):

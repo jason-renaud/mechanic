@@ -1,5 +1,6 @@
 # do not modify - generated code at UTC {{ timestamp }}
 from marshmallow import fields
+from marshmallow.validate import OneOf, Regexp
 
 from {{ app_name }} import db
 {% for path, names in dependent_models.items() -%}
@@ -29,6 +30,10 @@ class {{ schema_name }}({{ schema.base_schema_name }}):
         {%- for prop_name, nested_schema in schema.nested.items() %}
     {{ prop_name }} = fields.Nested("{{ nested_schema.schema }}", many={{ nested_schema.many }})
         {%- endfor %}
+        {# additional fields that have things such as enum or pattern #}
+        {%- for field_name, field in schema.fields.items() %}
+    {{ field_name }} = fields.{{ field.type }}(required={{ field.required }}, maxLength={{ field.maxLength }}, load_only={{ field.load_only }}, dump_only={{ field.dump_only }}, validate={% if field.enum %}OneOf({{ field.enum }}){% elif field.pattern %}Regexp("{{ field.pattern}}"){% else %}None{% endif %})
+        {%- endfor %}
 {# #}
     class Meta:
         model = {{ schema.model }}
@@ -37,7 +42,7 @@ class {{ schema_name }}({{ schema.base_schema_name }}):
     {# Not model schemas #}
     {%- else -%}
         {%- for field_name, field in schema.fields.items() %}
-    {{ field_name }} = fields.{{ field.type }}(required={{ field.required }}, maxLength={{ field.maxLength }}, load_only={{ field.load_only }}, dump_only={{ field.dump_only }})
+    {{ field_name }} = fields.{{ field.type }}(required={{ field.required }}, maxLength={{ field.maxLength }}, load_only={{ field.load_only }}, dump_only={{ field.dump_only }}, validate={% if field.enum %}OneOf({{ field.enum }}){% elif field.pattern %}Regexp("{{ field.pattern}}"){% else %}None{% endif %})
         {%- endfor %}
     {%- endif -%}
 {% endfor %}

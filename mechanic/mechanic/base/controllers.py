@@ -472,6 +472,7 @@ class MechanicBaseCollectionController(MechanicBaseController):
         :param updated_model: SQLAlchemy model that was just recently created.
         :return: Python dictionary representation of the model.
         """
-        schema = self.responses["post"]["schema"]()
+        embed = self._sanitize_embed_params()
+        schema = self.responses["post"]["schema"](context={"embed": embed})
         serialized_model = schema.dump(model)
         return serialized_model.data
