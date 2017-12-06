@@ -64,6 +64,7 @@ class Compiler(object):
         self.foreign_keys = dict()
         self.many_to_many = dict()
         self.version = self.oapi_obj.get("info", {}).get("version", "0.0.1").replace(".", "").replace("-", "").replace("_", "")
+        self.title = self.oapi_obj.get("info", {}).get("title", "Mechanic Generated API")
         self.output = output
 
     def compile(self):
@@ -86,6 +87,7 @@ class Compiler(object):
         self.mech_obj = {
             "openapi_file_location": self.oapi_file,
             "version": self.version,
+            "title": self.title,
             "resources": self.resources,
             "models": self.models,
             "schemas": self.schemas,
