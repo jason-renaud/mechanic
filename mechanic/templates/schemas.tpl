@@ -25,7 +25,7 @@ class {{ schema_name }}({{ schema.base_schema_name }}):
     {#- Model schemas -#}
     {%- if schema.model %}
         {%- for prop_name, embed_schema in schema.embeddable.items() %}
-    {{ prop_name }} = MechanicEmbeddable("{{ embed_schema }}", column="uri")
+    {{ prop_name }} = MechanicEmbeddable("{{ embed_schema }}", deserialize_key="identifier", column=["uri", "identifier", "name"])
         {%- endfor %}
         {%- for prop_name, nested_schema in schema.nested.items() %}
     {{ prop_name }} = fields.Nested("{{ nested_schema.schema }}", many={{ nested_schema.many }})

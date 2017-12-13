@@ -5,8 +5,9 @@ import {{ app_name }}
 
 from mechanic.base.exceptions import MechanicResourceAlreadyExistsException, MechanicNotFoundException, \
     MechanicResourceLockedException, MechanicPreconditionFailedException, MechanicException, \
-    MechanicInvalidETagException, MechanicNotModifiedException
+    MechanicInvalidETagException, MechanicNotModifiedException, MechanicBadRequestException
 from {{ app_name }} import db
+from sqlalchemy.exc import DatabaseError, IntegrityError
 
 logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
@@ -14,6 +15,7 @@ logger.setLevel("INFO")
 
 def close_session():
     db.session.close()
+
 
 def read(identifier, model_class, if_modified_since=None, if_unmodified_since=None, if_match=[], if_none_match=[]):
     """
@@ -23,7 +25,7 @@ def read(identifier, model_class, if_modified_since=None, if_unmodified_since=No
     :param model_class: type of model to query
     :return: retrieved object or None
     """
-    model = model_class.query.get(identifier)
+    model = model_class.query.filter_by(identifier=identifier).one_or_none()
     _validate_modified_headers(if_modified_since, if_unmodified_since, model)
 
     if if_none_match and not if_match:
@@ -52,19 +54,32 @@ def create(model):
 
     # check to see if model w/ identifier already exists
     if model.identifier:
-        model_exists = model.__class__.query.get(model.identifier)
+        model_exists = model.__class__.query.filter_by(identifier=model.identifier).one()
 
         if model_exists:
-            logger.error("Resource already exists - type: %s, identifier: %s", model.__class__, model.identifier)
+            logger.error("Resource already exists - type: %s, identifier: %s", model.__class__.__name__, model.identifier)
             raise MechanicResourceAlreadyExistsException()
 
     # set created and last_modified
     model.created = datetime.utcnow()
     model.last_modified = model.created
     db.session.add(model)
-    db.session.commit()
-    logger.debug("Successfully created new object - type: %s, identifier: %s", model.__class__, model.identifier)
-    return model.__class__.query.get(model.identifier)
+
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        logger.error(str(e))
+        raise MechanicBadRequestException(msg="An error occurred while attempting to create the resource. Most likely "
+                                              "you are attempting to create an object that violates some uniqueness "
+                                              "criteria.",
+                                          res="Verify the requested object does not exist and retry the request. If "
+                                              "the error persists, contact your support representative for more help.")
+    except DatabaseError as e:
+        logger.error(str(e))
+        raise MechanicException("An unknown error occurred while attempting to create %s " % model.__class__.__name__)
+    logger.debug("Successfully created new object - type: %s, identifier: %s", model.__class__.__name__, model.identifier)
+    obj = model.__class__.query.filter_by(identifier=model.identifier).one()
+    return obj
 
 
 def update(identifier, model_class, changed_attributes, if_modified_since=None, if_unmodified_since=None,
@@ -85,7 +100,7 @@ def update(identifier, model_class, changed_attributes, if_modified_since=None, 
     :return: updated object
     """
 
-    model = model_class.query.get(identifier)
+    model = model_class.query.filter_by(identifier=identifier).one_or_none()
 
     if not model:
         raise MechanicNotFoundException()
@@ -101,8 +116,13 @@ def update(identifier, model_class, changed_attributes, if_modified_since=None, 
     # object has been updated, change last_modified and etag
     model.last_modified = datetime.utcnow()
     model.etag = str(uuid.uuid4())
-    db.session.commit()
-    return model_class.query.get(identifier)
+    try:
+        db.session.commit()
+    except DatabaseError as e:
+        logger.error(str(e))
+        raise MechanicException(
+            "An unknown error occurred while attempting to update %s %s" % (model.__class__.__name__, identifier))
+    return model.__class__.query.filter_by(identifier=model.identifier).one()
 
 
 def replace(identifier, new_model, if_modified_since=None, if_unmodified_since=None, if_match=[],
@@ -110,7 +130,7 @@ def replace(identifier, new_model, if_modified_since=None, if_unmodified_since=N
     """
     Same as an update, except instead of only updating the specified attributes, it replaces the entire object.
     """
-    model = new_model.__class__.query.get(identifier)
+    model = new_model.__class__.query.filter_by(identifier=identifier).one_or_none()
 
     if not model:
         raise MechanicNotFoundException()
@@ -121,18 +141,28 @@ def replace(identifier, new_model, if_modified_since=None, if_unmodified_since=N
 
     created = model.created
 
-    # first delete the existing model in the session
-    db.session.delete(model)
-    db.session.commit()
+    for col in new_model.__class__.__mapper__.columns:
+        if col.key not in ["identifier", "last_modified", "etag", "created", "controller", "uri"]:
+            if getattr(new_model, col.key):
+                setattr(model, col.key, getattr(new_model, col.key))
 
-    new_model.identifier = identifier
-    new_model.last_modified = datetime.utcnow()
-    new_model.etag = str(uuid.uuid4())
-    new_model.created = created
+    for rel in new_model.__class__.__mapper__.relationships:
+        if rel.key not in ["identifier", "last_modified", "etag", "created", "controller", "uri"]:
+            if getattr(new_model, rel.key):
+                setattr(model, rel.key, getattr(new_model, rel.key))
 
-    db.session.add(new_model)
-    db.session.commit()
-    return model.__class__.query.get(identifier)
+    model.identifier = identifier
+    model.last_modified = datetime.utcnow()
+    model.etag = str(uuid.uuid4())
+    model.created = created
+
+    db.session.merge(model)
+    try:
+        db.session.commit()
+    except DatabaseError as e:
+        logger.error(str(e))
+        raise MechanicException("An unknown error occurred while attempting to update %s %s" % (model.__class__.__name__, identifier))
+    return new_model.__class__.query.filter_by(identifier=identifier).one()
 
 
 def delete(identifier, model_class, force=False, if_modified_since=None, if_unmodified_since=None, if_match=[], if_none_match=[]):
@@ -153,7 +183,7 @@ def delete(identifier, model_class, force=False, if_modified_since=None, if_unmo
     :param if_none_match
     :
     """
-    model = model_class.query.get(identifier)
+    model = model_class.query.filter_by(identifier=identifier).one_or_none()
 
     if not model:
         raise MechanicNotFoundException()
@@ -164,7 +194,18 @@ def delete(identifier, model_class, force=False, if_modified_since=None, if_unmo
         _validate_match_headers(if_match, if_none_match, model)
 
     db.session.delete(model)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        logger.error(str(e))
+        raise MechanicBadRequestException(msg="An error occurred while attempting to delete %s %s. Most likely "
+                                              "you are attempting to delete an object that has one or more resources "
+                                              "dependent on it." % (model_class.__name__, identifier),
+                                          res="Verify the requested object does not have objects that depend on it. If "
+                                              "the error persists, contact your support representative for more help.")
+    except DatabaseError as e:
+        logger.error(str(e))
+        raise MechanicException("An unknown error occurred while attempting to delete %s %s" % (model_class.__name__, identifier))
 
 
 def _validate_modified_headers(if_modified_since, if_unmodified_since, model):
@@ -200,6 +241,9 @@ def _validate_match_headers(if_match, if_none_match, model):
     if len(if_match) > 0:
         # if any item in if_match does not match the current etag, raise exception
         if not any(val == "*" or val == model.etag for val in if_match):
+            raise MechanicInvalidETagException()
+        if not any(val for val in if_match):
+            logger.error("If-Match value cannot be empty")
             raise MechanicInvalidETagException()
 
     if len(if_none_match) > 0:
