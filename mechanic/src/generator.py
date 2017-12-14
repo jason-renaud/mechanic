@@ -329,8 +329,17 @@ class Generator(object):
              pass
         try:
             shutil.copytree(templates_folder, self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/templates")
+            output_file = self.directory + "/" + self.options[reader.APP_NAME_KEY] + "/templates/index.html"
+
+            with open(output_file) as f:
+                contents = f.read()
+
+            with open(output_file, "w") as f:
+                contents = contents.replace("API_TITLE", self.mech_obj["title"])
+                f.write(contents)
         except FileExistsError:
-             pass
+            pass
+
 
         # temp.yaml is the merged specification file generated from the compiler. Copy this to the static folder and
         # then delete the temp.yaml file

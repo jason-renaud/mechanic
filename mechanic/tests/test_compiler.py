@@ -122,3 +122,23 @@ class TestCompiler(TestCase):
         self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favBanana"]["many"], False)
         self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favApples"]["schema"], "AppleSchema")
         self.assertEqual(obj["schemas"]["EmployeeSchema"]["nested"]["favApples"]["many"], True)
+
+    def test_compile_verify_enum(self):
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
+        compiler.compile()
+
+        obj = deserialize_file(self.GROCERY_TMP)
+
+        self.assertTrue("red" in obj["schemas"]["AppleSchema"]["fields"]["kind"]["enum"])
+        self.assertTrue("green" in obj["schemas"]["AppleSchema"]["fields"]["kind"]["enum"])
+        self.assertTrue("other" in obj["schemas"]["AppleSchema"]["fields"]["kind"]["enum"])
+
+    def test_compile_verify_pattern(self):
+        options = read_mechanicfile(self.MECHANIC_BUILD_FILE_GROCERY)
+        compiler = Compiler(options, mechanic_file_path=self.MECHANIC_BUILD_FILE_GROCERY, output=self.GROCERY_TMP)
+        compiler.compile()
+
+        obj = deserialize_file(self.GROCERY_TMP)
+
+        self.assertTrue(obj["schemas"]["WalletSchema"]["fields"]["cash"]["pattern"])

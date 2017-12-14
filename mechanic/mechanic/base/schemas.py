@@ -10,7 +10,7 @@ class MechanicBaseModelSchema(ma.ModelSchema):
     etag = fields.String(load_only=True, dump_only=True)
     controller = fields.String(load_only=True, dump_only=True)
     uri = fields.String(dump_only=True)
-    identifier = fields.String(dump_only=True)
+    identifier = fields.String()
 
     class Meta:
         strict = True
@@ -23,4 +23,4 @@ class MechanicBaseSchema(ma.Schema):
     locked = fields.Boolean(load_only=True, dump_only=True)
     etag = fields.String(load_only=True, dump_only=True)
     uri = fields.String(dump_only=True)
-    identifier = fields.String(dump_only=True)
+    identifier = fields.String()
