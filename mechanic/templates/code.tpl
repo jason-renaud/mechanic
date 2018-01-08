@@ -66,9 +66,10 @@ class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
     __tablename__ = '{%- if cb.oapi['x-mechanic-db'] -%}
                         {{ cb.oapi['x-mechanic-db'].__tablename__ }}
                      {%- endif -%}'
-    __table_args__ = {'schema': '{%- if cb.oapi['x-mechanic-db'] -%}
-                                    {{ cb.oapi['x-mechanic-db'].__table_args__.schema }}
-                                 {%- endif -%}'}
+    __table_args__ = ({%- if cb.oapi['x-mechanic-db'].__table_args__ and cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint -%}
+                                    db.UniqueConstraint({%- for item in cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint %}'{{ item }}', {% endfor %}),
+                      {% endif -%}
+                                    {'schema': '{%- if cb.oapi['x-mechanic-db'] -%}{{ cb.oapi['x-mechanic-db'].__table_args__.schema }}{%- endif -%}'})
     {# #}
     controller = db.Column(db.String, default='{{ cb.oapi['x-mechanic-controller'] }}')
     uri = db.Column(db.String, default=get_uri)
@@ -96,5 +97,29 @@ class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
 {# #}
 
     {%- elif cb.type == 'controller' %}
+class {{ cb.class_name }}({{ cb.base_class_name }}):
+        {%- if cb.oapi.description %}
+    """
+    {{ cb.oapi.description }}
+    """
+        {%- endif %}
+    responses = {
+        {%- for method_attr_name, method_attr in cb.oapi['x-mechanic-controller']['responses'].items() %}
+        '{{ method_attr_name }}': {
+            'code': {{ method_attr.code }},
+            'model': {{ method_attr.model }},
+            'schema': {{ method_attr.schema }}
+        },
+        {%- endfor %}
+    }
+    requests = {
+        {%- for method_attr_name, method_attr in cb.oapi['x-mechanic-controller']['requests'].items() %}
+        '{{ method_attr_name }}': {
+            'model': {{ method_attr.model }},
+            'schema': {{ method_attr.schema }}
+        },
+        {%- endfor %}
+    }
     {%- endif %}
+{# #}
 {% endfor %}

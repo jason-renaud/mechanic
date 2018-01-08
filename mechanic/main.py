@@ -24,7 +24,7 @@ import datetime
 from docopt import docopt
 
 # project
-from mechanic.src.compiler import Compiler, Merger
+from mechanic.src.compiler import Compiler, Merger, MECHANIC_SUPPORTED_HTTP_METHODS
 from mechanic.src.generator import Generator
 from mechanic.src.merger import SpecMerger
 from mechanic.src.reader import read_mechanicfile
@@ -116,7 +116,43 @@ def main():
                             'oapi': oapi_obj['components']['schemas'][model_name],
                         })
             elif args['controller']:
-                pass
+                for path_name, path in oapi_obj['paths'].items():
+                    if path.get('x-mechanic-controller'):
+                        model = path.get('x-mechanic-controller').get('model')
+                        schema = path.get('x-mechanic-controller').get('schema')
+
+                        if not oapi_obj['paths'][path_name]['x-mechanic-controller'].get('responses'):
+                            oapi_obj['paths'][path_name]['x-mechanic-controller']['responses'] = dict()
+                        if not oapi_obj['paths'][path_name]['x-mechanic-controller'].get('requests'):
+                            oapi_obj['paths'][path_name]['x-mechanic-controller']['requests'] = dict()
+                        oapi_responses = oapi_obj['paths'][path_name]['x-mechanic-controller']['responses']
+                        oapi_requests = oapi_obj['paths'][path_name]['x-mechanic-controller']['requests']
+
+                        for method_name, method in path.items():
+                            if method_name in MECHANIC_SUPPORTED_HTTP_METHODS:
+                                if not oapi_responses.get(method_name):
+                                    oapi_responses[method_name] = dict()
+
+                                oapi_responses[method_name]['model'] = model
+                                oapi_responses[method_name]['schema'] = schema
+
+                                for response_code, response_obj in method.get('responses', {}).items():
+                                    if response_code.startswith('2'):
+                                        oapi_responses[method_name]['code'] = response_code
+
+                                if method.get('requestBody'):
+                                    if not oapi_requests.get(method_name):
+                                        oapi_requests[method_name] = dict()
+
+                                    oapi_requests[method_name]['model'] = model
+                                    oapi_requests[method_name]['schema'] = schema
+
+                        context['codeblocks'].append({
+                            'type': 'controller',
+                            'class_name': path['x-mechanic-controller']['class_name'],
+                            'base_class_name': path['x-mechanic-controller']['base_class_name'],
+                            'oapi': oapi_obj['paths'][path_name],
+                        })
 
         # if object_path is oapi object, generate for 'type'
         result = _render(pkg_resources.resource_filename(__name__, 'templates/code.tpl'), context=context)
