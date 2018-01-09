@@ -22,13 +22,12 @@ def get_uri(context):
 {{ cb.table_name }} = db.Table('{{ cb.table_name }}',
                                 {%- for col_name, col_obj in cb.oapi.columns.items() %}
                         db.Column('{{ col_name }}', db.{{ col_obj.type.title() }}({%- if col_obj.maxLength %}{{ col_obj.maxLength }}{% endif %}),
-                                                            {%- if col_obj.foreign_key %}db.ForeignKey('{{ col_obj.foreign_key.key }}',
+                                                            {%- if col_obj.foreign_key %} db.ForeignKey('{{ col_obj.foreign_key.key }}',
                                                                 {%- if col_obj.foreign_key.ondelete %} ondelete='{{ col_obj.foreign_key.ondelete }}',{%- endif %}
                                                                 {%- if col_obj.foreign_key.onupdate %} onupdate='{{ col_obj.foreign_key.onupdate }}',{%- endif %})
                                                             {%- endif %}),
                                 {%- endfor %}
                         {% if cb.oapi.schema %}schema='{{ cb.oapi.schema }}',{%- endif %})
-    {# #}
     {%- elif cb.type == 'schema' %}
 class {{ cb.class_name }}({{ cb.base_class_name }}):
         {%- if cb.oapi.description %}
@@ -93,8 +92,6 @@ class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
                 {%- endif %}
             {%- endif %}
         {%- endfor %}
-{# #}
-
     {%- elif cb.type == 'controller' %}
 class {{ cb.class_name }}({{ cb.base_class_name }}):
         {%- if cb.oapi.description %}
@@ -107,7 +104,6 @@ class {{ cb.class_name }}({{ cb.base_class_name }}):
         '{{ method_attr_name }}': {
             'code': {{ method_attr.code }},
             'model': {{ method_attr.model }},
-            'schema': '{{ method_attr.schema }}'
         },
         {%- endfor %}
     }
@@ -115,7 +111,6 @@ class {{ cb.class_name }}({{ cb.base_class_name }}):
         {%- for method_attr_name, method_attr in cb.oapi['x-mechanic-controller']['requests'].items() %}
         '{{ method_attr_name }}': {
             'model': {{ method_attr.model }},
-            'schema': '{{ method_attr.schema }}'
         },
         {%- endfor %}
     }

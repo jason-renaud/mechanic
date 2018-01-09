@@ -5,6 +5,9 @@ Usage:
     mechanic merge <master> <files>...
     mechanic generate (model|schema|controller|versions) <object_path> <output_file> [--filter-tag=<tag>...] [--exclude-tag=<tag>...]
 
+Note:
+    - 'mechanic generate' is experimental, use with caution
+
 Arguments:
     directory                           Directory that has the mechanicfile
 
@@ -71,6 +74,8 @@ def main():
             oapi_file = args['<object_path>']
             merger = Merger(oapi_file, 'temp.yaml')
             merger.merge()
+            os.remove('temp.yaml')
+
             oapi_obj = merger.oapi_obj
             oapi_version = oapi_obj.get('info', {}).get('version', '0.0.1')
 
@@ -94,15 +99,16 @@ def main():
                     # get tags for filtering code generation
                     s2 = set(model.get('x-mechanic-tags', []))
 
-                    if not exclude_tag_set.intersection(s2) and filter_tag_set.intersection(s2) or len(filter_tags) == 0:
-                        context['codeblocks'].append({
-                            'type': 'model',
-                            'class_name': model_name,
-                            'base_class_name': 'MechanicBaseModelMixin',
-                            'version': oapi_obj['components']['schemas'][model_name].get('x-mechanic-version',
-                                                                                         oapi_version),
-                            'oapi': oapi_obj['components']['schemas'][model_name],
-                        })
+                    if not exclude_tag_set.intersection(s2) and filter_tag_set <= s2 or len(filter_tags) == 0:
+                        if oapi_obj['components']['schemas'][model_name].get('x-mechanic-model-generate'):
+                            context['codeblocks'].append({
+                                'type': 'model',
+                                'class_name': oapi_obj['components']['schemas'][model_name].get('x-mechanic-model', model_name),
+                                'base_class_name': 'MechanicBaseModelMixin',
+                                'version': oapi_obj['components']['schemas'][model_name].get('x-mechanic-version',
+                                                                                             oapi_version),
+                                'oapi': oapi_obj['components']['schemas'][model_name],
+                            })
             elif args['schema']:
                 for model_name, model in oapi_obj['components']['schemas'].items():
                     # add sane defaults
@@ -113,7 +119,7 @@ def main():
 
                     s2 = set(model.get('x-mechanic-tags', []))
 
-                    if not exclude_tag_set.intersection(s2) and filter_tag_set.intersection(s2) or len(
+                    if not exclude_tag_set.intersection(s2) and filter_tag_set <= s2 or len(
                             filter_tags) == 0:
                         context['codeblocks'].append({
                             'type': 'schema',
