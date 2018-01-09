@@ -52,10 +52,9 @@ class {{ cb.class_name }}({{ cb.base_class_name }}):
         {%- endfor %}
 {# #}
     class Meta:
+        fields = ('identifier', 'uri', {%- for prop_name, prop_obj in cb.oapi.properties.items() %} '{{ prop_name }}',{%- endfor %})
         strict = True
-        {% if cb.oapi['x-mechanic-model'] -%}model = {{ cb.oapi['x-mechanic-model'] }}
-{# #}
-        {%- endif %}
+        {% if cb.oapi['x-mechanic-model'] -%}model = {{ cb.oapi['x-mechanic-model'] }}{%- endif %}
     {%- elif cb.type == 'model' %}
 class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
         {%- if cb.oapi.description %}
@@ -66,7 +65,7 @@ class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
     __tablename__ = '{%- if cb.oapi['x-mechanic-db'] -%}
                         {{ cb.oapi['x-mechanic-db'].__tablename__ }}
                      {%- endif -%}'
-    __table_args__ = ({%- if cb.oapi['x-mechanic-db'].__table_args__ and cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint -%}
+    __table_args__ = ({%- if cb.oapi['x-mechanic-db'] and cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint -%}
                                     db.UniqueConstraint({%- for item in cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint %}'{{ item }}', {% endfor %}),
                       {% endif -%}
                                     {'schema': '{%- if cb.oapi['x-mechanic-db'] -%}{{ cb.oapi['x-mechanic-db'].__table_args__.schema }}{%- endif -%}'})
@@ -108,7 +107,7 @@ class {{ cb.class_name }}({{ cb.base_class_name }}):
         '{{ method_attr_name }}': {
             'code': {{ method_attr.code }},
             'model': {{ method_attr.model }},
-            'schema': {{ method_attr.schema }}
+            'schema': '{{ method_attr.schema }}'
         },
         {%- endfor %}
     }
@@ -116,10 +115,28 @@ class {{ cb.class_name }}({{ cb.base_class_name }}):
         {%- for method_attr_name, method_attr in cb.oapi['x-mechanic-controller']['requests'].items() %}
         '{{ method_attr_name }}': {
             'model': {{ method_attr.model }},
-            'schema': {{ method_attr.schema }}
+            'schema': '{{ method_attr.schema }}'
         },
         {%- endfor %}
     }
+    {%- elif cb.type == 'versions' %}
+VERSIONS = {
+    {%- for controller in cb.controllers %}
+    '{{ controller.class_name }}': {
+        {%- if controller.versions %}
+            {%- for version_num, version in controller.versions.items() %}
+        '{{ version_num }}': {
+            'schema': {{ version.schema }}
+        },
+            {%- endfor %}
+        {%- else %}
+        '{{ cb.version }}': {
+            'schema': {{ controller.schema }}
+        },
+        {%- endif %}
+    },
+    {%- endfor %}
+}
     {%- endif %}
 {# #}
 {% endfor %}

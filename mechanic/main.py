@@ -3,7 +3,7 @@
 Usage:
     mechanic build <directory>
     mechanic merge <master> <files>...
-    mechanic generate (model|schema|controller) <object_path> <output_file> [--filter-tag=<tag>...]
+    mechanic generate (model|schema|controller|versions) <object_path> <output_file> [--filter-tag=<tag>...] [--exclude-tag=<tag>...]
 
 Arguments:
     directory                           Directory that has the mechanicfile
@@ -72,11 +72,14 @@ def main():
             merger = Merger(oapi_file, 'temp.yaml')
             merger.merge()
             oapi_obj = merger.oapi_obj
+            oapi_version = oapi_obj.get('info', {}).get('version', '0.0.1')
 
-
-            print(args)
             filter_tags = args['--filter-tag']
-            s1 = set(args['--filter-tag'])
+            exclude_tags = args['--exclude-tag']
+
+            filter_tag_set = set(args['--filter-tag'])
+            exclude_tag_set = set(args['--exclude-tag'])
+
             if args['model']:
                 # first generate any additional tables from components.x-mechanic-db-tables
                 for table_name, table_def in oapi_obj['components'].get('x-mechanic-db-tables', {}).items():
@@ -91,11 +94,13 @@ def main():
                     # get tags for filtering code generation
                     s2 = set(model.get('x-mechanic-tags', []))
 
-                    if s1.intersection(s2) or len(filter_tags) == 0:
+                    if not exclude_tag_set.intersection(s2) and filter_tag_set.intersection(s2) or len(filter_tags) == 0:
                         context['codeblocks'].append({
                             'type': 'model',
                             'class_name': model_name,
                             'base_class_name': 'MechanicBaseModelMixin',
+                            'version': oapi_obj['components']['schemas'][model_name].get('x-mechanic-version',
+                                                                                         oapi_version),
                             'oapi': oapi_obj['components']['schemas'][model_name],
                         })
             elif args['schema']:
@@ -108,11 +113,15 @@ def main():
 
                     s2 = set(model.get('x-mechanic-tags', []))
 
-                    if s1.intersection(s2) or len(filter_tags) == 0:
+                    if not exclude_tag_set.intersection(s2) and filter_tag_set.intersection(s2) or len(
+                            filter_tags) == 0:
                         context['codeblocks'].append({
                             'type': 'schema',
-                            'class_name': model_name + 'Schema',
+                            'class_name': oapi_obj['components']['schemas'][model_name].get('x-mechanic-schema-name',
+                                                                                            model_name + 'Schema'),
                             'base_class_name': 'MechanicBaseModelSchema',
+                            'version': oapi_obj['components']['schemas'][model_name].get('x-mechanic-version',
+                                                                                         oapi_version),
                             'oapi': oapi_obj['components']['schemas'][model_name],
                         })
             elif args['controller']:
@@ -120,6 +129,7 @@ def main():
                     if path.get('x-mechanic-controller'):
                         model = path.get('x-mechanic-controller').get('model')
                         schema = path.get('x-mechanic-controller').get('schema')
+                        path_version = path.get('x-mechanic-version', oapi_version)
 
                         if not oapi_obj['paths'][path_name]['x-mechanic-controller'].get('responses'):
                             oapi_obj['paths'][path_name]['x-mechanic-controller']['responses'] = dict()
@@ -151,8 +161,22 @@ def main():
                             'type': 'controller',
                             'class_name': path['x-mechanic-controller']['class_name'],
                             'base_class_name': path['x-mechanic-controller']['base_class_name'],
+                            'version': path.get('x-mechanic-version', oapi_version),
                             'oapi': oapi_obj['paths'][path_name],
                         })
+            elif args['versions']:
+                controllers = []
+
+                for path_name, path in oapi_obj['paths'].items():
+                    if path.get('x-mechanic-controller'):
+                        controllers.append(path['x-mechanic-controller'])
+
+                context['codeblocks'].append({
+                    'type': 'versions',
+                    'controllers': controllers,
+                    'version': path.get('x-mechanic-version', oapi_version),
+                    'oapi': oapi_obj['paths'][path_name],
+                })
 
         # if object_path is oapi object, generate for 'type'
         result = _render(pkg_resources.resource_filename(__name__, 'templates/code.tpl'), context=context)
