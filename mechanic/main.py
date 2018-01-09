@@ -179,16 +179,11 @@ def main():
 
                 context['codeblocks'].append({
                     'type': 'versions',
-                    'controllers': controllers,
-                    'version': path.get('x-mechanic-version', oapi_version),
-                    'oapi': oapi_obj['paths'][path_name],
+                    'controllers': controllers
                 })
 
         # if object_path is oapi object, generate for 'type'
         result = _render(pkg_resources.resource_filename(__name__, 'templates/code.tpl'), context=context)
-        # print(result)
-        # with open(args['<output_file>'], 'w') as f:
-        #     f.write(result)
 
         mechanic_save_block = None
         try:
