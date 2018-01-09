@@ -3,6 +3,7 @@ import re
 import ast
 import json
 import shutil
+import copy
 
 import yaml
 import yamlordereddictloader
@@ -166,11 +167,11 @@ class SpecMerger:
 
         for obj in self.oapis:
             for name, val in obj["paths"].items():
-                if val.get(EXTENSION_PUBLIC):
-                    self.main_oapi["paths"][name] = val
+                # if val.get(EXTENSION_PUBLIC):
+                self.main_oapi["paths"][name] = val
             for name, val in obj["components"]["schemas"].items():
-                if val.get(EXTENSION_PUBLIC):
-                    self.main_oapi["components"]["schemas"][name] = val
+                # if val.get(EXTENSION_PUBLIC):
+                self.main_oapi["components"]["schemas"][name] = val
             for name, val in obj["components"]["responses"].items():
                 self.main_oapi["components"]["responses"][name] = val
             for name, val in obj["components"]["parameters"].items():
@@ -184,8 +185,35 @@ class SpecMerger:
             for name, val in obj["components"]["headers"].items():
                 self.main_oapi["components"]["headers"][name] = val
 
+        REMOVE_KEYS = ['x-mechanic-controller', 'x-mechanic-tags', 'x-mechanic-db', 'x-mechanic-schema-name',
+                       'x-mechanic-public', 'x-mechanic-embeddable', 'x-mechanic-model', 'x-mechanic-model-generate']
+        self._clean_schema_properties()
+        for rkey in REMOVE_KEYS:
+            self._clean(self.main_oapi, key=rkey)
         self._write_to_file()
         shutil.rmtree(self.tmp_dir)
+
+    def _clean(self, obj, key=None):
+        if key:
+            if isinstance(obj, list):
+                for item in obj:
+                    self._clean(item, key=key)
+            elif isinstance(obj, dict):
+                if obj.get(key):
+                    obj.pop(key)
+                for k, v in obj.items():
+                    self._clean(v, key=key)
+
+    def _clean_schema_properties(self):
+        """
+        Removes properties that have x-mechanic-db.model_only = true
+        """
+        iter_dict = copy.deepcopy(self.main_oapi)
+
+        for schema_name, schema in iter_dict['components']['schemas'].items():
+            for prop_name, prop in schema.get('properties', {}).items():
+                if prop.get('x-mechanic-db', {}).get('model_only'):
+                    self.main_oapi['components']['schemas'][schema_name]['properties'].pop(prop_name)
 
     def _write_to_file(self):
         """

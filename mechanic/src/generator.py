@@ -67,7 +67,8 @@ class Generator(object):
                 self.build_controllers_file(controller_filename, namespace)
 
         # add mechanic folder
-        self._add_mechanic_base_package()
+        if "mechanic" not in self.options[reader.EXCLUDE_KEY]:
+            self._add_mechanic_base_package()
 
         # add starter app files
         if self.options[reader.APP_NAME_KEY] + "/__init__.py" not in self.options[reader.EXCLUDE_KEY]:
