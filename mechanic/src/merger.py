@@ -53,7 +53,7 @@ class Merger:
         self.root_dir = os.path.dirname(os.path.realpath(self.oapi_file))
         return oapi
 
-    def _follow_reference_link(self, ref, remote_only=False):
+    def follow_reference_link(self, ref, remote_only=False):
         """
         Gets a referenced object. Note, references must be in relation to the main OpenAPI file, not in relation to the
         current file.
@@ -119,7 +119,7 @@ class Merger:
             for match in matches:
                 reference = match.split(":")[1].replace("'", "").strip(" ")
                 resource_name = reference.split("/")[-1]
-                obj = self._follow_reference_link(reference, remote_only=True)
+                obj = self.follow_reference_link(reference, remote_only=True)
 
                 if obj:
                     oapi_str = oapi_str.replace(match, '"$ref": "#/components/schemas/' + resource_name + '"')
@@ -185,8 +185,8 @@ class SpecMerger:
             for name, val in obj["components"]["headers"].items():
                 self.main_oapi["components"]["headers"][name] = val
 
-        REMOVE_KEYS = ['x-mechanic-controller', 'x-mechanic-tags', 'x-mechanic-db', 'x-mechanic-schema-name',
-                       'x-mechanic-public', 'x-mechanic-embeddable', 'x-mechanic-model', 'x-mechanic-model-generate']
+        REMOVE_KEYS = ['x-mechanic-controller', 'x-mechanic-tags', 'x-mechanic-db', 'x-mechanic-schema',
+                       'x-mechanic-public', 'x-mechanic-embeddable', 'x-mechanic-model']
         self._clean_schema_properties()
         for rkey in REMOVE_KEYS:
             self._clean(self.main_oapi, key=rkey)

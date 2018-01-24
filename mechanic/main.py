@@ -88,34 +88,62 @@ def main():
             if args['model']:
                 # first generate any additional tables from components.x-mechanic-db-tables
                 for table_name, table_def in oapi_obj['components'].get('x-mechanic-db-tables', {}).items():
-                    context['codeblocks'].append({
-                        'type': 'table',
-                        'table_name': table_name,
-                        'oapi': oapi_obj['components']['x-mechanic-db-tables'][table_name]
-                    })
+                    s2 = set(table_def.get('x-mechanic-tags', []))
+
+                    if not exclude_tag_set.intersection(s2) and filter_tag_set <= s2 or len(filter_tags) == 0:
+                        context['codeblocks'].append({
+                            'type': 'table',
+                            'table_name': table_name,
+                            'oapi': oapi_obj['components']['x-mechanic-db-tables'][table_name]
+                        })
 
                 # next generate models from components.schemas
                 for model_name, model in oapi_obj['components']['schemas'].items():
+                    if model.get('allOf'):
+                        allof_refs = []
+                        # first assign 'model' to actual schema data, not the allOf ref
+                        for item in model.get('allOf'):
+                            if not item.get('$ref'):
+                                model = item
+                            else:
+                                allof_refs.append(item.get('$ref'))
+
+                        for allof_ref in allof_refs:
+                            obj, obj_name = merger.follow_reference_link(allof_ref)
+                            for prop_name, prop_obj in obj.get('properties').items():
+                                model['properties'][prop_name] = prop_obj
+                                if model.get('required'):
+                                    model['required'].extend(obj.get('required', []))
+
                     # get tags for filtering code generation
                     s2 = set(model.get('x-mechanic-tags', []))
 
                     if not exclude_tag_set.intersection(s2) and filter_tag_set <= s2 or len(filter_tags) == 0:
-                        if oapi_obj['components']['schemas'][model_name].get('x-mechanic-model-generate'):
+                        if model.get('x-mechanic-model', {}).get('generate'):
                             context['codeblocks'].append({
                                 'type': 'model',
-                                'class_name': oapi_obj['components']['schemas'][model_name].get('x-mechanic-model', model_name),
-                                'base_class_name': 'MechanicBaseModelMixin',
-                                'version': oapi_obj['components']['schemas'][model_name].get('x-mechanic-version',
-                                                                                             oapi_version),
-                                'oapi': oapi_obj['components']['schemas'][model_name],
+                                'class_name': model.get('x-mechanic-model', {}).get('class_name', model_name),
+                                'base_class_name': model.get('x-mechanic-model', {}).get('base_class', 'db.Model'),
+                                'version': model.get('x-mechanic-version', oapi_version),
+                                'oapi': model,
                             })
             elif args['schema']:
                 for model_name, model in oapi_obj['components']['schemas'].items():
-                    # add sane defaults
-                    if not model.get('x-mechanic-model'):
-                        if model.get('x-mechanic-db'):
-                            oapi_obj['components']['schemas'][model_name]['x-mechanic-model'] = model_name
-                    # TODO add more defaults here as needed
+                    if model.get('allOf'):
+                        allof_refs = []
+                        # first assign 'model' to actual schema data, not the allOf ref
+                        for item in model.get('allOf'):
+                            if not item.get('$ref'):
+                                model = item
+                            else:
+                                allof_refs.append(item.get('$ref'))
+
+                        for allof_ref in allof_refs:
+                            obj, obj_name = merger.follow_reference_link(allof_ref)
+                            for prop_name, prop_obj in obj.get('properties').items():
+                                model['properties'][prop_name] = prop_obj
+                                if model.get('required'):
+                                    model['required'].extend(obj.get('required', []))
 
                     s2 = set(model.get('x-mechanic-tags', []))
 
@@ -123,12 +151,10 @@ def main():
                             filter_tags) == 0:
                         context['codeblocks'].append({
                             'type': 'schema',
-                            'class_name': oapi_obj['components']['schemas'][model_name].get('x-mechanic-schema-name',
-                                                                                            model_name + 'Schema'),
-                            'base_class_name': 'MechanicBaseModelSchema',
-                            'version': oapi_obj['components']['schemas'][model_name].get('x-mechanic-version',
-                                                                                         oapi_version),
-                            'oapi': oapi_obj['components']['schemas'][model_name],
+                            'class_name': model.get('x-mechanic-schema', {}).get('class_name', model_name + 'Schema'),
+                            'base_class_name': model.get('x-mechanic-schema', {}).get('base_class', 'ma.ModelSchema'),
+                            'version': model.get('x-mechanic-version', oapi_version),
+                            'oapi': model,
                         })
             elif args['controller']:
                 for path_name, path in oapi_obj['paths'].items():
@@ -163,13 +189,17 @@ def main():
                                     oapi_requests[method_name]['model'] = model
                                     oapi_requests[method_name]['schema'] = schema
 
-                        context['codeblocks'].append({
-                            'type': 'controller',
-                            'class_name': path['x-mechanic-controller']['class_name'],
-                            'base_class_name': path['x-mechanic-controller']['base_class_name'],
-                            'version': path.get('x-mechanic-version', oapi_version),
-                            'oapi': oapi_obj['paths'][path_name],
-                        })
+                        # get tags for filtering code generation
+                        s2 = set(path.get('x-mechanic-tags', []))
+
+                        if not exclude_tag_set.intersection(s2) and filter_tag_set <= s2 or len(filter_tags) == 0:
+                            context['codeblocks'].append({
+                                'type': 'controller',
+                                'class_name': path['x-mechanic-controller']['class_name'],
+                                'base_class_name': path['x-mechanic-controller']['base_class_name'],
+                                'version': path.get('x-mechanic-version', oapi_version),
+                                'oapi': oapi_obj['paths'][path_name],
+                            })
             elif args['versions']:
                 controllers = []
 

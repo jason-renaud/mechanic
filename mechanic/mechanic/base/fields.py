@@ -49,18 +49,21 @@ class MechanicEmbeddable(Related):
     """
     Field type that allows an object to be 'embeddable'.
     """
-    def __init__(self, schema, *args, **kwargs):
+    def __init__(self, schema, deserialize_key=None, *args, **kwargs):
         self.schema = schema
+        self.deserialize_key = deserialize_key
         super(MechanicEmbeddable, self).__init__(*args, **kwargs)
 
     @property
     def related_keys(self):
         if self.columns:
             mapper = self.related_model.__mapper__
-            ret = [
-                mapper.get_property_by_column(mapper.columns[column])
-                for column in self.columns
-            ]
+            ret = []
+            for column in self.columns:
+                if column in mapper.columns.keys():
+                    ret.append(mapper.get_property_by_column(mapper.columns[column]))
+                elif column in mapper.attrs.keys():
+                    ret.append(mapper.get_property(mapper.attrs[column].key))
             return ret
 
     def _serialize(self, value, attr, obj):
@@ -83,14 +86,19 @@ class MechanicEmbeddable(Related):
             for item in value:
                 ret.append(self._serialize(item, attr, obj))
         else:
-            ret = {
-                prop.key: getattr(value, prop.key, None)
-                for prop in self.related_keys
-            }
+            ret = {}
+            for prop in self.related_keys:
+                key_val = getattr(value, prop.key, None)
+                if key_val:
+                    ret[prop.key] = key_val
+
         if isinstance(ret, list) or len(ret) > 1:
             ret_val = ret
         else:
-            ret_val = list(ret.values())[0]
+            if ret:
+                ret_val = list(ret.values())[0]
+            else:
+                ret_val = [] if isinstance(ret, list) else None
         return ret_val
 
     def _serialize_embed(self, attr, embed, value):
@@ -109,24 +117,27 @@ class MechanicEmbeddable(Related):
         return s.dump(value).data
 
     def _deserialize_by_link(self, value, attr):
-        value = {self.related_keys[0].key: value}
+        keys = {self.deserialize_key: value}
         query = self.session.query(self.related_model)
         try:
-            if self.columns:
-                abc = {
-                    prop.key: value.get(prop.key)
-                    for prop in self.related_keys
-                }
-                result = query.filter_by(**abc).one()
+            if self.deserialize_key:
+                result = query.filter_by(**{
+                    self.deserialize_key: keys.get(self.deserialize_key)
+                }).one()
             else:
+                if not isinstance(value, dict):
+                    if len(self.related_keys) != 1:
+                        self.fail('invalid', value=value, keys=[prop.key for prop in self.related_keys])
+                    value = {self.related_keys[0].key: value}
+
                 # Use a faster path if the related key is the primary key.
                 result = query.get([
-                    value.get(prop.key) for prop in self.related_keys
+                    keys.get(prop.key) for prop in self.related_keys
                 ])
                 if result is None:
                     raise NoResultFound
         except NoResultFound:
-            raise ValidationError("Resource with id %s not found" % value, field_names=[attr])
+            raise ValidationError("Resource with '%s' %s not found" % (self.deserialize_key, value), field_names=[attr])
         return result
 
     def _deserialize(self, value, *args, **kwargs):

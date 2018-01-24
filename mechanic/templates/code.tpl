@@ -42,20 +42,23 @@ class {{ cb.class_name }}({{ cb.base_class_name }}):
                 {%- else %}
     {{ prop_name }} = fields.{{ prop_obj.type.title() }}({%- if prop_name in cb.oapi.required %}required=True,{% endif %}
                                                  {%- if prop_obj.maxLength %} maxLength={{ prop_obj.maxLength }},{% endif %}
-                                                 {%- if prop_obj.readOnly %} load_only={{ prop_obj.readOnly }},{% endif %}
-                                                 {%- if prop_obj.writeOnly %} dump_only={{ prop_obj.writeOnly }},{% endif %}
+                                                 {%- if prop_obj.readOnly %} dump_only={{ prop_obj.readOnly }},{% endif %}
+                                                 {%- if prop_obj.writeOnly %} load_only={{ prop_obj.writeOnly }},{% endif %}
                                                  {%- if prop_obj.enum %} validate=OneOf({{ prop_obj.enum }}),{% endif %}
-                                                 {%- if prop_obj.pattern %}validate=Regexp('{{ prop_obj.pattern}}'),{% endif %})
+                                                 {%- if prop_obj.pattern %}validate=Regexp(r'{{ prop_obj.pattern}}'),{% endif %})
                 {%- endif %}
             {%- endif %}
         {%- endfor %}
 {# #}
     class Meta:
-        fields = ('identifier', 'uri', {%- for prop_name, prop_obj in cb.oapi.properties.items() %} '{{ prop_name }}',{%- endfor %})
+        fields = ({%- for prop_name, prop_obj in cb.oapi.properties.items() %}{%- if not prop_obj['x-mechanic-db'] or not prop_obj['x-mechanic-db'].model_only %}'{{ prop_name }}', {% endif %}{%- endfor %})
         strict = True
-        {% if cb.oapi['x-mechanic-model'] -%}model = {{ cb.oapi['x-mechanic-model'] }}{%- endif %}
+        {% if cb.oapi['x-mechanic-model'] -%}
+        model = {{ cb.oapi['x-mechanic-model'].class_name }}
+        sqla_session = db.session
+        {%- endif %}
     {%- elif cb.type == 'model' %}
-class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
+class {{ cb.class_name }}({{ cb.base_class_name }}):
         {%- if cb.oapi.description %}
     """
     {{ cb.oapi.description }}
@@ -64,23 +67,28 @@ class {{ cb.class_name }}({{ cb.base_class_name }}, db.Model):
     __tablename__ = '{%- if cb.oapi['x-mechanic-db'] -%}
                         {{ cb.oapi['x-mechanic-db'].__tablename__ }}
                      {%- endif -%}'
-    __table_args__ = ({%- if cb.oapi['x-mechanic-db'] and cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint -%}
-                                    db.UniqueConstraint({%- for item in cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraint %}'{{ item }}', {% endfor %}),
+    __table_args__ = ({%- if cb.oapi['x-mechanic-db'] and cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraints -%}
+                                    {%- for key, value in cb.oapi['x-mechanic-db'].__table_args__.uniqueConstraints.items() -%}
+                                    db.UniqueConstraint({%- for item in value %}'{{ item }}', {%- endfor %} name='{{ key }}'),
+                                    {%- endfor %}
                       {% endif -%}
                                     {'schema': '{%- if cb.oapi['x-mechanic-db'] -%}{{ cb.oapi['x-mechanic-db'].__table_args__.schema }}{%- endif -%}'})
     {# #}
     controller = db.Column(db.String, default='{{ cb.oapi['x-mechanic-controller'] }}')
-    uri = db.Column(db.String, default=get_uri)
         {%- for prop_name, prop_obj in cb.oapi.properties.items() %}
             {%- if prop_obj['x-mechanic-db'] %}
                 {%- if prop_obj['x-mechanic-db'].column %}
     {{ prop_name }} = db.Column(db.{{ prop_obj.type.title() }}({%- if prop_obj.maxLength %}{{ prop_obj.maxLength }}{% endif %}),
+                                {%- if prop_obj['x-mechanic-db'].column.primary_key %} primary_key={{ prop_obj['x-mechanic-db'].column.primary_key }},{%- endif %}
                                 {%- if prop_obj['x-mechanic-db'].column.nullable %} nullable={{ prop_obj['x-mechanic-db'].column.nullable }},{%- endif %}
                                 {%- if prop_obj['x-mechanic-db'].column.default %} default={{ prop_obj['x-mechanic-db'].column.default }},{%- endif %}
                                 {%- if prop_obj['x-mechanic-db'].column.server_default %} server_default={{ prop_obj['x-mechanic-db'].column.server_default }},{%- endif %})
-
+                {%- elif prop_obj['x-mechanic-db'].synonym %}
+    {{ prop_name }} = synonym('{{ prop_obj['x-mechanic-db'].synonym }}')
                 {%- elif prop_obj['x-mechanic-db'].foreign_key %}
-    {{ prop_name }} = db.Column(db.String(36), db.ForeignKey('{{ prop_obj['x-mechanic-db'].foreign_key.key }}'),
+    {{ prop_name }} = db.Column(db.String(36), db.ForeignKey('{{ prop_obj['x-mechanic-db'].foreign_key.key }}',
+                                                                {%- if prop_obj['x-mechanic-db'].foreign_key.ondelete %} ondelete='{{ prop_obj['x-mechanic-db'].foreign_key.ondelete }}',{%- endif %}
+                                                                {%- if prop_obj['x-mechanic-db'].foreign_key.onupdate %} onupdate='{{ prop_obj['x-mechanic-db'].foreign_key.onupdate }}',{%- endif %}),
                                                                 {%- if prop_obj['x-mechanic-db'].foreign_key.primary_key %} primary_key={{ prop_obj['x-mechanic-db'].foreign_key.primary_key }}{% endif %})
                 {%- elif prop_obj['x-mechanic-db'].relationship %}
     {{ prop_name }} = db.relationship('{{ prop_obj['x-mechanic-db'].relationship.model }}',
